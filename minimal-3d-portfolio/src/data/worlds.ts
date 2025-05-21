@@ -350,6 +350,83 @@ export const createProjectWorld = (project: Project, isTouchDevice: boolean): Wo
     });
   }
   
+  // Add asset gallery items as displayable objects
+  if (project.assetGallery && Array.isArray(project.assetGallery) && project.assetGallery.length > 0) {
+    console.log(`WorldProvider: Adding ${project.assetGallery.length} asset gallery items to world`);
+    
+    // Filter assets by type to organize them
+    const imageAssets = project.assetGallery.filter(asset => 
+      asset.type === 'image' && asset.url && 
+      (asset.url.endsWith('.jpg') || asset.url.endsWith('.jpeg') || 
+       asset.url.endsWith('.png') || asset.url.endsWith('.gif') ||
+       asset.url.endsWith('.JPG') || asset.url.endsWith('.JPEG') || 
+       asset.url.endsWith('.PNG') || asset.url.endsWith('.webp'))
+    );
+    
+    const videoAssets = project.assetGallery.filter(asset => 
+      asset.type === 'video' && asset.url && 
+      (asset.url.endsWith('.mp4') || asset.url.endsWith('.webm') || 
+       asset.url.endsWith('.MP4') || asset.url.endsWith('.mov') || 
+       asset.url.endsWith('.MOV'))
+    );
+    
+    const documentAssets = project.assetGallery.filter(asset => 
+      asset.type === 'document' && asset.url && 
+      (asset.url.endsWith('.pdf') || asset.url.endsWith('.PDF'))
+    );
+    
+    // Get positions for each type of asset
+    const imagePositions = generateGalleryPositions(imageAssets.length, 'left');
+    const videoPositions = generateGalleryPositions(videoAssets.length, 'right');
+    const documentPositions = generateGalleryPositions(documentAssets.length, 'back');
+    
+    // Add image assets to the left side
+    imageAssets.forEach((asset, index) => {
+      const position = imagePositions[index] || [-8, 1.5, -5 - (index % 10)];
+      worldObjects.push({
+        id: `gallery-image-${index}`,
+        type: 'image',
+        title: asset.name || `Image ${index + 1}`,
+        description: `${asset.name || `Image ${index + 1}`} - ${asset.category || 'Image'}`,
+        url: asset.url,
+        thumbnail: asset.url,
+        position: position,
+        rotation: [0, Math.PI / 6, 0], // Angle slightly inward
+        scale: [0.8, 0.8, 0.1] // Smaller scale for gallery items
+      });
+    });
+    
+    // Add video assets to the right side
+    videoAssets.forEach((asset, index) => {
+      const position = videoPositions[index] || [8, 1.5, -5 - (index % 10)];
+      worldObjects.push({
+        id: `gallery-video-${index}`,
+        type: 'video',
+        title: asset.name || `Video ${index + 1}`,
+        description: `${asset.name || `Video ${index + 1}`} - ${asset.category || 'Video'}`,
+        url: asset.url,
+        thumbnail: asset.url.replace('.mp4', '.jpg').replace('.MP4', '.jpg'),
+        position: position,
+        rotation: [0, -Math.PI / 6, 0], // Angle slightly inward
+        scale: [1, 0.6, 0.1] // Smaller scale for gallery items
+      });
+    });
+    
+    // Add document assets to the back
+    documentAssets.forEach((asset, index) => {
+      const position = documentPositions[index] || [0, 1.5, -15 - (index % 5)];
+      worldObjects.push({
+        id: `gallery-document-${index}`,
+        type: 'pdf',
+        title: asset.name || `Document ${index + 1}`,
+        description: `${asset.name || `Document ${index + 1}`} - ${asset.category || 'Document'}`,
+        url: asset.url,
+        position: position,
+        scale: [1, 1.4, 0.1] // Taller scale for documents
+      });
+    });
+  }
+  
   // Adjust camera position based on device type
   const cameraPosition = isTouchDevice
     ? { x: 0, y: 4, z: 10 } // Higher and further back for touch devices
@@ -375,6 +452,60 @@ export const createProjectWorld = (project: Project, isTouchDevice: boolean): Wo
   
   return projectWorld;
 };
+
+// Helper function to generate positions for gallery items
+function generateGalleryPositions(count: number, side: 'left' | 'right' | 'back'): [number, number, number][] {
+  const positions: [number, number, number][] = [];
+  
+  if (side === 'left') {
+    // Left side wall arrangement
+    const itemsPerRow = 5;
+    const rows = Math.ceil(count / itemsPerRow);
+    
+    for (let i = 0; i < count; i++) {
+      const row = Math.floor(i / itemsPerRow);
+      const col = i % itemsPerRow;
+      
+      const x = -10; // Fixed x position for left wall
+      const y = 1 + row * 1.5; // Vertical spacing
+      const z = -3 - col * 2; // Horizontal spacing along the wall
+      
+      positions.push([x, y, z]);
+    }
+  } else if (side === 'right') {
+    // Right side wall arrangement
+    const itemsPerRow = 5;
+    const rows = Math.ceil(count / itemsPerRow);
+    
+    for (let i = 0; i < count; i++) {
+      const row = Math.floor(i / itemsPerRow);
+      const col = i % itemsPerRow;
+      
+      const x = 10; // Fixed x position for right wall
+      const y = 1 + row * 1.5; // Vertical spacing
+      const z = -3 - col * 2; // Horizontal spacing along the wall
+      
+      positions.push([x, y, z]);
+    }
+  } else {
+    // Back wall arrangement
+    const itemsPerRow = 5;
+    const rows = Math.ceil(count / itemsPerRow);
+    
+    for (let i = 0; i < count; i++) {
+      const row = Math.floor(i / itemsPerRow);
+      const col = i % itemsPerRow;
+      
+      const x = -8 + col * 4; // Horizontal spacing
+      const y = 1 + row * 1.5; // Vertical spacing
+      const z = -15; // Fixed z position for back wall
+      
+      positions.push([x, y, z]);
+    }
+  }
+  
+  return positions;
+}
 
 // Generate circular positions for multiple objects around a center point
 const generateCircularPositions = (count: number, centerY: number, radius: number): [number, number, number][] => {

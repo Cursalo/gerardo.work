@@ -3,35 +3,35 @@ import { WorldObject } from '../data/worlds'; // Added import
 // Helper function to map project ID to name
 function getProjectName(id: number): string {
   const projectMap: Record<number, string> = {
-    4: "Burgertify",
-    5: "Cursalo",
-    6: "Foodketing",
-    7: "Foodelopers",
-    8: "Jaguar",
-    9: "Matrix Agencia",
-    10: "Wobistro",
-    11: "Tokitaka",
-    12: "EaxiAI",
-    13: "Eaxily",
-    14: "Talevista",
-    15: "LinkMas",
-    16: "LinkDialer",
-    17: "AIClases.com",
-    18: "BonsaiPrep",
-    19: "Blue Voyage Travel",
-    20: "Menu Crafters",
-    21: "Monchee",
-    22: "PitchDeckGenie",
-    23: "PlatePlatform",
-    24: "PostRaptor",
-    25: "Power Up Pizza",
-    26: "RAM",
-    27: "Hybridge",
-    28: "Burgavision",
-    29: "Foodiez Apparel",
-    30: "Avatarmatic",
-    31: "Beta",
-    32: "Amazonia Apoteket"
+    1: "Burgertify",
+    2: "Cursalo",
+    3: "Foodketing",
+    4: "Foodelopers",
+    5: "Jaguar",
+    6: "Matrix Agencia",
+    7: "Wobistro",
+    8: "Tokitaka",
+    9: "EaxiAI",
+    10: "Eaxily",
+    11: "Talevista",
+    12: "LinkMas",
+    13: "LinkDialer",
+    14: "AIClases.com",
+    15: "BonsaiPrep",
+    16: "Blue Voyage Travel",
+    17: "Menu Crafters",
+    18: "Monchee",
+    19: "PitchDeckGenie",
+    20: "PlatePlatform",
+    21: "PostRaptor",
+    22: "Power Up Pizza",
+    23: "RAM",
+    24: "Hybridge",
+    25: "Burgavision",
+    26: "Foodiez Apparel",
+    27: "Avatarmatic",
+    28: "Beta",
+    29: "Amazonia Apoteket"
   };
   return projectMap[id] || `Project-${id}`;
 }
@@ -47,6 +47,12 @@ export interface Project {
   videoUrl?: string;
   customLink?: string; // Custom URL path for direct access to this project's world
   mediaObjects?: WorldObject[]; // Added to store project-specific media/objects
+  assetGallery?: Array<{
+    url?: string;
+    name?: string;
+    type?: string;
+    category?: string;
+  }>; // Added to store project assets
   worldSettings?: {
     backgroundColor: string;
     floorColor: string;

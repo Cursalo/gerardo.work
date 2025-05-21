@@ -9,6 +9,7 @@ import useMobileDetection from './hooks/useMobileDetection'
 import { AudioProvider } from './context/AudioContext'
 import { MusicPlayer } from './components/MusicPlayer'
 import { useWorld } from './context/WorldContext'
+import { projectService } from './services/projectService'
 
 // Define the style object with proper TypeScript types
 const styles = {
@@ -316,6 +317,8 @@ const AppContent = () => {
   const [showUI, setShowUI] = useState(true);
   const [showResetInfo, setShowResetInfo] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showRefreshNotification, setShowRefreshNotification] = useState(false);
   
   const { isMobile, isTouchDevice } = useMobileDetection();
   const { openChat, showChat: isChatOpen, isNearNPC } = useChat();
@@ -419,24 +422,53 @@ const AppContent = () => {
     setShowMobileMenu(false);
   };
 
-  // Add function to refresh project data
+  // Function to refresh project data
   const refreshProjectData = async () => {
-    if (isRefreshing) return; // Prevent multiple refreshes
+    console.log('App: Manual refresh requested');
     
-    setIsRefreshing(true);
+    // Show loading state
+    setIsLoading(true);
+    
     try {
-      console.log('App: Refreshing project data from disk');
-      await checkForProjectFileUpdates();
-      console.log('App: Project data refresh complete');
+      // Clear all storage first to force a complete reload
+      localStorage.removeItem('portfolio_projects');
+      localStorage.removeItem('portfolio_worlds');
       
-      // Show success message
-      alert('Project data refreshed successfully!');
+      if ('caches' in window) {
+        try {
+          const cacheNames = await window.caches.keys();
+          for (const cacheName of cacheNames) {
+            console.log(`App: Clearing cache ${cacheName}`);
+            await window.caches.delete(cacheName);
+          }
+          console.log('App: All caches cleared');
+        } catch (error) {
+          console.error('App: Error clearing caches:', error);
+        }
+      }
+      
+      // Force reload project data
+      console.log('App: Forcing reload of all project data');
+      await projectService.forceReloadProjectsFromDisk();
+      
+      // Check for updates in WorldContext
+      if (checkForProjectFileUpdates) {
+        console.log('App: Checking for project file updates');
+        const updated = await checkForProjectFileUpdates();
+        console.log(`App: Project file update check result: ${updated ? 'Updated' : 'No updates'}`);
+      }
+      
+      console.log('App: Setting refresh notification');
+      setShowRefreshNotification(true);
+      
+      // Hide notification after a delay
+      setTimeout(() => {
+        setShowRefreshNotification(false);
+      }, 3000);
     } catch (error) {
-      console.error('App: Error refreshing project data:', error);
-      alert('Error refreshing project data. Check console for details.');
+      console.error('App: Error during refresh:', error);
     } finally {
-      setIsRefreshing(false);
-      setShowMobileMenu(false); // Close mobile menu after refresh
+      setIsLoading(false);
     }
   };
 

@@ -1,5 +1,5 @@
 {
-  "id": 4,
+  "id": 1,
   "name": "Burgertify",
   "description": "Project details for Burgertify.",
   "link": "/projects/Burgertify/index.html",
@@ -373,34 +373,34 @@
       "url": "/projects/Burgertify/assets/images/Wonder Boy.jpg"
     },
     {
-      "name": "Animation.MP4",
-      "type": "video",
-      "category": "videos",
-      "url": "/projects/Burgertify/assets/videos/Animation.MP4"
-    },
-    {
-      "name": "Burgertify .MP4",
+      "name": "Burgertify Main Video",
       "type": "video",
       "category": "videos",
       "url": "/projects/Burgertify/assets/videos/Burgertify .MP4"
     },
     {
-      "name": "Lamp Building 2.MP4",
+      "name": "Lamp Building",
+      "type": "video",
+      "category": "videos",
+      "url": "/projects/Burgertify/assets/videos/Lamp Building.MP4"
+    },
+    {
+      "name": "Lamp Building 2",
       "type": "video",
       "category": "videos",
       "url": "/projects/Burgertify/assets/videos/Lamp Building 2.MP4"
     },
     {
-      "name": "Lamp Building 3.MP4",
+      "name": "Lamp Building 3",
       "type": "video",
       "category": "videos",
       "url": "/projects/Burgertify/assets/videos/Lamp Building 3.MP4"
     },
     {
-      "name": "Lamp Building.MP4",
+      "name": "Animation",
       "type": "video",
       "category": "videos",
-      "url": "/projects/Burgertify/assets/videos/Lamp Building.MP4"
+      "url": "/projects/Burgertify/assets/videos/Animation.MP4"
     },
     {
       "name": "Burgertify - Brandbook.pdf",
