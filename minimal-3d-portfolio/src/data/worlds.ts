@@ -383,6 +383,37 @@ export const createProjectWorld = (project: Project, isTouchDevice: boolean): Wo
     // Add image assets to the left side
     imageAssets.forEach((asset, index) => {
       const position = imagePositions[index] || [-8, 1.5, -5 - (index % 10)];
+      
+      // Determine aspect ratio for more natural scaling
+      // Default to a reasonable aspect ratio if we can't determine it
+      let aspectRatio = 1.5; // Default aspect ratio (width/height)
+      let scale: [number, number, number] = [1.2, 0.8, 0.1]; // Default scale
+      
+      // Determine aspect ratio from image name if possible
+      if (asset.url) {
+        // Create a temporary scale based on image type
+        if (asset.url.includes('horizontal') || 
+            asset.url.includes('landscape') || 
+            asset.url.toLowerCase().includes('panorama')) {
+          aspectRatio = 1.77; // 16:9 ratio
+          scale = [1.2, 0.675, 0.1]; // Wider than tall
+        } else if (asset.url.includes('vertical') || 
+                   asset.url.includes('portrait')) {
+          aspectRatio = 0.75; // 3:4 ratio
+          scale = [0.75, 1.0, 0.1]; // Taller than wide
+        } else if (asset.url.includes('square') || 
+                   asset.url.toLowerCase().includes('logo')) {
+          aspectRatio = 1.0; // 1:1 ratio
+          scale = [0.9, 0.9, 0.1]; // Square
+        } else {
+          // Try to infer from file extension for common photo types
+          if (asset.url.match(/\.(jpe?g|png|gif|webp)$/i)) {
+            // Standard photo aspect ratio if we can't determine
+            scale = [1.1, 0.8, 0.1]; // Slightly wider than tall
+          }
+        }
+      }
+      
       worldObjects.push({
         id: `gallery-image-${index}`,
         type: 'image',
@@ -392,13 +423,17 @@ export const createProjectWorld = (project: Project, isTouchDevice: boolean): Wo
         thumbnail: asset.url,
         position: position,
         rotation: [0, Math.PI / 6, 0], // Angle slightly inward
-        scale: [0.8, 0.8, 0.1] // Smaller scale for gallery items
+        scale: scale // Use the determined scale based on aspect ratio
       });
     });
     
     // Add video assets to the right side
     videoAssets.forEach((asset, index) => {
       const position = videoPositions[index] || [8, 1.5, -5 - (index % 10)];
+      
+      // Videos typically have a 16:9 aspect ratio
+      const scale: [number, number, number] = [1.2, 0.675, 0.1]; // 16:9 aspect ratio
+      
       worldObjects.push({
         id: `gallery-video-${index}`,
         type: 'video',
@@ -408,13 +443,17 @@ export const createProjectWorld = (project: Project, isTouchDevice: boolean): Wo
         thumbnail: asset.url ? asset.url.replace('.mp4', '.jpg').replace('.MP4', '.jpg') : undefined,
         position: position,
         rotation: [0, -Math.PI / 6, 0], // Angle slightly inward
-        scale: [1, 0.6, 0.1] // Smaller scale for gallery items
+        scale: scale // 16:9 aspect ratio for videos
       });
     });
     
     // Add document assets to the back
     documentAssets.forEach((asset, index) => {
       const position = documentPositions[index] || [0, 1.5, -15 - (index % 5)];
+      
+      // PDFs typically have an A4/letter aspect ratio
+      const scale: [number, number, number] = [0.8, 1.15, 0.1]; // Portrait document ratio
+      
       worldObjects.push({
         id: `gallery-document-${index}`,
         type: 'pdf',
@@ -422,7 +461,7 @@ export const createProjectWorld = (project: Project, isTouchDevice: boolean): Wo
         description: `${asset.name || `Document ${index + 1}`} - ${asset.category || 'Document'}`,
         url: asset.url,
         position: position,
-        scale: [1, 1.4, 0.1] // Taller scale for documents
+        scale: scale // Portrait document ratio
       });
     });
   }
@@ -458,47 +497,61 @@ function generateGalleryPositions(count: number, side: 'left' | 'right' | 'back'
   const positions: [number, number, number][] = [];
   
   if (side === 'left') {
-    // Left side wall arrangement
-    const itemsPerRow = 5;
+    // Left side wall arrangement - more spread out
+    const itemsPerRow = 3; // Reduced from 5 for better spacing
     const rows = Math.ceil(count / itemsPerRow);
     
     for (let i = 0; i < count; i++) {
       const row = Math.floor(i / itemsPerRow);
       const col = i % itemsPerRow;
       
-      const x = -10; // Fixed x position for left wall
-      const y = 1 + row * 1.5; // Vertical spacing
-      const z = -3 - col * 2; // Horizontal spacing along the wall
+      // Add some randomization to make it look more natural
+      const xOffset = (Math.random() * 2 - 1) * 0.5; // Small random x offset
+      const yOffset = (Math.random() * 2 - 1) * 0.3; // Small random y offset
+      const zOffset = (Math.random() * 2 - 1) * 0.7; // Small random z offset
+      
+      const x = -12 + xOffset; // Moved further left
+      const y = 1.5 + row * 2 + yOffset; // More vertical spacing
+      const z = -5 - col * 3 + zOffset; // More horizontal spacing
       
       positions.push([x, y, z]);
     }
   } else if (side === 'right') {
-    // Right side wall arrangement
-    const itemsPerRow = 5;
+    // Right side wall arrangement - more spread out
+    const itemsPerRow = 3; // Reduced from 5 for better spacing
     const rows = Math.ceil(count / itemsPerRow);
     
     for (let i = 0; i < count; i++) {
       const row = Math.floor(i / itemsPerRow);
       const col = i % itemsPerRow;
       
-      const x = 10; // Fixed x position for right wall
-      const y = 1 + row * 1.5; // Vertical spacing
-      const z = -3 - col * 2; // Horizontal spacing along the wall
+      // Add some randomization to make it look more natural
+      const xOffset = (Math.random() * 2 - 1) * 0.5; // Small random x offset
+      const yOffset = (Math.random() * 2 - 1) * 0.3; // Small random y offset
+      const zOffset = (Math.random() * 2 - 1) * 0.7; // Small random z offset
+      
+      const x = 12 + xOffset; // Moved further right
+      const y = 1.5 + row * 2 + yOffset; // More vertical spacing
+      const z = -5 - col * 3 + zOffset; // More horizontal spacing
       
       positions.push([x, y, z]);
     }
   } else {
-    // Back wall arrangement
-    const itemsPerRow = 5;
+    // Back wall arrangement - more spread out
+    const itemsPerRow = 3; // Reduced from 5 for better spacing
     const rows = Math.ceil(count / itemsPerRow);
     
     for (let i = 0; i < count; i++) {
       const row = Math.floor(i / itemsPerRow);
       const col = i % itemsPerRow;
       
-      const x = -8 + col * 4; // Horizontal spacing
-      const y = 1 + row * 1.5; // Vertical spacing
-      const z = -15; // Fixed z position for back wall
+      // Add some randomization to make it look more natural
+      const xOffset = (Math.random() * 2 - 1) * 0.5; // Small random x offset
+      const yOffset = (Math.random() * 2 - 1) * 0.3; // Small random y offset
+      
+      const x = -8 + col * 8 + xOffset; // More horizontal spacing
+      const y = 1.5 + row * 2 + yOffset; // More vertical spacing
+      const z = -18; // Moved further back
       
       positions.push([x, y, z]);
     }
