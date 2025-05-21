@@ -439,7 +439,7 @@ export const createProjectWorld = (project: Project, isTouchDevice: boolean): Wo
       
       // Determine the asset type
       let assetType: 'image' | 'video' | 'pdf' = 'image';
-      let scale: [number, number, number] = [1.2, 0.8, 0.1]; // Default scale
+      let scale: [number, number, number] = [1.2, 0.8, 0.1]; // Default scale (3:2 landscape)
       let thumbnail = asset.url;
       
       if (asset.type === 'video' || 
@@ -468,7 +468,7 @@ export const createProjectWorld = (project: Project, isTouchDevice: boolean): Wo
             scale = [1.2, 0.675, 0.1]; // Wider than tall - 16:9
           } else if (asset.url.includes('vertical') || 
                     asset.url.includes('portrait')) {
-            scale = [0.75, 1.0, 0.1]; // Taller than wide - 3:4
+            scale = [0.8, 1.0, 0.1]; // Taller than wide - 4:5 aspect ratio (less skinny)
           } else if (asset.url.includes('square') || 
                     asset.url.toLowerCase().includes('logo')) {
             scale = [0.9, 0.9, 0.1]; // Square - 1:1
