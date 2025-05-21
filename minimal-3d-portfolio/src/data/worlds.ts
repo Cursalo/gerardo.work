@@ -405,7 +405,7 @@ export const createProjectWorld = (project: Project, isTouchDevice: boolean): Wo
         title: asset.name || `Video ${index + 1}`,
         description: `${asset.name || `Video ${index + 1}`} - ${asset.category || 'Video'}`,
         url: asset.url,
-        thumbnail: asset.url.replace('.mp4', '.jpg').replace('.MP4', '.jpg'),
+        thumbnail: asset.url ? asset.url.replace('.mp4', '.jpg').replace('.MP4', '.jpg') : undefined,
         position: position,
         rotation: [0, -Math.PI / 6, 0], // Angle slightly inward
         scale: [1, 0.6, 0.1] // Smaller scale for gallery items
