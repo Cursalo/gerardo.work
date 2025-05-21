@@ -1,5 +1,44 @@
 import { WorldObject } from '../data/worlds'; // Added import
 
+// Helper function to map project ID to name
+function getProjectName(id: number): string {
+  const projectMap: Record<number, string> = {
+    1: "Avengers: Endgame",
+    2: "Spider-Man: No Way Home",
+    3: "The Batman",
+    4: "Burgertify",
+    5: "Cursalo",
+    6: "Foodketing",
+    7: "Foodelopers",
+    8: "Jaguar",
+    9: "Matrix Agencia",
+    10: "Wobistro",
+    11: "Tokitaka",
+    12: "EaxiAI",
+    13: "Eaxily",
+    14: "Talevista",
+    15: "LinkMas",
+    16: "LinkDialer",
+    17: "AIClases.com",
+    18: "BonsaiPrep",
+    19: "Blue Voyage Travel",
+    20: "Menu Crafters",
+    21: "Monchee",
+    22: "PitchDeckGenie",
+    23: "PlatePlatform",
+    24: "PostRaptor",
+    25: "Power Up Pizza",
+    26: "RAM",
+    27: "Hybridge",
+    28: "Burgavision",
+    29: "Foodiez Apparel",
+    30: "Avatarmatic",
+    31: "Beta",
+    32: "Amazonia Apoteket"
+  };
+  return projectMap[id] || `Project-${id}`;
+}
+
 export interface Project {
   id: number;
   name: string;
@@ -108,7 +147,7 @@ class ProjectService {
     }
   }
 
-  // Load projects from individual JSON files in the project_definitions directory
+  // Load projects from individual JSON files in the project directories
   private async loadFromJsonFiles(): Promise<void> {
     console.log('ProjectService: Loading projects from public/projects directories');
     try {
@@ -143,38 +182,6 @@ class ProjectService {
           console.log(`ProjectService: Loaded project ${i} from ${projectUrl}`);
         } catch (error) {
           console.warn(`ProjectService: Could not load project ${i}:`, error);
-        }
-      }
-
-      if (loadedProjects.length > 0) {
-        // Sort projects by ID for consistency
-        this.projects = loadedProjects.sort((a, b) => a.id - b.id);
-        console.log(`ProjectService: Successfully loaded ${this.projects.length} projects from JSON files.`);
-        
-        // Save to localStorage
-        this.saveToStorage();
-      } else {
-        console.error('ProjectService: No projects could be loaded from JSON files.');
-        this.projects = [];
-      }
-    } catch (error) {
-      console.error('ProjectService: Error loading projects from JSON files:', error);
-      this.projects = [];
-    }
-  }.json`);
-          const project = projectModule.default || projectModule;
-
-          // Ensure all required fields are present
-          const validProject: Project = {
-            ...project,
-            mediaObjects: Array.isArray(project.mediaObjects) ? project.mediaObjects : [],
-            worldSettings: project.worldSettings || undefined
-          };
-
-          loadedProjects.push(validProject);
-          console.log(`ProjectService: Loaded project ${i} from JSON file.`);
-        } catch (error) {
-          console.warn(`ProjectService: Could not load project_${i}.json:`, error);
         }
       }
 
