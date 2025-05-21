@@ -1,0 +1,10 @@
+{
+  "id": 1,
+  "name": "Avengers: Endgame",
+  "description": "Official trailer showcase.",
+  "link": "https://www.youtube.com/watch?v=TcMBFSGVi1c",
+  "thumbnail": "https://img.youtube.com/vi/TcMBFSGVi1c/mqdefault.jpg",
+  "status": "completed",
+  "type": "video",
+  "videoUrl": "https://www.youtube.com/watch?v=TcMBFSGVi1c"
+}

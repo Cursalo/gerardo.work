@@ -1,0 +1,10 @@
+{
+  "id": 5,
+  "name": "Top Gun: Maverick",
+  "description": "Official trailer showcase.",
+  "link": "https://www.youtube.com/watch?v=giXco2jaZ_4",
+  "thumbnail": "https://img.youtube.com/vi/giXco2jaZ_4/mqdefault.jpg",
+  "status": "completed",
+  "type": "video",
+  "videoUrl": "https://www.youtube.com/watch?v=giXco2jaZ_4"
+}

@@ -1,0 +1,10 @@
+{
+  "id": 2,
+  "name": "Spider-Man: No Way Home",
+  "description": "Official trailer showcase.",
+  "link": "https://www.youtube.com/watch?v=JfVOs4VSpmA",
+  "thumbnail": "https://img.youtube.com/vi/JfVOs4VSpmA/mqdefault.jpg",
+  "status": "completed",
+  "type": "video",
+  "videoUrl": "https://www.youtube.com/watch?v=JfVOs4VSpmA"
+}

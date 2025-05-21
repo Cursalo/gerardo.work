@@ -33,7 +33,7 @@ class ProjectService {
     this.loadProjects();
   }
 
-  private loadProjects(): void {
+  private async loadProjects(): Promise<void> {
     console.log('ProjectService: Attempting to load projects from primary storage.');
     this.initialized = false; // Reset initialized state for a fresh load sequence
     try {
@@ -63,40 +63,77 @@ class ProjectService {
             console.error('ProjectService: Primary storage data is not a valid array. Attempting recovery from backup.');
             this.projects = []; // Start fresh before recovery
             if (!this.tryRecoverFromBackup()) { // Try backup
-              console.log('ProjectService: Backup recovery failed or no backup. No projects loaded.');
+              console.log('ProjectService: Backup recovery failed or no backup. Loading from JSON files.');
+              await this.loadFromJsonFiles(); // Load from JSON files instead of static data
             }
           }
         } catch (parseError) {
           console.error('ProjectService: Error parsing projects from primary storage:', parseError, '. Attempting recovery from backup.');
           this.projects = []; // Start fresh before recovery
           if (!this.tryRecoverFromBackup()) { // Try backup
-             console.log('ProjectService: Backup recovery failed or no backup. No projects loaded.');
+             console.log('ProjectService: Backup recovery failed or no backup. Loading from JSON files.');
+             await this.loadFromJsonFiles(); // Load from JSON files instead of static data
           }
         }
       } else {
-        console.log('ProjectService: No projects found in primary storage. Attempting recovery from backup.');
-        if (!this.tryRecoverFromBackup()) {
-          console.log('ProjectService: Backup recovery failed or no backup. Loading from static data as last resort.');
-          // If backup also fails, then load static (should only happen on first ever run or total data loss)
-          import('../data/projects').then(({ projects: staticProjects }) => {
-            this.projects = staticProjects.map(p => ({ ...p, mediaObjects: Array.isArray(p.mediaObjects) ? p.mediaObjects : [] }));
-            console.log(`ProjectService: Loaded ${this.projects.length} projects from static data.`);
-            this.saveToStorage(); // Save static data to establish primary storage
-          }).catch(error => {
-            console.error('ProjectService: Error loading static projects:', error);
-            this.projects = []; // Ensure projects is an empty array on failure
-          });
-        }
+        console.log('ProjectService: No projects found in primary storage. Loading from JSON files.');
+        await this.loadFromJsonFiles(); // Load from JSON files instead of static data
       }
     } catch (error) {
       console.error('ProjectService: General error during project loading:', error, '. Attempting recovery from backup.');
       this.projects = []; // Start fresh before recovery
       if (!this.tryRecoverFromBackup()) { // Try backup
-          console.log('ProjectService: Backup recovery failed or no backup. No projects loaded.');
+          console.log('ProjectService: Backup recovery failed or no backup. Loading from JSON files.');
+          await this.loadFromJsonFiles(); // Load from JSON files instead of static data
       }
     } finally {
       this.initialized = true;
       console.log('ProjectService: loadProjects sequence finished. Initialized state set to true.');
+    }
+  }
+
+  // Load projects from individual JSON files in the project_definitions directory
+  private async loadFromJsonFiles(): Promise<void> {
+    console.log('ProjectService: Loading projects from JSON files.');
+    try {
+      // Create an array to store loaded projects
+      const loadedProjects: Project[] = [];
+
+      // Loop from 1 to 30 to load all project files
+      for (let i = 1; i <= 30; i++) {
+        try {
+          // Dynamic import the JSON file
+          const projectModule = await import(`../data/project_definitions/project_${i}.json`);
+          const project = projectModule.default || projectModule;
+
+          // Ensure all required fields are present
+          const validProject: Project = {
+            ...project,
+            mediaObjects: Array.isArray(project.mediaObjects) ? project.mediaObjects : [],
+            worldSettings: project.worldSettings || undefined
+          };
+
+          loadedProjects.push(validProject);
+          console.log(`ProjectService: Loaded project ${i} from JSON file.`);
+        } catch (error) {
+          console.warn(`ProjectService: Could not load project_${i}.json:`, error);
+        }
+      }
+
+      if (loadedProjects.length > 0) {
+        // Sort projects by ID for consistency
+        this.projects = loadedProjects.sort((a, b) => a.id - b.id);
+        console.log(`ProjectService: Successfully loaded ${this.projects.length} projects from JSON files.`);
+        
+        // Save to localStorage
+        this.saveToStorage();
+      } else {
+        console.error('ProjectService: No projects could be loaded from JSON files.');
+        this.projects = [];
+      }
+    } catch (error) {
+      console.error('ProjectService: Error loading projects from JSON files:', error);
+      this.projects = [];
     }
   }
 
@@ -152,21 +189,10 @@ class ProjectService {
     }
     
     // If projects array is empty AND primary storage key doesn't exist,
-    // it implies first-time load or complete data loss, so try loading static.
+    // it implies first-time load or complete data loss, so try loading from JSON
     if (this.projects.length === 0 && localStorage.getItem(this.STORAGE_KEY) === null) {
-      console.log('ProjectService: getProjects - No projects in memory and no primary storage key found. Attempting to load from static data as a one-time setup.');
-      try {
-        const { projects: staticProjects } = await import('../data/projects');
-        this.projects = staticProjects.map(p => ({
-            ...p,
-            mediaObjects: Array.isArray(p.mediaObjects) ? p.mediaObjects : []
-        }));
-        console.log(`ProjectService: getProjects - Loaded ${this.projects.length} projects from static data.`);
-        this.saveToStorage(); // Save static data to establish primary storage
-      } catch (error) {
-        console.error('ProjectService: getProjects - Error loading static projects:', error);
-        this.projects = []; // Ensure projects is an empty array on failure
-      }
+      console.log('ProjectService: getProjects - No projects in memory and no primary storage key found. Loading from JSON files.');
+      await this.loadFromJsonFiles();
     }
     
     console.log(`ProjectService: getProjects - Returning ${this.projects.length} projects from memory.`);
@@ -248,44 +274,47 @@ class ProjectService {
       if (mainWorld) {
         // Get updated project list
         const updatedProjects = [...this.projects];
-        
+      
         // Import createMainWorld dynamically
         const { createMainWorld } = await import('../data/worlds');
-        
-        // Create fresh main world
+      
+        // Create a fresh main world with all current projects
         const updatedMainWorld = createMainWorld(updatedProjects);
-        
-        // Update the main world
+      
+        // Update the main world in the world service
         worldService.updateWorld(updatedMainWorld);
         console.log('ProjectService: Main world updated successfully');
+      } else {
+        console.log('ProjectService: No main world to update');
       }
     } catch (error) {
-      console.error('ProjectService: Error updating worlds after project save:', error);
+      console.error('ProjectService: Error updating related worlds after project save:', error);
     }
     
     return project;
   }
 
   async updateProject(id: number, project: Partial<Project>): Promise<Project> {
-    const index = this.projects.findIndex(p => p.id === id);
-    if (index === -1) {
-      console.error(`ProjectService: Cannot update project with ID ${id} - not found`);
-      throw new Error('Project not found');
+    const existingProject = await this.getProjectById(id);
+    
+    if (!existingProject) {
+      throw new Error(`Project with ID ${id} not found`);
     }
     
-    this.projects[index] = { ...this.projects[index], ...project };
-    this.saveToStorage();
-    console.log(`ProjectService: Updated project with ID ${id}:`, this.projects[index]);
-    return this.projects[index];
+    const updatedProject = { ...existingProject, ...project };
+    return this.saveProject(updatedProject);
   }
 
   async deleteProject(id: number): Promise<void> {
-    console.log(`ProjectService: Deleting project with ID ${id}`);
-    this.projects = this.projects.filter(p => p.id !== id);
-    this.saveProjects();
-    // Similar to saveProject, world deletions/updates should be handled by WorldContext
-    // reacting to the change in project list.
-    console.log(`ProjectService: Project ${id} deleted. World updates should be handled by WorldContext.`);
+    const index = this.projects.findIndex(p => p.id === id);
+    
+    if (index !== -1) {
+      this.projects.splice(index, 1);
+      this.saveProjects();
+      console.log(`ProjectService: Deleted project with ID ${id}`);
+    } else {
+      console.warn(`ProjectService: Attempted to delete non-existent project with ID ${id}`);
+    }
   }
 
   // Handle form submission for both GET and POST methods
@@ -456,74 +485,84 @@ class ProjectService {
   }
 
   private tryRecoverFromBackup(): boolean {
-    console.log('ProjectService: Attempting to recover projects from backup.');
     try {
-      const backupStored = localStorage.getItem(`${this.STORAGE_KEY}_backup`);
-      if (backupStored) {
-        const parsedBackup = JSON.parse(backupStored);
-        if (Array.isArray(parsedBackup)) {
-          this.projects = parsedBackup.map(p => ({
-            ...p,
-            mediaObjects: Array.isArray(p.mediaObjects) ? p.mediaObjects : [] // Ensure mediaObjects from backup
-          }));
-          console.log(`ProjectService: Successfully recovered ${this.projects.length} projects from backup. Saving them to primary storage.`);
-          this.saveToStorage(); // Restore backup to primary storage
-          return true;
+      console.log('ProjectService: Attempting to recover from backup storage.');
+      const backupData = localStorage.getItem(`${this.STORAGE_KEY}_backup`);
+      
+      if (backupData) {
+        try {
+          const parsedBackup = JSON.parse(backupData);
+          if (Array.isArray(parsedBackup) && parsedBackup.length > 0) {
+            this.projects = parsedBackup.map(p => ({
+              ...p,
+              mediaObjects: Array.isArray(p.mediaObjects) ? p.mediaObjects : [],
+              worldSettings: p.worldSettings || undefined
+            }));
+            console.log(`ProjectService: Successfully recovered ${this.projects.length} projects from backup.`);
+            this.saveToStorage(); // Restore primary storage from backup
+            return true;
+          }
+        } catch (parseError) {
+          console.error('ProjectService: Error parsing backup data:', parseError);
         }
-        console.error('ProjectService: Backup data is not a valid array.');
-        return false;
       }
-      console.log('ProjectService: No backup data found.');
       return false;
     } catch (error) {
-      console.error('ProjectService: Error recovering projects from backup:', error);
+      console.error('ProjectService: Error during backup recovery attempt:', error);
       return false;
     }
   }
-
+  
   public async forceReloadProjects(): Promise<void> {
-    console.log('ProjectService: forceReloadProjects called. Reloading projects.');
-    this.loadProjects(); // This will reset `initialized` and reload.
-    // getProjects will internally wait for `initialized` to be true.
-    await this.getProjects(); // Ensures reload is complete and projects are available.
-    console.log('ProjectService: forceReloadProjects completed and projects are re-initialized.');
+    console.log('ProjectService: Force reloading projects');
+    this.initialized = false;
+    await this.loadProjects();
   }
 
-  // CRITICAL FIX: Direct localStorage method that bypasses in-memory state
-  // This can be used to get the raw data directly from localStorage
   public getProjectsDirectFromStorage(): Project[] {
     try {
       const stored = localStorage.getItem(this.STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
-          console.log(`ProjectService: Direct read from localStorage returned ${parsed.length} projects`);
-          return parsed;
+          return parsed.map(p => ({
+            ...p,
+            mediaObjects: Array.isArray(p.mediaObjects) ? p.mediaObjects : [],
+            worldSettings: p.worldSettings || undefined
+          }));
         }
       }
       return [];
     } catch (error) {
-      console.error('ProjectService: Error directly reading from localStorage:', error);
+      console.error('ProjectService: Error getting projects direct from storage:', error);
       return [];
     }
   }
   
-  // CRITICAL FIX: Direct save to localStorage that bypasses in-memory state
   public saveProjectsDirectToStorage(projects: Project[]): boolean {
     try {
-      if (!Array.isArray(projects)) {
-        console.error('ProjectService: Cannot directly save non-array to localStorage');
-        return false;
-      }
+      // Process projects to ensure all required fields
+      const processedProjects = projects.map(p => ({
+        ...p,
+        id: p.id || this.getNextId(),
+        mediaObjects: Array.isArray(p.mediaObjects) ? p.mediaObjects : [],
+        worldSettings: p.worldSettings || undefined
+      }));
+
+      // Save to primary storage
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(processedProjects));
       
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(projects));
-      console.log(`ProjectService: Directly saved ${projects.length} projects to localStorage`);
+      // Also update backup
+      localStorage.setItem(`${this.STORAGE_KEY}_backup`, JSON.stringify(processedProjects));
+      
+      console.log(`ProjectService: Directly saved ${processedProjects.length} projects to storage`);
       return true;
     } catch (error) {
-      console.error('ProjectService: Error directly saving to localStorage:', error);
+      console.error('ProjectService: Error saving projects directly to storage:', error);
       return false;
     }
   }
 }
 
+// Create and export the singleton instance
 export const projectService = new ProjectService(); 

@@ -1,0 +1,10 @@
+{
+  "id": 3,
+  "name": "Dune",
+  "description": "Official trailer showcase.",
+  "link": "https://www.youtube.com/watch?v=8g18jFHCLXk",
+  "thumbnail": "https://img.youtube.com/vi/8g18jFHCLXk/mqdefault.jpg",
+  "status": "completed",
+  "type": "video",
+  "videoUrl": "https://www.youtube.com/watch?v=8g18jFHCLXk"
+}
