@@ -111,8 +111,7 @@ export function FloatingMusicPlayer({
     playNextSong,
     playPrevSong,
     audioRef,
-    handleUserInteraction, // This was removed from context in prior steps, ensure it's present if used
-    hasUserInteracted // Same as above
+    hasUserInteracted
   } = useAudio();
   const { isMobile, isTouchDevice } = useMobileDetection(); // This hook is present
 
@@ -197,10 +196,7 @@ export function FloatingMusicPlayer({
   };
   
   const handlePlayClick = () => {
-    // handleUserInteraction might not be available if removed from context
-    if (typeof handleUserInteraction === 'function') {
-        handleUserInteraction(); 
-    }
+    // User interaction is handled within AudioContext
     setIsPlaying(!isPlaying);
   };
 
