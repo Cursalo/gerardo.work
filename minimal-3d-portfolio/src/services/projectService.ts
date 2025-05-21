@@ -110,16 +110,58 @@ class ProjectService {
 
   // Load projects from individual JSON files in the project_definitions directory
   private async loadFromJsonFiles(): Promise<void> {
-    console.log('ProjectService: Loading projects from JSON files.');
+    console.log('ProjectService: Loading projects from public/projects directories');
     try {
       // Create an array to store loaded projects
       const loadedProjects: Project[] = [];
 
-      // Loop from 1 to 30 to load all project files
-      for (let i = 1; i <= 30; i++) {
+      // Loop through all project folders in public/projects
+      for (let i = 1; i <= 32; i++) {
         try {
-          // Dynamic import the JSON file
-          const projectModule = await import(`../data/project_definitions/project_${i}.json`);
+          const projectName = getProjectName(i);
+          const projectUrl = `/projects/${projectName}/project.json`;
+          
+          console.log(`ProjectService: Attempting to load ${projectUrl}`);
+          
+          // Fetch the project JSON
+          const response = await fetch(projectUrl);
+          if (!response.ok) {
+            throw new Error(`HTTP error ${response.status} for project ${i}`);
+          }
+          
+          const project = await response.json();
+
+          // Ensure all required fields are present
+          const validProject: Project = {
+            ...project,
+            id: i, // Ensure correct ID
+            mediaObjects: Array.isArray(project.mediaObjects) ? project.mediaObjects : [],
+            worldSettings: project.worldSettings || undefined
+          };
+
+          loadedProjects.push(validProject);
+          console.log(`ProjectService: Loaded project ${i} from ${projectUrl}`);
+        } catch (error) {
+          console.warn(`ProjectService: Could not load project ${i}:`, error);
+        }
+      }
+
+      if (loadedProjects.length > 0) {
+        // Sort projects by ID for consistency
+        this.projects = loadedProjects.sort((a, b) => a.id - b.id);
+        console.log(`ProjectService: Successfully loaded ${this.projects.length} projects from JSON files.`);
+        
+        // Save to localStorage
+        this.saveToStorage();
+      } else {
+        console.error('ProjectService: No projects could be loaded from JSON files.');
+        this.projects = [];
+      }
+    } catch (error) {
+      console.error('ProjectService: Error loading projects from JSON files:', error);
+      this.projects = [];
+    }
+  }.json`);
           const project = projectModule.default || projectModule;
 
           // Ensure all required fields are present
