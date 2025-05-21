@@ -284,6 +284,8 @@ export const VideoCard: React.FC<VideoCardProps> = ({
                 ? '0 2px 4px rgba(0,0,0,0.4)' 
                 : '0 1px 2px rgba(255,255,255,0.8), 0 1px 3px rgba(0,0,0,0.2)',
               transition: 'color 0.3s ease, text-shadow 0.3s ease',
+              opacity: hovered ? 1 : 0,
+              transform: `translateY(${hovered ? '0' : '-10px'})`,
             }}
           >
             {title}

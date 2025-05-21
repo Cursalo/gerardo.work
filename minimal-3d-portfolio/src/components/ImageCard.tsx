@@ -254,7 +254,7 @@ export const ImageCard: React.FC<ImageCardProps> = ({
             textOverflow: 'ellipsis',
             boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
             backdropFilter: 'blur(2px)',
-            opacity: hovered ? 1 : 0.8,
+            opacity: hovered ? 1 : 0,
             transform: `scale(${hovered ? 1.1 : 1})`,
             transition: 'all 0.2s ease'
           }}
