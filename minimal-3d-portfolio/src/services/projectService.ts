@@ -158,17 +158,62 @@ class ProjectService {
       for (let i = 1; i <= 32; i++) {
         try {
           const projectName = getProjectName(i);
-          const projectUrl = `/projects/${projectName}/project.json`;
+          // Add cache-busting parameter to prevent browser caching
+          const cacheBuster = `?t=${Date.now()}`;
+          const projectUrl = `/projects/${projectName}/project.json${cacheBuster}`;
           
           console.log(`ProjectService: Attempting to load ${projectUrl}`);
           
-          // Fetch the project JSON
-          const response = await fetch(projectUrl);
+          // Fetch the project JSON with no-cache settings
+          const response = await fetch(projectUrl, {
+            cache: 'no-store',
+            headers: {
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache',
+              'Expires': '0'
+            }
+          });
+          
           if (!response.ok) {
             throw new Error(`HTTP error ${response.status} for project ${i}`);
           }
           
           const project = await response.json();
+
+          // Fix any URL issues - ensure they all start with /projects/
+          if (project.thumbnail && !project.thumbnail.startsWith('/projects/')) {
+            project.thumbnail = `/projects/${projectName}/assets/images/thumbnail.jpg`;
+          }
+          
+          if (project.videoUrl && !project.videoUrl.startsWith('/projects/')) {
+            project.videoUrl = `/projects/${projectName}/assets/videos/demo.mp4`;
+          }
+          
+          // Process media objects to ensure correct URLs
+          if (project.mediaObjects && Array.isArray(project.mediaObjects)) {
+            project.mediaObjects = project.mediaObjects.map((obj: WorldObject) => {
+              // Fix URL paths if needed
+              if (obj.url && !obj.url.startsWith('/projects/') && !obj.url.startsWith('http')) {
+                obj.url = `/projects/${projectName}/${obj.url}`;
+              }
+              
+              if (obj.thumbnail && !obj.thumbnail.startsWith('/projects/') && !obj.thumbnail.startsWith('http')) {
+                obj.thumbnail = `/projects/${projectName}/${obj.thumbnail}`;
+              }
+              
+              return obj;
+            });
+          }
+          
+          // Process asset gallery items for correct URLs
+          if (project.assetGallery && Array.isArray(project.assetGallery)) {
+            project.assetGallery = project.assetGallery.map((asset: {url?: string, name?: string, type?: string, category?: string}) => {
+              if (asset.url && !asset.url.startsWith('/projects/') && !asset.url.startsWith('http')) {
+                asset.url = `/projects/${projectName}/${asset.url}`;
+              }
+              return asset;
+            });
+          }
 
           // Ensure all required fields are present
           const validProject: Project = {
@@ -217,19 +262,30 @@ class ProjectService {
           
           // Delete any project.json files from cache
           for (const request of requests) {
-            if (request.url.includes('/projects/') && request.url.includes('project.json')) {
+            if (request.url.includes('/projects/') && 
+                (request.url.includes('project.json') || 
+                 request.url.includes('/assets/') ||
+                 request.url.includes('.jpg') ||
+                 request.url.includes('.png') ||
+                 request.url.includes('.mp4') ||
+                 request.url.includes('.pdf'))) {
               console.log(`ProjectService: Removing from cache: ${request.url}`);
               await cache.delete(request);
             }
           }
         }
-        console.log('ProjectService: Cleared project.json files from cache');
+        console.log('ProjectService: Cleared project files from cache');
       } catch (cacheError) {
         console.error('ProjectService: Error clearing cache:', cacheError);
       }
     }
     
-    // Force reload all project.json files from disk
+    // Clear localStorage cache of projects to force reload
+    localStorage.removeItem(this.STORAGE_KEY);
+    console.log('ProjectService: Cleared projects from localStorage to force reload');
+    
+    // Force reload all project.json files from disk with cache busting
+    console.log('ProjectService: Loading fresh project data from disk');
     await this.loadFromJsonFiles();
     
     // Update all project worlds
@@ -237,6 +293,10 @@ class ProjectService {
       // Dynamically import to avoid circular dependencies
       const { getWorldServiceInstance } = await import('../data/worlds');
       const worldService = getWorldServiceInstance();
+      
+      // Clear world storage to force full rebuild
+      localStorage.removeItem('portfolio_worlds');
+      console.log('ProjectService: Cleared world storage to force rebuild');
       
       // Force reload the main world with updated projects
       const { createMainWorld } = await import('../data/worlds');
@@ -248,6 +308,7 @@ class ProjectService {
       const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
       
       for (const project of this.projects) {
+        console.log(`ProjectService: Rebuilding world for project ${project.id}: ${project.name}`);
         const projectWorld = createProjectWorld(project, isTouchDevice);
         worldService.updateWorld(projectWorld);
       }

@@ -203,6 +203,11 @@ export const WorldProvider = ({
   const checkForProjectFileUpdates = async (): Promise<boolean> => {
     console.log('WorldProvider: Checking for project file updates in public/projects folder');
     try {
+      // Clear localStorage for projects and worlds to force a fresh reload
+      localStorage.removeItem('portfolio_projects');
+      localStorage.removeItem('portfolio_worlds');
+      console.log('WorldProvider: Cleared project and world storage to force a complete reload');
+      
       // First, force a reload of all project files from disk
       await projectService.forceReloadProjectsFromDisk();
       
