@@ -3,10 +3,10 @@
   "name": "Burgertify",
   "description": "Project details for Burgertify.",
   "link": "/projects/Burgertify/index.html",
-  "thumbnail": "/projects/Burgertify/assets/images/thumbnail.jpg",
+  "thumbnail": "/projects/Burgertify/assets/images/Burgertify Logo.png",
   "status": "completed",
   "type": "standard",
-  "videoUrl": "/projects/Burgertify/assets/videos/demo.mp4",
+  "videoUrl": "/projects/Burgertify/assets/videos/Burgertify .MP4",
   "worldSettings": {
     "backgroundColor": "hsl(188, 92%, 60%)",
     "floorColor": "#ffffff",
@@ -24,8 +24,8 @@
       "type": "video",
       "title": "Burgertify Main Video",
       "description": "Main video content for Burgertify.",
-      "url": "/projects/Burgertify/assets/videos/demo.mp4",
-      "thumbnail": "/projects/Burgertify/assets/images/thumbnail.jpg",
+      "url": "/projects/Burgertify/assets/videos/Burgertify .MP4",
+      "thumbnail": "/projects/Burgertify/assets/images/Burgertify Logo.png",
       "position": [
         0,
         2.5,
@@ -47,7 +47,7 @@
       "type": "image",
       "title": "About Burgertify",
       "description": "Information and assets for the Burgertify project.",
-      "thumbnail": "/projects/Burgertify/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Burgertify/assets/images/Burgertify Logo.png",
       "position": [
         -4,
         2,
