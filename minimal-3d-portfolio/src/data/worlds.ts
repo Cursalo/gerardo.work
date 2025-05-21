@@ -285,26 +285,73 @@ const isObjectInteractive = (object: WorldObject): boolean => {
 // Helper function to generate positions for gallery items
 function generateGalleryPositions(count: number): [number, number, number][] {
   const positions: [number, number, number][] = [];
+  const minDistanceBetweenAssets = 5; // Minimum distance between asset centers
+  const spaceArea = 40; // Much larger area for asset distribution (40x40 units)
+  const halfSpace = spaceArea / 2;
   
-  // Create a circular formation around the center, with some randomness
-  const baseRadius = 12;
-  const angleStep = (Math.PI * 2) / count;
+  // Function to calculate distance between two points
+  const distance = (x1: number, z1: number, x2: number, z2: number): number => {
+    return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(z2 - z1, 2));
+  };
   
-  for (let i = 0; i < count; i++) {
-    // Create a slightly randomized angle
-    const angle = i * angleStep + (Math.random() * 0.3 - 0.15);
+  // Function to check if a position is too close to existing positions
+  const isTooClose = (x: number, z: number): boolean => {
+    for (const pos of positions) {
+      if (distance(x, z, pos[0], pos[2]) < minDistanceBetweenAssets) {
+        return true;
+      }
+    }
+    return false;
+  };
+  
+  // Place the first position near the entrance for easy access
+  positions.push([0, 1 + Math.random(), -halfSpace + 10]);
+  
+  // Generate remaining positions with minimum separation
+  let attempts = 0;
+  const maxAttempts = 500; // Prevent infinite loops
+  
+  for (let i = 1; i < count; i++) {
+    let x = 0;
+    let z = 0;
+    let y = 0;
+    let validPosition = false;
     
-    // Create a radius with some randomness
-    const radius = baseRadius + (Math.random() * 6 - 3);
+    while (!validPosition && attempts < maxAttempts) {
+      // Generate candidate position in a much wider area
+      x = (Math.random() * spaceArea) - halfSpace; // -20 to 20
+      z = (Math.random() * spaceArea) - halfSpace; // -20 to 20
+      
+      // Skip positions too close to center (where the main content is)
+      if (Math.abs(x) < 5 && Math.abs(z) > -10 && Math.abs(z) < 5) {
+        attempts++;
+        continue;
+      }
+      
+      // Check if this position is far enough from all existing positions
+      validPosition = !isTooClose(x, z);
+      attempts++;
+    }
     
-    // Calculate position
-    const x = Math.cos(angle) * radius;
-    const z = Math.sin(angle) * radius;
+    if (validPosition) {
+      // Generate a random height between 0.8 and 2.5 units
+      // This creates a nice floating effect at different heights
+      y = 0.8 + Math.random() * 1.7;
+      positions.push([x, y, z]);
+    } else {
+      console.warn(`Could not find valid position for asset ${i} after ${maxAttempts} attempts`);
+      // Push a fallback position with forced separation
+      const angle = (i / count) * Math.PI * 2;
+      const radius = 15 + (i % 5) * 5; // Increasing radius spiral
+      positions.push([
+        Math.cos(angle) * radius,
+        1 + Math.random() * 1.5,
+        Math.sin(angle) * radius
+      ]);
+    }
     
-    // Float just above ground level with some variation in height
-    const y = 1 + Math.random() * 1.5;
-    
-    positions.push([x, y, z]);
+    // Reset attempts counter
+    attempts = 0;
   }
   
   return positions;
@@ -431,9 +478,12 @@ export const createProjectWorld = (project: Project, isTouchDevice: boolean): Wo
       
       // Add random rotation for more natural look
       const rotation: [number, number, number] = [
-        0, // No tilt on X axis
-        Math.random() * Math.PI * 2, // Random rotation on Y axis (0 to 360 degrees)
-        0  // No tilt on Z axis
+        // Add subtle random tilt on X axis for more dynamic poses
+        (Math.random() * 0.3 - 0.15),
+        // Random rotation on Y axis (0 to 360 degrees)
+        Math.random() * Math.PI * 2,
+        // Add subtle random tilt on Z axis too
+        (Math.random() * 0.3 - 0.15)
       ];
       
       worldObjects.push({
