@@ -18,6 +18,7 @@ export interface WorldContextType {
   isLoading: boolean;
   refreshWorlds: () => void;
   verifyFileStorage: () => Promise<boolean>;
+  checkForProjectFileUpdates: () => Promise<boolean>;
 }
 
 const WorldContext = createContext<WorldContextType | undefined>(undefined);
@@ -198,6 +199,36 @@ export const WorldProvider = ({
     });
   }, []);
 
+  // Function to check for project.json file updates
+  const checkForProjectFileUpdates = async (): Promise<boolean> => {
+    console.log('WorldProvider: Checking for project file updates in public/projects folder');
+    try {
+      // First, force a reload of all project files from disk
+      await projectService.forceReloadProjectsFromDisk();
+      
+      // Then reload the world service
+      worldService.reloadWorlds();
+      
+      // Update the worlds state
+      const updatedWorlds = worldService.getAllWorlds();
+      setWorlds(updatedWorlds);
+      
+      // Update current world if needed
+      const currentWorldNormalized = worldService.normalizeWorldId(currentWorldId);
+      const updatedCurrentWorld = worldService.getWorld(currentWorldNormalized);
+      
+      if (updatedCurrentWorld) {
+        setCurrentWorld(updatedCurrentWorld);
+      }
+      
+      console.log('WorldProvider: Project files check complete, worlds refreshed');
+      return true;
+    } catch (error) {
+      console.error('WorldProvider: Error checking for project file updates:', error);
+      return false;
+    }
+  };
+
   // Single useEffect to handle initialization and world changes
   useEffect(() => {
     const setupWorlds = async () => {
@@ -302,11 +333,18 @@ export const WorldProvider = ({
           }
         } else {
           console.log('WorldProvider: Main world found in world service');
+          
+          // Force refresh of main world with latest projects
+          const projects = await projectService.getProjects();
+          const updatedMainWorld = createMainWorld(projects);
+          worldService.updateWorld(updatedMainWorld);
+          console.log('WorldProvider: Updated main world with latest projects');
         }
         
         // Create any missing project worlds
         const projects = await projectService.getProjects();
         let projectWorldsCreated = 0;
+        let projectWorldsUpdated = 0;
         
         for (const project of projects) {
           const projectWorldId = `project-world-${project.id}`;
@@ -320,11 +358,21 @@ export const WorldProvider = ({
             if (worldService.updateWorld(newProjectWorld)) {
               projectWorldsCreated++;
             }
+          } else {
+            // Update existing project world with latest project data
+            const updatedProjectWorld = createProjectWorld(project, isTouchDevice);
+            if (worldService.updateWorld(updatedProjectWorld)) {
+              projectWorldsUpdated++;
+            }
           }
         }
         
         if (projectWorldsCreated > 0) {
           console.log(`WorldProvider: Created ${projectWorldsCreated} missing project worlds`);
+        }
+        
+        if (projectWorldsUpdated > 0) {
+          console.log(`WorldProvider: Updated ${projectWorldsUpdated} existing project worlds`);
         }
         
         // Get the updated list of worlds
@@ -398,7 +446,8 @@ export const WorldProvider = ({
     getCameraTarget,
     isLoading,
     refreshWorlds,
-    verifyFileStorage
+    verifyFileStorage,
+    checkForProjectFileUpdates
   };
 
   return (

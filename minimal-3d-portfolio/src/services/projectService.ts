@@ -202,6 +202,69 @@ class ProjectService {
     }
   }
 
+  // New method to force reload of project files directly from disk
+  public async forceReloadProjectsFromDisk(): Promise<void> {
+    console.log('ProjectService: Force reloading projects directly from disk');
+    this.initialized = false;
+    
+    // Clear browser cache for project.json files
+    if ('caches' in window) {
+      try {
+        const cacheNames = await window.caches.keys();
+        for (const cacheName of cacheNames) {
+          const cache = await window.caches.open(cacheName);
+          const requests = await cache.keys();
+          
+          // Delete any project.json files from cache
+          for (const request of requests) {
+            if (request.url.includes('/projects/') && request.url.includes('project.json')) {
+              console.log(`ProjectService: Removing from cache: ${request.url}`);
+              await cache.delete(request);
+            }
+          }
+        }
+        console.log('ProjectService: Cleared project.json files from cache');
+      } catch (cacheError) {
+        console.error('ProjectService: Error clearing cache:', cacheError);
+      }
+    }
+    
+    // Force reload all project.json files from disk
+    await this.loadFromJsonFiles();
+    
+    // Update all project worlds
+    try {
+      // Dynamically import to avoid circular dependencies
+      const { getWorldServiceInstance } = await import('../data/worlds');
+      const worldService = getWorldServiceInstance();
+      
+      // Force reload the main world with updated projects
+      const { createMainWorld } = await import('../data/worlds');
+      const updatedMainWorld = createMainWorld(this.projects);
+      worldService.updateWorld(updatedMainWorld);
+      
+      // Update each project world
+      const { createProjectWorld } = await import('../data/worlds');
+      const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      
+      for (const project of this.projects) {
+        const projectWorld = createProjectWorld(project, isTouchDevice);
+        worldService.updateWorld(projectWorld);
+      }
+      
+      // Save all worlds
+      worldService.saveAllWorlds();
+      
+      console.log('ProjectService: Updated all worlds with fresh project data from disk');
+    } catch (worldError) {
+      console.error('ProjectService: Error updating worlds after disk reload:', worldError);
+    }
+    
+    // Set initialized to true
+    this.initialized = true;
+    console.log('ProjectService: Disk reload complete');
+  }
+
   private saveToStorage(): void {
     try {
       // Ensure mediaObjects is always an array for all projects before saving

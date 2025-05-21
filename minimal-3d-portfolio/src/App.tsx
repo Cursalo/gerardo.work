@@ -8,6 +8,7 @@ import ErrorBoundary from './components/ErrorBoundary'
 import useMobileDetection from './hooks/useMobileDetection'
 import { AudioProvider } from './context/AudioContext'
 import { MusicPlayer } from './components/MusicPlayer'
+import { useWorld } from './context/WorldContext'
 
 // Define the style object with proper TypeScript types
 const styles = {
@@ -280,6 +281,33 @@ const styles = {
   },
 }
 
+// Add a new style for the refresh button
+const refreshButtonStyle = {
+  position: 'fixed' as const,
+  bottom: '20px',
+  right: '20px',
+  zIndex: 1001,
+  backgroundColor: 'rgba(255, 255, 255, 0.9)',
+  color: '#333',
+  border: '1px solid rgba(77, 255, 170, 0.5)',
+  borderRadius: '20px',
+  padding: '8px 16px',
+  fontFamily: 'Helvetica, Arial, sans-serif',
+  fontSize: '14px',
+  cursor: 'pointer',
+  transition: 'all 0.2s ease',
+  backdropFilter: 'blur(4px)',
+  boxShadow: '0 2px 5px rgba(0, 0, 0, 0.1)',
+  display: 'flex',
+  alignItems: 'center',
+  gap: '5px',
+};
+
+const mobileRefreshButtonStyle = {
+  fontSize: '12px',
+  padding: '6px 12px',
+};
+
 const AppContent = () => {
   const [isPointerLocked, setIsPointerLocked] = useState(false);
   const [showInstructions, setShowInstructions] = useState(true);
@@ -287,9 +315,11 @@ const AppContent = () => {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showUI, setShowUI] = useState(true);
   const [showResetInfo, setShowResetInfo] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   const { isMobile, isTouchDevice } = useMobileDetection();
   const { openChat, showChat: isChatOpen, isNearNPC } = useChat();
+  const { checkForProjectFileUpdates } = useWorld();
 
   // FIXED: Clear any stored navigation targets on initial app load
   // This prevents random project navigation on startup
@@ -389,6 +419,27 @@ const AppContent = () => {
     setShowMobileMenu(false);
   };
 
+  // Add function to refresh project data
+  const refreshProjectData = async () => {
+    if (isRefreshing) return; // Prevent multiple refreshes
+    
+    setIsRefreshing(true);
+    try {
+      console.log('App: Refreshing project data from disk');
+      await checkForProjectFileUpdates();
+      console.log('App: Project data refresh complete');
+      
+      // Show success message
+      alert('Project data refreshed successfully!');
+    } catch (error) {
+      console.error('App: Error refreshing project data:', error);
+      alert('Error refreshing project data. Check console for details.');
+    } finally {
+      setIsRefreshing(false);
+      setShowMobileMenu(false); // Close mobile menu after refresh
+    }
+  };
+
   const renderInstructions = () => {
     if (!showInstructions) return null;
     const instructionsStyle = {
@@ -448,6 +499,16 @@ const AppContent = () => {
         >
           Toggle Fullscreen
         </button>
+        <button 
+          onClick={refreshProjectData}
+          style={isRefreshing ? 
+            {...styles.mobileMenuOption, ...styles.mobileMenuOptionDisabled} : 
+            styles.mobileMenuOption
+          }
+          disabled={isRefreshing}
+        >
+          {isRefreshing ? 'Refreshing...' : 'Refresh Projects'}
+        </button>
       </div>
     );
   };
@@ -461,9 +522,22 @@ const AppContent = () => {
           )}
           {renderMobileMenu()}
           {!isMobile && (
-            <button onClick={toggleInstructions} style={{...styles.toggleButton, ...styles.toggleInstructions}} className="toggle-instructions">
-              {showInstructions ? 'Hide Instructions' : 'Show Instructions'}
-            </button>
+            <>
+              <button onClick={toggleInstructions} style={{...styles.toggleButton, ...styles.toggleInstructions}} className="toggle-instructions">
+                {showInstructions ? 'Hide Instructions' : 'Show Instructions'}
+              </button>
+              <button 
+                onClick={refreshProjectData} 
+                style={{
+                  ...refreshButtonStyle,
+                  ...(isMobile ? mobileRefreshButtonStyle : {}),
+                  ...(isRefreshing ? { opacity: 0.7, cursor: 'not-allowed' } : {})
+                }}
+                disabled={isRefreshing}
+              >
+                {isRefreshing ? 'Refreshing...' : '↻ Refresh Projects'}
+              </button>
+            </>
           )}
           {renderInstructions()}
           <div style={styles.crosshairContainer} id="crosshair-container"><Crosshair /></div>
