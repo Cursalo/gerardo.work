@@ -199,10 +199,6 @@ const WorldViewer = () => {
     window.location.reload();
   };
 
-  const handleGoToAdmin = () => {
-    navigate('/admin');
-  };
-
   if (loading) {
     return (
       <div style={styles.container}>
@@ -224,7 +220,6 @@ const WorldViewer = () => {
           <div>
             <button style={styles.button} onClick={handleRetry}>Retry</button>
             <button style={{...styles.button, marginLeft: '10px'}} onClick={handleBackClick}>Return Home</button>
-            <button style={{...styles.button, marginLeft: '10px', backgroundColor: '#10b981'}} onClick={handleGoToAdmin}>Go to Admin</button>
           </div>
         </div>
       </div>
@@ -242,7 +237,6 @@ const WorldViewer = () => {
           </p>
           <div>
             <button style={styles.button} onClick={handleBackClick}>Return Home</button>
-            <button style={{...styles.button, marginLeft: '10px', backgroundColor: '#10b981'}} onClick={handleGoToAdmin}>Go to Admin</button>
           </div>
         </div>
       </div>

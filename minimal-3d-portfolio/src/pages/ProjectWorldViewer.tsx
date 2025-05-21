@@ -225,18 +225,81 @@ const ProjectWorldViewer = () => {
     };
   }, []);
 
+  useEffect(() => {
+    document.exitPointerLock();
+  }, []);
+
   const handleBackClick = () => {
     navigate('/');
   };
 
   const handleRetry = () => {
-    setLoading(true);
     setError(null);
-    window.location.reload();
+    setLoading(true);
+    loadWorldData();
   };
 
-  const handleGoToAdmin = () => {
-    navigate('/admin');
+  const loadWorldData = async () => {
+    if (!customLink) {
+      setError('No custom link provided');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // Find the project with this custom link
+      const projects = await projectService.getProjects();
+      const project = projects.find(p => p.customLink === customLink);
+      
+      if (!project) {
+        console.error(`Project not found for custom link: ${customLink}`);
+        setError(`Project not found for custom link: ${customLink}`);
+        setLoading(false);
+        return;
+      }
+      
+      // Get the world ID for this project
+      const projectWorldId = `project-world-${project.id}`;
+      setWorldId(projectWorldId);
+      
+      // Get world service instance
+      const worldService = getWorldServiceInstance();
+      
+      // Check if the world exists, if not create it
+      let worldData = worldService.getWorld(projectWorldId);
+      if (!worldData) {
+        console.log(`World ${projectWorldId} does not exist, creating it`);
+        worldData = createProjectWorld(project, isTouchDevice);
+        worldService.updateWorld(worldData);
+        console.log(`Created world: ${projectWorldId}`);
+      } else {
+        console.log(`World ${projectWorldId} already exists`);
+      }
+      
+      // Set the current world ID in the context
+      setCurrentWorldId(projectWorldId);
+      
+      // Refresh worlds to ensure they're up to date
+      await refreshWorlds();
+      
+      // Get the updated world data
+      worldData = worldService.getWorld(projectWorldId);
+      
+      if (!worldData) {
+        console.error(`World not found after creation: ${projectWorldId}`);
+        setError(`World not found after creation: ${projectWorldId}`);
+        setLoading(false);
+        return;
+      }
+      
+      console.log('Loaded world:', worldData);
+      setWorld(worldData);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error loading world:', error);
+      setError(`Error loading world: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setLoading(false);
+    }
   };
 
   if (loading) {
@@ -260,7 +323,6 @@ const ProjectWorldViewer = () => {
           <div>
             <button style={styles.button} onClick={handleRetry}>Retry</button>
             <button style={{...styles.button, marginLeft: '10px'}} onClick={handleBackClick}>Return Home</button>
-            <button style={{...styles.button, marginLeft: '10px', backgroundColor: '#10b981'}} onClick={handleGoToAdmin}>Go to Admin</button>
           </div>
         </div>
       </div>
@@ -278,7 +340,6 @@ const ProjectWorldViewer = () => {
           </p>
           <div>
             <button style={styles.button} onClick={handleBackClick}>Return Home</button>
-            <button style={{...styles.button, marginLeft: '10px', backgroundColor: '#10b981'}} onClick={handleGoToAdmin}>Go to Admin</button>
           </div>
         </div>
       </div>

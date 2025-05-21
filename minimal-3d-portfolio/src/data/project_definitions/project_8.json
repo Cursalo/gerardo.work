@@ -1,10 +1,68 @@
 {
   "id": 8,
   "name": "Avatar: The Way of Water",
-  "description": "Official trailer showcase.",
+  "description": "Official trailer showcase for Avatar: The Way of Water.",
   "link": "https://www.youtube.com/watch?v=5PSNL1qE6VY",
   "thumbnail": "https://img.youtube.com/vi/5PSNL1qE6VY/mqdefault.jpg",
   "status": "completed",
   "type": "video",
-  "videoUrl": "https://www.youtube.com/watch?v=5PSNL1qE6VY"
+  "videoUrl": "https://www.youtube.com/watch?v=5PSNL1qE6VY",
+  "worldSettings": {
+    "backgroundColor": "hsl(16, 84%, 50%)",
+    "floorColor": "hsl(16, 74%, 40%)",
+    "skyColor": "hsl(76, 84%, 70%)",
+    "floorTexture": "https://picsum.photos/seed/floor8/1024/1024",
+    "skyTexture": "https://picsum.photos/seed/sky8/2048/1024",
+    "ambientLightColor": "#ffffff",
+    "ambientLightIntensity": 0.7,
+    "directionalLightColor": "hsl(-14, 100%, 80%)",
+    "directionalLightIntensity": 1.2000000000000002
+  },
+  "mediaObjects": [
+    {
+      "id": "video-player-8",
+      "type": "video",
+      "title": "Avatar: The Way of Water",
+      "description": "Main video content.",
+      "url": "https://www.youtube.com/watch?v=5PSNL1qE6VY",
+      "thumbnail": "https://img.youtube.com/vi/5PSNL1qE6VY/hqdefault.jpg",
+      "position": [
+        0,
+        2.5,
+        -8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        4,
+        2.25,
+        1
+      ]
+    },
+    {
+      "id": "info-panel-8",
+      "type": "image",
+      "title": "About This Video",
+      "description": "This is the official trailer for Avatar: The Way of Water. Enjoy the showcase!",
+      "thumbnail": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='hsl(16, 64%, 55%)' /%3E%3Ctext x='200' y='150' font-family='Arial' font-size='20' fill='white' text-anchor='middle' dominant-baseline='middle'%3EInfo for Avatar: The Way of Water%3C/text%3E%3C/svg%3E",
+      "position": [
+        -4,
+        2,
+        -7
+      ],
+      "rotation": [
+        0,
+        0.39269908169872414,
+        0
+      ],
+      "scale": [
+        2,
+        1.5,
+        0.1
+      ]
+    }
+  ]
 }

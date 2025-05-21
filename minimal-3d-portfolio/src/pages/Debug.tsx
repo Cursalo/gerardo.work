@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import FileStorageDebugger from '../components/admin/FileStorageDebugger';
-import ThumbnailFixer from '../components/admin/ThumbnailFixer';
+// import FileStorageDebugger from '../components/admin/FileStorageDebugger'; // Removed admin import
+// import ThumbnailFixer from '../components/admin/ThumbnailFixer'; // Removed admin import
 
 const Debug: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('thumbnail');
+  const [activeTab, setActiveTab] = useState('fixes'); // Default to fixes tab
 
   const handleClearLocalStorage = () => {
     const confirmClear = window.confirm('This will ONLY clear temporary data like session info, but preserve your projects and files. Continue?');
@@ -155,13 +155,13 @@ const Debug: React.FC = () => {
           </button>
         </div>
         
-        {activeTab === 'thumbnail' && (
+        {/* {activeTab === 'thumbnail' && (
           <ThumbnailFixer />
-        )}
+        )} // Removed admin component
         
         {activeTab === 'storage' && (
           <FileStorageDebugger />
-        )}
+        )} // Removed admin component */}
         
         {activeTab === 'fixes' && (
           <div style={{

@@ -5,7 +5,7 @@ import {
   RouterProvider,
 } from "react-router-dom";
 import App from './App.tsx'
-import Admin from './pages/Admin.tsx'
+// import Admin from './pages/Admin.tsx' // Removed Admin import
 import NotFound from './pages/NotFound.tsx'
 import WorldViewer from './pages/WorldViewer.tsx'
 import ProjectWorldViewer from './pages/ProjectWorldViewer.tsx'
@@ -21,11 +21,11 @@ const router = createBrowserRouter([
     element: <App />,
     errorElement: <ErrorBoundary><NotFound /></ErrorBoundary>,
   },
-  {
-    path: "/admin",
-    element: <Admin />,
-    errorElement: <ErrorBoundary><NotFound /></ErrorBoundary>,
-  },
+  // {
+  //   path: "/admin",
+  //   element: <Admin />,
+  //   errorElement: <ErrorBoundary><NotFound /></ErrorBoundary>,
+  // }, // Removed Admin route
   {
     path: "/debug",
     element: <Debug />,

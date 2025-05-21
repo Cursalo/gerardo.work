@@ -1,10 +1,68 @@
 {
   "id": 4,
   "name": "The Batman",
-  "description": "Official trailer showcase.",
+  "description": "Official trailer showcase for The Batman.",
   "link": "https://www.youtube.com/watch?v=sj9J2ecsSpo",
   "thumbnail": "https://img.youtube.com/vi/sj9J2ecsSpo/mqdefault.jpg",
   "status": "completed",
   "type": "video",
-  "videoUrl": "https://www.youtube.com/watch?v=sj9J2ecsSpo"
+  "videoUrl": "https://www.youtube.com/watch?v=sj9J2ecsSpo",
+  "worldSettings": {
+    "backgroundColor": "hsl(188, 92%, 60%)",
+    "floorColor": "hsl(188, 82%, 50%)",
+    "skyColor": "hsl(248, 92%, 80%)",
+    "floorTexture": "https://picsum.photos/seed/floor4/1024/1024",
+    "skyTexture": "https://picsum.photos/seed/sky4/2048/1024",
+    "ambientLightColor": "#ffffff",
+    "ambientLightIntensity": 0.7,
+    "directionalLightColor": "hsl(158, 100%, 80%)",
+    "directionalLightIntensity": 1
+  },
+  "mediaObjects": [
+    {
+      "id": "video-player-4",
+      "type": "video",
+      "title": "The Batman",
+      "description": "Main video content.",
+      "url": "https://www.youtube.com/watch?v=sj9J2ecsSpo",
+      "thumbnail": "https://img.youtube.com/vi/sj9J2ecsSpo/hqdefault.jpg",
+      "position": [
+        0,
+        2.5,
+        -8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        4,
+        2.25,
+        1
+      ]
+    },
+    {
+      "id": "info-panel-4",
+      "type": "image",
+      "title": "About This Video",
+      "description": "This is the official trailer for The Batman. Enjoy the showcase!",
+      "thumbnail": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='hsl(188, 72%, 65%)' /%3E%3Ctext x='200' y='150' font-family='Arial' font-size='20' fill='white' text-anchor='middle' dominant-baseline='middle'%3EInfo for The Batman%3C/text%3E%3C/svg%3E",
+      "position": [
+        -4,
+        2,
+        -7
+      ],
+      "rotation": [
+        0,
+        0.39269908169872414,
+        0
+      ],
+      "scale": [
+        2,
+        1.5,
+        0.1
+      ]
+    }
+  ]
 }
