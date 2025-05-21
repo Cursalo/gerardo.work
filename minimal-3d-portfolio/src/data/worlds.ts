@@ -285,8 +285,8 @@ const isObjectInteractive = (object: WorldObject): boolean => {
 // Helper function to generate positions for gallery items
 function generateGalleryPositions(count: number): [number, number, number][] {
   const positions: [number, number, number][] = [];
-  const minDistanceBetweenAssets = 5; // Minimum distance between asset centers
-  const spaceArea = 40; // Much larger area for asset distribution (40x40 units)
+  const minDistanceBetweenAssets = 10; // Doubled from 5 to 10 for much more space
+  const spaceArea = 60; // Increased from 40 to 60 for a truly huge space
   const halfSpace = spaceArea / 2;
   
   // Function to calculate distance between two points
@@ -305,7 +305,7 @@ function generateGalleryPositions(count: number): [number, number, number][] {
   };
   
   // Place the first position near the entrance for easy access
-  positions.push([0, 1 + Math.random(), -halfSpace + 10]);
+  positions.push([0, 1 + Math.random(), -halfSpace + 15]);
   
   // Generate remaining positions with minimum separation
   let attempts = 0;
@@ -319,11 +319,11 @@ function generateGalleryPositions(count: number): [number, number, number][] {
     
     while (!validPosition && attempts < maxAttempts) {
       // Generate candidate position in a much wider area
-      x = (Math.random() * spaceArea) - halfSpace; // -20 to 20
-      z = (Math.random() * spaceArea) - halfSpace; // -20 to 20
+      x = (Math.random() * spaceArea) - halfSpace; // -30 to 30
+      z = (Math.random() * spaceArea) - halfSpace; // -30 to 30
       
       // Skip positions too close to center (where the main content is)
-      if (Math.abs(x) < 5 && Math.abs(z) > -10 && Math.abs(z) < 5) {
+      if (Math.abs(x) < 8 && Math.abs(z) > -15 && Math.abs(z) < 8) {
         attempts++;
         continue;
       }
@@ -342,7 +342,7 @@ function generateGalleryPositions(count: number): [number, number, number][] {
       console.warn(`Could not find valid position for asset ${i} after ${maxAttempts} attempts`);
       // Push a fallback position with forced separation
       const angle = (i / count) * Math.PI * 2;
-      const radius = 15 + (i % 5) * 5; // Increasing radius spiral
+      const radius = 20 + (i % 5) * 8; // Increased radius for fallback positions
       positions.push([
         Math.cos(angle) * radius,
         1 + Math.random() * 1.5,
@@ -476,25 +476,27 @@ export const createProjectWorld = (project: Project, isTouchDevice: boolean): Wo
         }
       }
       
-      // Add random rotation for more natural look
-      const rotation: [number, number, number] = [
-        // Add subtle random tilt on X axis for more dynamic poses
-        (Math.random() * 0.3 - 0.15),
-        // Random rotation on Y axis (0 to 360 degrees)
-        Math.random() * Math.PI * 2,
-        // Add subtle random tilt on Z axis too
-        (Math.random() * 0.3 - 0.15)
-      ];
+      // Get clean name without file extension for display
+      let cleanName = asset.name || `Asset ${index + 1}`;
+      
+      // Remove file extension from name
+      if (cleanName.includes('.')) {
+        cleanName = cleanName.substring(0, cleanName.lastIndexOf('.'));
+      }
+      
+      // Make rotation straight (no tilting) with no rotation on Y axis
+      // The rendering system will make them camera-facing
+      const rotation: [number, number, number] = [0, 0, 0];
       
       worldObjects.push({
         id: `gallery-item-${index}`,
         type: assetType,
-        title: asset.name || `Asset ${index + 1}`,
-        description: `${asset.name || `Asset ${index + 1}`} - ${asset.category || 'Asset'}`,
+        title: cleanName, // Use clean name without extension
+        description: `${cleanName} - ${asset.category || 'Asset'}`, // Also use clean name in description
         url: asset.url,
         thumbnail: thumbnail,
         position: position,
-        rotation: rotation,
+        rotation: rotation, // Straight, no rotation
         scale: scale
       });
     });
