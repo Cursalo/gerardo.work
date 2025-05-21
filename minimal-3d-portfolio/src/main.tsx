@@ -1,0 +1,60 @@
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import {
+  createBrowserRouter,
+  RouterProvider,
+} from "react-router-dom";
+import App from './App.tsx'
+import Admin from './pages/Admin.tsx'
+import NotFound from './pages/NotFound.tsx'
+import WorldViewer from './pages/WorldViewer.tsx'
+import ProjectWorldViewer from './pages/ProjectWorldViewer.tsx'
+import Debug from './pages/Debug.tsx'
+import './index.css'
+import { WorldProvider } from './context/WorldContext.tsx'
+import { projects } from './data/projects.ts';
+import ErrorBoundary from './components/ErrorBoundary.tsx';
+
+// Define routes
+const router = createBrowserRouter([
+  {
+    path: "/",
+    element: <App />,
+    errorElement: <ErrorBoundary><NotFound /></ErrorBoundary>,
+  },
+  {
+    path: "/admin",
+    element: <Admin />,
+    errorElement: <ErrorBoundary><NotFound /></ErrorBoundary>,
+  },
+  {
+    path: "/debug",
+    element: <Debug />,
+    errorElement: <ErrorBoundary><NotFound /></ErrorBoundary>,
+  },
+  {
+    path: "/world/:worldId",
+    element: <WorldViewer />,
+    errorElement: <ErrorBoundary><NotFound /></ErrorBoundary>,
+  },
+  {
+    path: "/project/:customLink",
+    element: <ProjectWorldViewer />,
+    errorElement: <ErrorBoundary><NotFound /></ErrorBoundary>,
+  },
+  {
+    path: "*",
+    element: <NotFound />,
+  },
+]);
+
+// Wrap the entire app with WorldProvider to ensure context is available everywhere
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <ErrorBoundary>
+      <WorldProvider initialProjects={projects}>
+        <RouterProvider router={router} />
+      </WorldProvider>
+    </ErrorBoundary>
+  </React.StrictMode>,
+)
