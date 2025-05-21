@@ -47,6 +47,38 @@ const router = createBrowserRouter([
   },
 ]);
 
+// Clear problematic cached data to ensure YouTube thumbnail fixes take effect
+const clearProblematicCache = () => {
+  try {
+    // Get the projects to check for problematic data
+    const projectsStr = localStorage.getItem('portfolio_projects');
+    if (projectsStr) {
+      const projects = JSON.parse(projectsStr);
+      
+      // Check if any project has a webp thumbnail
+      const hasWebpThumbnails = projects.some(
+        (p: any) => p.thumbnail && 
+        typeof p.thumbnail === 'string' && 
+        (p.thumbnail.includes('.webp') || 
+         p.thumbnail.endsWith('default.web') || 
+         p.thumbnail.endsWith('maxresdefau'))
+      );
+      
+      if (hasWebpThumbnails) {
+        console.log('Found problematic YouTube thumbnail URLs. Clearing project cache to apply fixes...');
+        localStorage.removeItem('portfolio_projects');
+        localStorage.removeItem('portfolio_projects_backup');
+        localStorage.setItem('verify_file_storage', 'true');
+      }
+    }
+  } catch (error) {
+    console.error('Error checking for problematic cache:', error);
+  }
+};
+
+// Run the fix
+clearProblematicCache();
+
 // Wrap the entire app with WorldProvider to ensure context is available everywhere
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

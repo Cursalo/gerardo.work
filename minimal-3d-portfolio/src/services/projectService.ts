@@ -44,12 +44,28 @@ class ProjectService {
           if (Array.isArray(parsedProjects)) {
             this.projects = parsedProjects.map(p => { // Ensure all known fields are at least present
               let correctedThumbnail = p.thumbnail;
-              if (typeof p.thumbnail === 'string' && 
-                  p.thumbnail.includes('img.youtube.com/vi/') && 
-                  p.thumbnail.endsWith('/maxresdefau')) {
-                correctedThumbnail = p.thumbnail.replace('/maxresdefau', '/maxresdefault.jpg');
-                console.log(`ProjectService: Corrected thumbnail URL for project ID ${p.id || 'N/A'}: from ${p.thumbnail} to ${correctedThumbnail}`);
+              
+              // Fix YouTube thumbnail issues
+              if (typeof p.thumbnail === 'string') {
+                // Fix truncated maxresdefault URLs
+                if (p.thumbnail.includes('img.youtube.com/vi/') && 
+                    p.thumbnail.endsWith('/maxresdefau')) {
+                  correctedThumbnail = p.thumbnail.replace('/maxresdefau', '/maxresdefault.jpg');
+                  console.log(`ProjectService: Corrected thumbnail URL for project ID ${p.id || 'N/A'}: from ${p.thumbnail} to ${correctedThumbnail}`);
+                }
+                
+                // Fix .webp extensions
+                if (p.thumbnail.includes('img.youtube.com/vi/') && 
+                    (p.thumbnail.includes('.webp') || p.thumbnail.includes('default.web'))) {
+                  // Extract videoId from the URL
+                  const videoIdMatch = p.thumbnail.match(/img\.youtube\.com\/vi\/([^\/]+)/);
+                  if (videoIdMatch && videoIdMatch[1]) {
+                    correctedThumbnail = `https://img.youtube.com/vi/${videoIdMatch[1]}/mqdefault.jpg`;
+                    console.log(`ProjectService: Replaced webp thumbnail with jpg for project ID ${p.id || 'N/A'}: from ${p.thumbnail} to ${correctedThumbnail}`);
+                  }
+                }
               }
+              
               return {
                 ...p,
                 thumbnail: correctedThumbnail, // Use the corrected thumbnail

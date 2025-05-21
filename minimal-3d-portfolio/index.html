@@ -110,8 +110,7 @@
               }
               
               // Fix YouTube URLs 
-              if ((project.thumbnail.includes('youtube.com') || project.thumbnail.includes('youtu.be')) 
-                  && !project.thumbnail.includes('img.youtube.com/vi/')) {
+              if ((project.thumbnail.includes('youtube.com') || project.thumbnail.includes('youtu.be'))) {
                 try {
                   // Extract video ID
                   let videoId = '';
@@ -126,18 +125,35 @@
                     videoId = project.thumbnail.split('youtu.be/')[1];
                   } else if (project.thumbnail.includes('embed/')) {
                     videoId = project.thumbnail.split('embed/')[1];
+                  } else if (project.thumbnail.includes('img.youtube.com/vi/')) {
+                    // Already a thumbnail URL, extract the ID
+                    videoId = project.thumbnail.split('img.youtube.com/vi/')[1].split('/')[0];
                   }
                   
                   if (videoId) {
+                    // Always use .jpg format to prevent .webp 404 errors
                     project.thumbnail = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+                    updated = true;
                   } else {
                     project.thumbnail = generateFallbackThumbnail(project);
+                    updated = true;
                   }
-                  updated = true;
                 } catch (error) {
                   project.thumbnail = generateFallbackThumbnail(project);
                   updated = true;
                 }
+              }
+              
+              // Fix any maxresdefault.webp URLs
+              if (project.thumbnail.includes('maxresdefault.webp')) {
+                project.thumbnail = project.thumbnail.replace('maxresdefault.webp', 'mqdefault.jpg');
+                updated = true;
+              }
+              
+              // Fix any mqdefault.webp URLs
+              if (project.thumbnail.includes('mqdefault.webp')) {
+                project.thumbnail = project.thumbnail.replace('mqdefault.webp', 'mqdefault.jpg');
+                updated = true;
               }
             });
             
