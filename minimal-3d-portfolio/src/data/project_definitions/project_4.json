@@ -1,12 +1,12 @@
 {
   "id": 4,
-  "name": "The Batman",
+  "name": "Burgertify",
   "description": "Official trailer showcase for The Batman.",
   "link": "https://www.youtube.com/watch?v=sj9J2ecsSpo",
   "thumbnail": "https://img.youtube.com/vi/sj9J2ecsSpo/mqdefault.jpg",
   "status": "completed",
   "type": "video",
-  "videoUrl": "https://www.youtube.com/watch?v=sj9J2ecsSpo",
+  "videoUrl": "https://youtu.be/7LTazzbfrRs",
   "worldSettings": {
     "backgroundColor": "hsl(188, 92%, 60%)",
     "floorColor": "hsl(188, 82%, 50%)",
