@@ -3,9 +3,6 @@ import { WorldObject } from '../data/worlds'; // Added import
 // Helper function to map project ID to name
 function getProjectName(id: number): string {
   const projectMap: Record<number, string> = {
-    1: "Avengers: Endgame",
-    2: "Spider-Man: No Way Home",
-    3: "The Batman",
     4: "Burgertify",
     5: "Cursalo",
     6: "Foodketing",
