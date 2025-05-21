@@ -20,7 +20,6 @@ interface ProjectWindowProps {
  */
 const ProjectWindow = React.memo(({ project, position }: ProjectWindowProps) => {
   const [hovered, setHovered] = useState(false);
-  const [clicked, setClicked] = useState(false);
   const [isOverlapping, setIsOverlapping] = useState(false);
   const [imageError, setImageError] = useState(false);
   const hasErrored = useRef(false);
@@ -51,12 +50,15 @@ const ProjectWindow = React.memo(({ project, position }: ProjectWindowProps) => 
   // Set this object as interactive for raycasting and crosshair interaction
   useEffect(() => {
     if (meshRef.current) {
-      // Mark this object as interactive for the raycaster
-      meshRef.current.userData.interactive = true;
-      // Attach click handler
-      meshRef.current.userData.onClick = handleClick;
+      meshRef.current.userData = {
+        ...meshRef.current.userData,
+        interactive: true,
+        type: 'project',
+        projectId: project.id,
+        subWorldId: `project-world-${project.id}`,
+      };
     }
-  }, []);
+  }, [project.id]);
   
   // Handle hover tracking internally
   const updateHoverState = (isHovered: boolean) => {
@@ -111,65 +113,6 @@ const ProjectWindow = React.memo(({ project, position }: ProjectWindowProps) => 
       }
     }
   });
-
-  // Handle mouse interactions
-  const handleClick = useCallback((e: any) => {
-    if (e) {
-      e.stopPropagation();
-      e.preventDefault();
-    }
-    
-    setClicked(true);
-    
-    console.log("ProjectWindow clicked - navigating to subworld");
-    
-    // Forcing navigation to the subworld
-    const subWorldId = `project-world-${project.id}`;
-    console.log(`ProjectWindow forcing navigation to: ${subWorldId}`);
-    
-    // FIXED: Use a more reliable pattern for navigation events
-    try {
-      // Create and dispatch the event in a try/catch block
-      const event = new CustomEvent("navigate-to-subworld", { 
-        detail: { subWorldId }
-      });
-      
-      // Add a proper event listener first to ensure the event is caught
-      const handleNavigate = () => {
-        console.log(`Navigation event received for ${subWorldId}`);
-        // Attempt to navigate programmatically as well (backup)
-        if (window.location.pathname !== `/world/${subWorldId}`) {
-          setTimeout(() => {
-            // Use history API to avoid triggering another navigation event
-            window.history.pushState({}, '', `/world/${subWorldId}`);
-            
-            // FIXED: Don't set in localStorage during normal navigation
-            // This prevents random project navigation on startup
-            // Instead, only set this if explicitly needed for deep linking
-            if (window.location.search.includes('store_navigation=true')) {
-              localStorage.setItem('target_world_id', subWorldId);
-              console.log('Storing navigation target in localStorage (for deep linking only)');
-            }
-          }, 100);
-        }
-      };
-      
-      // Use once:true to automatically clean up the listener
-      window.addEventListener("navigate-to-subworld", handleNavigate, { once: true });
-      
-      // Dispatch the event
-      window.dispatchEvent(event);
-    } catch (error) {
-      console.error("Error during navigation event:", error);
-      // Fallback - try direct navigation but don't store in localStorage
-      window.location.href = `/world/${subWorldId}`;
-    }
-    
-    // Reset after a brief delay
-    setTimeout(() => setClicked(false), 300);
-    
-    return false;
-  }, [project.id]);
 
   // 16:9 aspect ratio dimensions, lighter default size
   const width = 320;
@@ -235,7 +178,6 @@ const ProjectWindow = React.memo(({ project, position }: ProjectWindowProps) => 
       position={[position[0], position[1], position[2]]}
       onPointerOver={(e) => { e.stopPropagation(); updateHoverState(true); }}
       onPointerOut={(e) => { e.stopPropagation(); updateHoverState(false); }}
-      onClick={handleClick}
       scale={getScale()}
     >
       {/* Card frame */}
@@ -243,7 +185,6 @@ const ProjectWindow = React.memo(({ project, position }: ProjectWindowProps) => 
         ref={meshRef} 
         castShadow 
         receiveShadow
-        userData={{ interactive: true, onClick: handleClick }}
       >
         <boxGeometry args={[frameWidth / 100, frameHeight / 100, 0.05]} />
         <meshStandardMaterial 
