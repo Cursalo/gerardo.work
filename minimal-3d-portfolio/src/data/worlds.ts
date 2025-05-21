@@ -282,6 +282,35 @@ const isObjectInteractive = (object: WorldObject): boolean => {
          object.type === 'button' || (object.type === 'image' && !!object.url);
 };
 
+// Helper function to generate positions for gallery items
+function generateGalleryPositions(count: number): [number, number, number][] {
+  const positions: [number, number, number][] = [];
+  
+  // Create a circular formation around the center, with some randomness
+  const baseRadius = 12;
+  const angleStep = (Math.PI * 2) / count;
+  
+  for (let i = 0; i < count; i++) {
+    // Create a slightly randomized angle
+    const angle = i * angleStep + (Math.random() * 0.3 - 0.15);
+    
+    // Create a radius with some randomness
+    const radius = baseRadius + (Math.random() * 6 - 3);
+    
+    // Calculate position
+    const x = Math.cos(angle) * radius;
+    const z = Math.sin(angle) * radius;
+    
+    // Float just above ground level with some variation in height
+    const y = 1 + Math.random() * 1.5;
+    
+    positions.push([x, y, z]);
+  }
+  
+  return positions;
+}
+
+// Add code to create project worlds
 export const createProjectWorld = (project: Project, isTouchDevice: boolean): World => {
   console.log(`WorldProvider: Creating project world for project ID ${project.id}: ${project.name}`);
   
@@ -354,114 +383,69 @@ export const createProjectWorld = (project: Project, isTouchDevice: boolean): Wo
   if (project.assetGallery && Array.isArray(project.assetGallery) && project.assetGallery.length > 0) {
     console.log(`WorldProvider: Adding ${project.assetGallery.length} asset gallery items to world`);
     
-    // Filter assets by type to organize them
-    const imageAssets = project.assetGallery.filter(asset => 
-      asset.type === 'image' && asset.url && 
-      (asset.url.endsWith('.jpg') || asset.url.endsWith('.jpeg') || 
-       asset.url.endsWith('.png') || asset.url.endsWith('.gif') ||
-       asset.url.endsWith('.JPG') || asset.url.endsWith('.JPEG') || 
-       asset.url.endsWith('.PNG') || asset.url.endsWith('.webp'))
-    );
+    // Generate positions for all assets together
+    const galleryPositions = generateGalleryPositions(project.assetGallery.length);
     
-    const videoAssets = project.assetGallery.filter(asset => 
-      asset.type === 'video' && asset.url && 
-      (asset.url.endsWith('.mp4') || asset.url.endsWith('.webm') || 
-       asset.url.endsWith('.MP4') || asset.url.endsWith('.mov') || 
-       asset.url.endsWith('.MOV'))
-    );
-    
-    const documentAssets = project.assetGallery.filter(asset => 
-      asset.type === 'document' && asset.url && 
-      (asset.url.endsWith('.pdf') || asset.url.endsWith('.PDF'))
-    );
-    
-    // Get positions for each type of asset
-    const imagePositions = generateGalleryPositions(imageAssets.length, 'left');
-    const videoPositions = generateGalleryPositions(videoAssets.length, 'right');
-    const documentPositions = generateGalleryPositions(documentAssets.length, 'back');
-    
-    // Add image assets to the left side
-    imageAssets.forEach((asset, index) => {
-      const position = imagePositions[index] || [-8, 1.5, -5 - (index % 10)];
+    // Add all assets together, mixed throughout the space
+    project.assetGallery.forEach((asset, index) => {
+      const position = galleryPositions[index] || [0, 1, -15 - (index % 5)];
       
-      // Determine aspect ratio for more natural scaling
-      // Default to a reasonable aspect ratio if we can't determine it
-      let aspectRatio = 1.5; // Default aspect ratio (width/height)
+      // Determine the asset type
+      let assetType: 'image' | 'video' | 'pdf' = 'image';
       let scale: [number, number, number] = [1.2, 0.8, 0.1]; // Default scale
+      let thumbnail = asset.url;
       
-      // Determine aspect ratio from image name if possible
-      if (asset.url) {
-        // Create a temporary scale based on image type
-        if (asset.url.includes('horizontal') || 
-            asset.url.includes('landscape') || 
-            asset.url.toLowerCase().includes('panorama')) {
-          aspectRatio = 1.77; // 16:9 ratio
-          scale = [1.2, 0.675, 0.1]; // Wider than tall
-        } else if (asset.url.includes('vertical') || 
-                   asset.url.includes('portrait')) {
-          aspectRatio = 0.75; // 3:4 ratio
-          scale = [0.75, 1.0, 0.1]; // Taller than wide
-        } else if (asset.url.includes('square') || 
-                   asset.url.toLowerCase().includes('logo')) {
-          aspectRatio = 1.0; // 1:1 ratio
-          scale = [0.9, 0.9, 0.1]; // Square
-        } else {
-          // Try to infer from file extension for common photo types
-          if (asset.url.match(/\.(jpe?g|png|gif|webp)$/i)) {
-            // Standard photo aspect ratio if we can't determine
-            scale = [1.1, 0.8, 0.1]; // Slightly wider than tall
+      if (asset.type === 'video' || 
+          (asset.url && (asset.url.endsWith('.mp4') || asset.url.endsWith('.MP4') || 
+                        asset.url.endsWith('.webm') || asset.url.endsWith('.mov')))) {
+        assetType = 'video';
+        scale = [1.2, 0.675, 0.1]; // 16:9 aspect ratio for videos
+        
+        // Generate thumbnail from video URL if it exists
+        if (asset.url) {
+          thumbnail = asset.url.replace('.mp4', '.jpg')
+                              .replace('.MP4', '.jpg')
+                              .replace('.webm', '.jpg')
+                              .replace('.mov', '.jpg');
+        }
+      } else if (asset.type === 'document' || 
+                (asset.url && (asset.url.endsWith('.pdf') || asset.url.endsWith('.PDF')))) {
+        assetType = 'pdf';
+        scale = [0.8, 1.15, 0.1]; // Portrait document ratio
+      } else {
+        // This is an image - adjust scale based on asset name or properties
+        if (asset.url) {
+          if (asset.url.includes('horizontal') || 
+              asset.url.includes('landscape') || 
+              asset.url.toLowerCase().includes('panorama')) {
+            scale = [1.2, 0.675, 0.1]; // Wider than tall - 16:9
+          } else if (asset.url.includes('vertical') || 
+                    asset.url.includes('portrait')) {
+            scale = [0.75, 1.0, 0.1]; // Taller than wide - 3:4
+          } else if (asset.url.includes('square') || 
+                    asset.url.toLowerCase().includes('logo')) {
+            scale = [0.9, 0.9, 0.1]; // Square - 1:1
           }
         }
       }
       
-      worldObjects.push({
-        id: `gallery-image-${index}`,
-        type: 'image',
-        title: asset.name || `Image ${index + 1}`,
-        description: `${asset.name || `Image ${index + 1}`} - ${asset.category || 'Image'}`,
-        url: asset.url,
-        thumbnail: asset.url,
-        position: position,
-        rotation: [0, Math.PI / 6, 0], // Angle slightly inward
-        scale: scale // Use the determined scale based on aspect ratio
-      });
-    });
-    
-    // Add video assets to the right side
-    videoAssets.forEach((asset, index) => {
-      const position = videoPositions[index] || [8, 1.5, -5 - (index % 10)];
-      
-      // Videos typically have a 16:9 aspect ratio
-      const scale: [number, number, number] = [1.2, 0.675, 0.1]; // 16:9 aspect ratio
+      // Add random rotation for more natural look
+      const rotation: [number, number, number] = [
+        0, // No tilt on X axis
+        Math.random() * Math.PI * 2, // Random rotation on Y axis (0 to 360 degrees)
+        0  // No tilt on Z axis
+      ];
       
       worldObjects.push({
-        id: `gallery-video-${index}`,
-        type: 'video',
-        title: asset.name || `Video ${index + 1}`,
-        description: `${asset.name || `Video ${index + 1}`} - ${asset.category || 'Video'}`,
+        id: `gallery-item-${index}`,
+        type: assetType,
+        title: asset.name || `Asset ${index + 1}`,
+        description: `${asset.name || `Asset ${index + 1}`} - ${asset.category || 'Asset'}`,
         url: asset.url,
-        thumbnail: asset.url ? asset.url.replace('.mp4', '.jpg').replace('.MP4', '.jpg') : undefined,
+        thumbnail: thumbnail,
         position: position,
-        rotation: [0, -Math.PI / 6, 0], // Angle slightly inward
-        scale: scale // 16:9 aspect ratio for videos
-      });
-    });
-    
-    // Add document assets to the back
-    documentAssets.forEach((asset, index) => {
-      const position = documentPositions[index] || [0, 1.5, -15 - (index % 5)];
-      
-      // PDFs typically have an A4/letter aspect ratio
-      const scale: [number, number, number] = [0.8, 1.15, 0.1]; // Portrait document ratio
-      
-      worldObjects.push({
-        id: `gallery-document-${index}`,
-        type: 'pdf',
-        title: asset.name || `Document ${index + 1}`,
-        description: `${asset.name || `Document ${index + 1}`} - ${asset.category || 'Document'}`,
-        url: asset.url,
-        position: position,
-        scale: scale // Portrait document ratio
+        rotation: rotation,
+        scale: scale
       });
     });
   }
@@ -491,74 +475,6 @@ export const createProjectWorld = (project: Project, isTouchDevice: boolean): Wo
   
   return projectWorld;
 };
-
-// Helper function to generate positions for gallery items
-function generateGalleryPositions(count: number, side: 'left' | 'right' | 'back'): [number, number, number][] {
-  const positions: [number, number, number][] = [];
-  
-  if (side === 'left') {
-    // Left side wall arrangement - more spread out
-    const itemsPerRow = 3; // Reduced from 5 for better spacing
-    const rows = Math.ceil(count / itemsPerRow);
-    
-    for (let i = 0; i < count; i++) {
-      const row = Math.floor(i / itemsPerRow);
-      const col = i % itemsPerRow;
-      
-      // Add some randomization to make it look more natural
-      const xOffset = (Math.random() * 2 - 1) * 0.5; // Small random x offset
-      const yOffset = (Math.random() * 2 - 1) * 0.3; // Small random y offset
-      const zOffset = (Math.random() * 2 - 1) * 0.7; // Small random z offset
-      
-      const x = -12 + xOffset; // Moved further left
-      const y = 1.5 + row * 2 + yOffset; // More vertical spacing
-      const z = -5 - col * 3 + zOffset; // More horizontal spacing
-      
-      positions.push([x, y, z]);
-    }
-  } else if (side === 'right') {
-    // Right side wall arrangement - more spread out
-    const itemsPerRow = 3; // Reduced from 5 for better spacing
-    const rows = Math.ceil(count / itemsPerRow);
-    
-    for (let i = 0; i < count; i++) {
-      const row = Math.floor(i / itemsPerRow);
-      const col = i % itemsPerRow;
-      
-      // Add some randomization to make it look more natural
-      const xOffset = (Math.random() * 2 - 1) * 0.5; // Small random x offset
-      const yOffset = (Math.random() * 2 - 1) * 0.3; // Small random y offset
-      const zOffset = (Math.random() * 2 - 1) * 0.7; // Small random z offset
-      
-      const x = 12 + xOffset; // Moved further right
-      const y = 1.5 + row * 2 + yOffset; // More vertical spacing
-      const z = -5 - col * 3 + zOffset; // More horizontal spacing
-      
-      positions.push([x, y, z]);
-    }
-  } else {
-    // Back wall arrangement - more spread out
-    const itemsPerRow = 3; // Reduced from 5 for better spacing
-    const rows = Math.ceil(count / itemsPerRow);
-    
-    for (let i = 0; i < count; i++) {
-      const row = Math.floor(i / itemsPerRow);
-      const col = i % itemsPerRow;
-      
-      // Add some randomization to make it look more natural
-      const xOffset = (Math.random() * 2 - 1) * 0.5; // Small random x offset
-      const yOffset = (Math.random() * 2 - 1) * 0.3; // Small random y offset
-      
-      const x = -8 + col * 8 + xOffset; // More horizontal spacing
-      const y = 1.5 + row * 2 + yOffset; // More vertical spacing
-      const z = -18; // Moved further back
-      
-      positions.push([x, y, z]);
-    }
-  }
-  
-  return positions;
-}
 
 // Generate circular positions for multiple objects around a center point
 const generateCircularPositions = (count: number, centerY: number, radius: number): [number, number, number][] => {
