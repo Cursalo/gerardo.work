@@ -14,10 +14,8 @@ This application is a 3D portfolio that allows users to showcase their projects 
 - **Project**: Represents a portfolio project with details and associated world settings
 - **ProjectService**: Manages project data, saving/loading from localStorage
 
-### 3. Admin Interface
-- **ModernAdminDashboard**: Main admin component for managing projects and worlds
-- **ProjectEditor**: Component for editing project details
-- **Media Management**: Tools for adding/editing media in project worlds
+### 3. Admin Interface (Deprecated)
+Note: Admin functionality has been removed. Projects are managed via JSON files in `src/data/project_definitions/`.
 
 ### 4. Viewing System
 - **WorldViewer**: Component for viewing worlds
@@ -127,7 +125,6 @@ interface MediaFormData {
 
 ## URL Structure
 - `/`: Main application view
-- `/admin`: Admin dashboard for managing projects and worlds
 - `/world/:worldId`: View a specific world by ID
 - `/project/:customLink`: View a project world using a custom link
 
