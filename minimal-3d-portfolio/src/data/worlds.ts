@@ -286,104 +286,105 @@ const isObjectInteractive = (object: WorldObject): boolean => {
 // Helper function to generate positions for gallery items
 function generateGalleryPositions(count: number): [number, number, number][] {
   const positions: [number, number, number][] = [];
-  const minDistanceBetweenAssets = 18; // Increased from 12 to 18 for much more space
-  const spaceArea = 100; // Increased from 80 to 100 for a larger gallery space
-  const halfSpace = spaceArea / 2;
-  const maxHeight = 3.5; // Maximum height for assets
-  const minHeight = 0.8; // Minimum height for assets
   
-  // Function to calculate distance between two points
+  // GALLERY SIZES & SPACING
+  // Increase the gallery area to 100 units square (was 80)
+  const gallerySize = 100;
+  // Increase minimum spacing between objects to 18 units (was 12)
+  const minSpacing = 18;
+  
+  // Track all positions for spacing check
+  const placedPositions: {x: number, z: number}[] = [];
+  
+  // Distance calculation helper
   const distance = (x1: number, z1: number, x2: number, z2: number): number => {
-    return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(z2 - z1, 2));
+    const dx = x1 - x2;
+    const dz = z1 - z2;
+    return Math.sqrt(dx * dx + dz * dz);
   };
   
-  // Function to check if a position is too close to existing positions
+  // Check if a position is too close to existing positions
   const isTooClose = (x: number, z: number): boolean => {
-    for (const pos of positions) {
-      if (distance(x, z, pos[0], pos[2]) < minDistanceBetweenAssets) {
+    for (const pos of placedPositions) {
+      if (distance(x, z, pos.x, pos.z) < minSpacing) {
         return true;
       }
     }
     return false;
   };
   
-  // Function to generate a position in a specific quadrant
+  // Generate position in a specific quadrant
   const generateQuadrantPosition = (quadrant: number): [number, number, number] => {
-    let x = 0;
-    let z = 0;
-    let y = 0;
-    let validPosition = false;
-    let attempts = 0;
-    const maxAttempts = 200;
+    // Define quadrant bounds
+    const halfSize = gallerySize / 2;
+    let minX, maxX, minZ, maxZ;
     
-    // Determine quadrant bounds
-    let xMin = 0;
-    let xMax = 0;
-    let zMin = 0;
-    let zMax = 0;
-    
+    // Quadrants: 0=NE, 1=SE, 2=SW, 3=NW
     switch (quadrant) {
-      case 0: // Front-right
-        xMin = 5;
-        xMax = halfSpace;
-        zMin = -halfSpace;
-        zMax = -5;
+      case 0: // Northeast
+        minX = 0;
+        maxX = halfSize;
+        minZ = -halfSize;
+        maxZ = 0;
         break;
-      case 1: // Front-left
-        xMin = -halfSpace;
-        xMax = -5;
-        zMin = -halfSpace;
-        zMax = -5;
+      case 1: // Southeast
+        minX = 0;
+        maxX = halfSize;
+        minZ = 0;
+        maxZ = halfSize;
         break;
-      case 2: // Back-left
-        xMin = -halfSpace;
-        xMax = -5;
-        zMin = 5;
-        zMax = halfSpace;
+      case 2: // Southwest
+        minX = -halfSize;
+        maxX = 0;
+        minZ = 0;
+        maxZ = halfSize;
         break;
-      case 3: // Back-right
-        xMin = 5;
-        xMax = halfSpace;
-        zMin = 5;
-        zMax = halfSpace;
+      case 3: // Northwest
+        minX = -halfSize;
+        maxX = 0;
+        minZ = -halfSize;
+        maxZ = 0;
         break;
+      default:
+        // Default to full area
+        minX = -halfSize;
+        maxX = halfSize;
+        minZ = -halfSize;
+        maxZ = halfSize;
     }
     
-    while (!validPosition && attempts < maxAttempts) {
-      // Generate position within the quadrant
-      x = xMin + Math.random() * (xMax - xMin);
-      z = zMin + Math.random() * (zMax - zMin);
-      
-      // Check if this position is far enough from all existing positions
-      validPosition = !isTooClose(x, z);
+    // Try to find a valid position (with spacing)
+    let x, z;
+    let attempts = 0;
+    const maxAttempts = 50;
+    
+    do {
+      // Generate random position within quadrant
+      x = minX + Math.random() * (maxX - minX);
+      z = minZ + Math.random() * (maxZ - minZ);
       attempts++;
-    }
+      
+      // If we've tried too many times, increase the search area slightly
+      if (attempts > maxAttempts) {
+        minX -= 5;
+        maxX += 5;
+        minZ -= 5;
+        maxZ += 5;
+        attempts = 0;
+      }
+    } while (isTooClose(x, z) && attempts < maxAttempts * 2);
     
-    // If we couldn't find a valid position, place it along the quadrant edge
-    if (!validPosition) {
-      const angle = Math.random() * Math.PI / 2; // Random angle within 90 degrees
-      
-      // Adjust angle based on quadrant
-      const quadrantOffset = quadrant * Math.PI / 2;
-      const finalAngle = angle + quadrantOffset;
-      
-      // Use an increasing radius for each attempt to ensure spreading
-      const radius = 20 + (attempts % 5) * 8;
-      
-      x = Math.cos(finalAngle) * radius;
-      z = Math.sin(finalAngle) * radius;
-    }
+    // Add to placed positions
+    placedPositions.push({x, z});
     
-    // Generate a y position that varies based on distance from center
-    const distanceFromCenter = Math.sqrt(x * x + z * z);
-    const heightVariance = Math.sin(distanceFromCenter * 0.1) * 1.0; // Create a wave pattern
-    y = minHeight + heightVariance + Math.random() * (maxHeight - minHeight - heightVariance);
+    // Random height between 1.5 and 3.5
+    const y = 1.5 + Math.random() * 2;
     
     return [x, y, z];
   };
   
   // Place the first position near the entrance for easy access
-  positions.push([0, 1.5, -halfSpace + 15]);
+  positions.push([0, 1.5, -(gallerySize/2) + 15]);
   
   // Distribute remaining assets evenly across quadrants
   if (count > 1) {
@@ -410,9 +411,32 @@ function generateGalleryPositions(count: number): [number, number, number][] {
   return positions;
 }
 
+// Helper function to determine media count for a project
+const determineMediaCount = (project: Project): number => {
+  let count = 5; // Default minimum count
+  
+  // Count asset gallery items if available
+  if (project.assetGallery && Array.isArray(project.assetGallery)) {
+    count = Math.max(count, project.assetGallery.length);
+  }
+  
+  // Count media objects if available
+  if (project.mediaObjects && Array.isArray(project.mediaObjects)) {
+    count += project.mediaObjects.length;
+  }
+  
+  return count;
+};
+
 // Add code to create project worlds
 export const createProjectWorld = (project: Project, isTouchDevice: boolean): World => {
   console.log(`WorldProvider: Creating project world for project ID ${project.id}: ${project.name}`);
+
+  // Determine the number of assets to generate based on project content
+  const mediaCount = determineMediaCount(project);
+  
+  // Generate asset positions
+  const assetPositions = generateGalleryPositions(mediaCount);
   
   // Use world settings from project if available, or default settings
   const settings = project.worldSettings || {
@@ -547,8 +571,8 @@ export const createProjectWorld = (project: Project, isTouchDevice: boolean): Wo
   
   // Adjust camera position based on device type
   const cameraPosition = isTouchDevice
-    ? { x: 0, y: 4, z: 20 } // Increased from z: 10 to z: 20 for touch devices
-    : { x: 0, y: 2.5, z: 16 }; // Increased from z: 8 to z: 16 for mouse/keyboard
+    ? { x: 0, y: 4, z: 25 } // Increased from z: 20 to z: 25 for touch devices
+    : { x: 0, y: 2.5, z: 20 }; // Increased from z: 16 to z: 20 for mouse/keyboard
   
   const projectWorld: World = {
     id: `project-world-${project.id}`,

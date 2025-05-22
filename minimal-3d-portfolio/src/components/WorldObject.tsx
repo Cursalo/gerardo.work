@@ -13,6 +13,7 @@ import ErrorBoundary from './ErrorBoundary';
 import { WebLinkCard } from './WebLinkCard';
 import { projectService } from '../services/projectService';
 import useMobileDetection from '../hooks/useMobileDetection';
+import Hitbox from './Hitbox';
 
 interface WorldObjectProps {
   object: WorldObjectType;
@@ -102,40 +103,29 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
   
   // Make card-like objects face the camera (billboarding)
   useFrame(() => {
-    const { gl, camera } = useThree(); // Destructure gl and camera here
-
     if (objectRef.current && shouldBillboard(object.type)) {
+      // Only apply billboarding when pointer is locked (gameplay mode)
       if (document.pointerLockElement === gl.domElement) {
         const MIN_LOOKAT_DISTANCE = 1.5; // Minimum distance to update lookAt
 
-        // Calculate XZ distance between camera and object
-        const dx = camera.position.x - objectRef.current.position.x;
-        const dz = camera.position.z - objectRef.current.position.z;
+        // Calculate distance between camera and object
+        const objectPosition = objectRef.current.position;
+        const dx = camera.position.x - objectPosition.x;
+        const dz = camera.position.z - objectPosition.z;
         const distanceXZ = Math.sqrt(dx * dx + dz * dz);
 
+        // Only update orientation if the camera is far enough away
         if (distanceXZ > MIN_LOOKAT_DISTANCE) {
-          const cameraDirection = new THREE.Vector3();
-          camera.getWorldDirection(cameraDirection);
-
-          const projectedPoint = new THREE.Vector3().addVectors(
-            camera.position,
-            cameraDirection.multiplyScalar(10)
-          );
-
+          // Create a target position at the same height as the object
           const targetPosition = new THREE.Vector3(
-            projectedPoint.x,
-            objectRef.current.position.y,
-            projectedPoint.z
+            camera.position.x,
+            objectPosition.y,
+            camera.position.z
           );
 
+          // Make the object look at the camera (at same height level)
           objectRef.current.lookAt(targetPosition);
-
-          // OPTIONAL: If the above makes the card face backward
-          // objectRef.current.rotation.y += Math.PI;
         }
-        // If too close, do nothing, maintaining last orientation
-      } else {
-        // Pointer not locked, do nothing or maintain last orientation
       }
     }
   });
@@ -287,6 +277,26 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
       };
     }
   }, [object]);
+  
+  // Calculate interactivity and action type for hitbox userData
+  const isInteractive = 
+    object.projectId !== undefined || 
+    (object.type === 'button' && object.action === 'navigate') || 
+    (object.type === 'link') ||
+    (object.type === 'video') ||
+    (object.type === 'image') ||
+    (object.type === 'pdf');
+
+  let actionType: string | undefined;
+  if (object.type === 'project') {
+    actionType = 'navigate_project';
+  } else if ((object.type === 'button' && object.action === 'navigate') || (object.type === 'link' && object.subWorldId)) {
+    actionType = 'navigate';
+  } else if (object.type === 'link' && object.url) {
+    actionType = 'open_url';
+  } else if (object.type === 'video' || object.type === 'image' || object.type === 'pdf') {
+    actionType = 'view_media';
+  }
   
   // Render different content based on object type and detail level
   const renderContent = () => {
@@ -442,36 +452,52 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
   
   // Single return statement wrapping all possible content
   return (
-    <group
-      ref={objectRef}
+    <Hitbox
       position={position as [number, number, number]}
-      rotation={rotation as [number, number, number]}
+      rotation={rotation as [number, number, number]} 
       scale={scale as [number, number, number]}
-      onClick={handleClick}
-      onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }}
-      onPointerOut={(e) => { e.stopPropagation(); setHovered(false); }}
+      userData={{
+        interactive: isInteractive,
+        action: actionType,
+        name: object.title || object.type || `Object ${object.id}`,
+        objectType: object.type,
+        title: object.title,
+        projectId: object.projectId,
+        url: object.url,
+        subWorldId: object.subWorldId || (object.projectId ? `project-world-${object.projectId}` : undefined),
+        destination: object.destination,
+        interactionType: object.interactionType,
+        onClick: handleClick
+      }}
     >
-      {renderContent()}
-      {/* Show description on hover only at high detail level */}
-      {hovered && object.description && (
-        <Html
-          position={[0, 0.75, 0.2]} // Adjusted y and z for better visibility
-          style={{
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            padding: '8px',
-            borderRadius: '4px',
-            color: 'white',
-            width: '180px',
-            fontSize: '12px',
-            textAlign: 'center',
-            pointerEvents: 'none',
-            transform: 'translate(-50%, -110%)' // Center above and behind slightly
-          }}
-        >
-          {object.description}
-        </Html>
-      )}
-    </group>
+      <group
+        ref={objectRef}
+        onClick={handleClick}
+        onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }}
+        onPointerOut={(e) => { e.stopPropagation(); setHovered(false); }}
+      >
+        {renderContent()}
+        {/* Show description on hover only at high detail level */}
+        {hovered && object.description && (
+          <Html
+            position={[0, 0.75, 0.2]} // Adjusted y and z for better visibility
+            style={{
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+              padding: '8px',
+              borderRadius: '4px',
+              color: 'white',
+              width: '180px',
+              fontSize: '12px',
+              textAlign: 'center',
+              pointerEvents: 'none',
+              transform: 'translate(-50%, -110%)' // Center above and behind slightly
+            }}
+          >
+            {object.description}
+          </Html>
+        )}
+      </group>
+    </Hitbox>
   );
 });
 
