@@ -5,6 +5,5 @@
   ],
   "buildCommand": "rm -rf node_modules package-lock.json && npm install && npm run build",
   "outputDirectory": "dist",
-  "framework": "vite",
-  "nodeVersion": "18.x"
+  "framework": "vite"
 } 
