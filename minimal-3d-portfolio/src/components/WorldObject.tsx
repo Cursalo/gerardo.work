@@ -105,7 +105,7 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
   useFrame(() => {
     if (objectRef.current && shouldBillboard(object.type)) {
       if (document.pointerLockElement === gl.domElement) {
-        const MIN_LOOKAT_DISTANCE = 1.5;
+        const MIN_LOOKAT_DISTANCE = 0.2;
 
         const objectWorldPosition = new THREE.Vector3();
         objectRef.current.getWorldPosition(objectWorldPosition);
@@ -117,12 +117,14 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
           objectRef.current.lookAt(camera.position);
 
           // 2. Correct the roll (Z-axis rotation) to keep the card upright
-          // Convert quaternion to Euler angles
           const euler = new THREE.Euler().setFromQuaternion(objectRef.current.quaternion, 'YXZ');
-          // Set the roll (Z rotation) to 0
           euler.z = 0;
-          // Convert back to quaternion and apply
           objectRef.current.quaternion.setFromEuler(euler);
+        } else {
+          // Optional: When very close, ensure it still tries to face the camera but without the full lookAt dynamics
+          // This can prevent it snapping to its original rotation too abruptly.
+          // For now, we'll let it revert to its corrected orientation from the last frame it was > MIN_LOOKAT_DISTANCE.
+          // If an explicit orientation is needed when *very* close, it could be set here.
         }
       }
     }
