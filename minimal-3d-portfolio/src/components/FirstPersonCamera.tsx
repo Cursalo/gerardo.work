@@ -8,7 +8,6 @@ import { useMobileControls } from '../context/MobileControlsContext';
 
 interface FirstPersonCameraProps {
   position?: Vector3;
-  target?: Vector3;
   height?: number;
   moveSpeed?: number;
   rotationSpeed?: number;
@@ -36,7 +35,6 @@ const tempDirectionVec = new THREE.Vector3(); // For storing direction before no
  */
 const FirstPersonCamera = ({
   position = new Vector3(0, 0, 15),
-  target,
   height = 1.7, // Average human eye level
   moveSpeed = 0.2,
   rotationSpeed = 0.002, // Rotation speed for mouse movement
@@ -98,28 +96,19 @@ const FirstPersonCamera = ({
   
   // Ensure initial camera setup is correct and aligned with crosshair
   useEffect(() => {
-    // Set initial position first
+    // Set initial position
     currentPosition.current.y = height;
     camera.position.copy(currentPosition.current);
-
-    // Set the camera's up vector BEFORE lookAt to ensure correct orientation frame
-    camera.up.set(0, 1, 0);
-
-    if (target) {
-      camera.lookAt(target);
-    } else {
-      // Default lookAt if no target is provided
-      const defaultLookAt = new Vector3(camera.position.x, height, camera.position.z - 1);
-      camera.lookAt(defaultLookAt);
-    }
     
-    // Update Euler angles from the camera's initial quaternion to sync mouse controls
+    // Set camera orientation - looking slightly forward
+    camera.up.set(0, 1, 0);
+    const defaultLookAt = new Vector3(camera.position.x, height, camera.position.z - 10);
+    camera.lookAt(defaultLookAt);
+    
+    // Update Euler angles from the camera's quaternion
     euler.current.setFromQuaternion(camera.quaternion, 'YXZ');
     
-    // Update projection matrix to apply changes (camera.up is already set)
-    camera.updateProjectionMatrix();
-    
-  }, [camera, height, target]);
+  }, [camera, height]);
   
   // Update pointer lock effect to respect chat visibility
   useEffect(() => {

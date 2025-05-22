@@ -77,6 +77,11 @@ const sharedMaterials = {
   }),
 };
 
+// Helper function to determine if an object should billboard (face the camera)
+const shouldBillboard = (objectType: string): boolean => {
+  return ['project', 'image', 'video', 'pdf', 'link', 'button'].includes(objectType);
+};
+
 const WorldObject = React.memo(({ object }: WorldObjectProps) => {
   const { setCurrentWorldId } = useWorld();
   const [hovered, setHovered] = useState(false);
@@ -97,15 +102,15 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
   
   // Make card-like objects face the camera (billboarding)
   useFrame(() => {
-    if (objectRef.current && camera && 
-        (object.type === 'project' || 
-         object.type === 'video' || 
-         object.type === 'image' || 
-         object.type === 'pdf')) {
-      // Ensure the object looks at the camera but only rotates around its Y axis
-      // to prevent it from tilting up/down unnaturally.
-      const targetPosition = new THREE.Vector3(camera.position.x, objectRef.current.position.y, camera.position.z);
-      objectRef.current.lookAt(targetPosition);
+    if (objectRef.current && shouldBillboard(object.type)) {
+      // Get the direction from the object to the camera
+      const direction = camera.position.clone().sub(objectRef.current.position);
+      
+      // Calculate the rotation to face the camera, but only on Y-axis (horizontal rotation)
+      const targetRotation = Math.atan2(direction.x, direction.z);
+      
+      // Apply the rotation to the Y axis only (keep X and Z rotations from the object's original rotation)
+      objectRef.current.rotation.y = targetRotation;
     }
   });
   

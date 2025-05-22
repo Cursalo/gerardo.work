@@ -126,16 +126,7 @@ const SceneContent = ({ worldId }: SceneContentProps) => {
                 currentWorld.cameraPosition.y,
                 currentWorld.cameraPosition.z
               )
-            : new Vector3(0, 1.7, 15)
-        }
-        target={
-          currentWorld.cameraTarget
-            ? new Vector3(
-                currentWorld.cameraTarget.x,
-                currentWorld.cameraTarget.y,
-                currentWorld.cameraTarget.z
-              )
-            : undefined
+            : new Vector3(0, 1.7, 15) // Default if not provided
         }
         height={1.7} 
         moveSpeed={0.25}
