@@ -80,7 +80,7 @@ const shouldBillboard = (objectType: string): boolean => {
 };
 
 const WorldObject = React.memo(({ object }: WorldObjectProps) => {
-  const { setCurrentWorldId } = useWorld();
+  const { setCurrentWorldId, currentWorld } = useWorld();
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [projectDetail, setProjectDetail] = useState<Project | null>(null);
   const { camera, gl } = useThree();
@@ -95,6 +95,9 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
   const position = object.position || [0, 0, 0];
   const rotation = object.rotation || [0, 0, 0];
   const scale = object.scale || [1, 1, 1];
+  
+  // Check if we're in a sub-world (project world)
+  const isInSubWorld = currentWorld?.id?.startsWith('project-world-') || false;
   
   // Individual billboarding disabled - now handled by BillboardManager
   
@@ -311,6 +314,7 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
           position={[0, 0, 0]}
           rotation={[0, 0, 0]}
           description={object.description}
+          isInSubWorld={isInSubWorld}
         />
       );
     }
@@ -325,6 +329,7 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
           description={object.description}
           position={[0, 0, 0]}
           rotation={[0, 0, 0]}
+          isInSubWorld={isInSubWorld}
         />
       );
     }
@@ -339,6 +344,7 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
           description={object.description}
           position={[0, 0, 0]}
           rotation={[0, 0, 0]}
+          isInSubWorld={isInSubWorld}
         />
       );
     }

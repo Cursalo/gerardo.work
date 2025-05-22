@@ -79,31 +79,19 @@ const ProjectWindow = React.memo(({ project, position }: ProjectWindowProps) => 
   // Add a slight floating animation and make the card face the camera
   useFrame((state) => {
     if (groupRef.current) {
-      // Basic floating animation
-      groupRef.current.position.y = position[1] + Math.sin(state.clock.elapsedTime * 0.5 + position[0]) * 0.2;
-      
-      // Keep fixed position in world space
-      groupRef.current.position.x = position[0];
-      groupRef.current.position.z = position[2];
-      
-      // Make the project window face the camera
-      if (camera && !hovered) {
-        const dirToCamera = new Vector3().subVectors(
-          new Vector3(camera.position.x, groupRef.current.position.y, camera.position.z),
-          groupRef.current.position
-        ).normalize();
-        
-        // Calculate target rotation to face camera
-        const targetRotationY = Math.atan2(dirToCamera.x, dirToCamera.z);
-        
-        // Smoothly rotate to face camera
-        groupRef.current.rotation.y += (targetRotationY - groupRef.current.rotation.y) * 0.05;
-      }
-      
-      // Rotate when hovered
+      // General floating and billboarding are now handled by BillboardManager at the WorldObject level.
+      // ProjectWindow is typically positioned at [0,0,0] relative to its parent WorldObject.
+      // The `position` prop for ProjectWindow defines this local offset.
+      groupRef.current.position.set(position[0], position[1], position[2]);
+
+      // Unique hover animation for ProjectWindow
       if (hovered) {
         const wobble = Math.sin(state.clock.elapsedTime * 3) * 0.05;
         groupRef.current.rotation.y += (wobble - groupRef.current.rotation.y * 0.1) * 0.1;
+      } else {
+        // When not hovered, ensure its local Y rotation is smoothly reset to 0.
+        // BillboardManager handles the parent WorldObject's camera-facing rotation.
+        groupRef.current.rotation.y += (0 - groupRef.current.rotation.y) * 0.05;
       }
       
       // Check if this card is overlapping with another and update state

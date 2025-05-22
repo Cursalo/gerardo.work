@@ -329,7 +329,7 @@ const Scene = ({ worldId }: SceneProps) => {
             <VisibilityContext.Provider value={visibilityContextValue}>
               <Canvas
                 shadows
-                dpr={[1, 2]}
+                dpr={[1, 1.5]}
                 performance={{ min: 0.5 }}
                 eventPrefix="client"
                 camera={{
@@ -343,10 +343,11 @@ const Scene = ({ worldId }: SceneProps) => {
                   antialias: true,
                   alpha: false,
                   stencil: false,
-                  // Add context attributes for better context loss handling
-                  powerPreference: 'high-performance',
+                  depth: true,
+                  powerPreference: 'default',
                   failIfMajorPerformanceCaveat: false,
-                  preserveDrawingBuffer: true
+                  preserveDrawingBuffer: true,
+                  logarithmicDepthBuffer: true
                 }}
                 raycaster={{
                   far: 100

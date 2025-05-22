@@ -53,23 +53,23 @@ const generatePositions = (count: number): [number, number, number][] => {
     const angle = (i / circleCount) * Math.PI * 2;
     const x = Math.cos(angle) * circleRadius;
     const z = Math.sin(angle) * circleRadius;
-    // Raised height for proper shadow casting
-    const y = 2.0 + Math.random() * 0.5; 
+    // Lower height for ground level positioning
+    const y = 0.8 + Math.random() * 0.3; 
     positions.push([x, y, z]);
   }
   
   // Formation 2: A spiral going upward (but much lower)
   const spiralCount = Math.floor(count * 0.25); // 25% in a spiral
   const spiralRadius = 15; 
-  const spiralHeight = 5; // Reduced height significantly
+  const spiralHeight = 1.2; // Greatly reduced height
   for (let i = 0; i < spiralCount; i++) {
     const progress = i / spiralCount;
     const angle = progress * Math.PI * 6; // 3 full turns
     const radiusAtPoint = spiralRadius * (1 - progress * 0.5); // Spiral gets tighter
     const x = Math.cos(angle) * radiusAtPoint;
     const z = Math.sin(angle) * radiusAtPoint;
-    // Higher minimum height for spiral projects
-    const y = 2.5 + progress * spiralHeight;
+    // Lower base height for spiral projects
+    const y = 0.8 + progress * spiralHeight;
     positions.push([x, y, z]);
   }
   
@@ -79,14 +79,14 @@ const generatePositions = (count: number): [number, number, number][] => {
     // Create small clusters in random locations (closer to center)
     const clusterCenterX = (Math.random() - 0.5) * 50;
     const clusterCenterZ = (Math.random() - 0.5) * 50;
-    // Higher cluster heights
-    const clusterCenterY = 2.2 + Math.random() * 1.5;
+    // Lower cluster heights
+    const clusterCenterY = 0.8 + Math.random() * 0.4;
     
     // Position within cluster (tighter clusters)
     const offsetX = (Math.random() - 0.5) * 8;
     const offsetZ = (Math.random() - 0.5) * 8;
     // Lower vertical variation
-    const offsetY = (Math.random() - 0.5) * 1;
+    const offsetY = (Math.random() - 0.5) * 0.4;
     
     positions.push([
       clusterCenterX + offsetX, 
@@ -103,8 +103,8 @@ const generatePositions = (count: number): [number, number, number][] => {
     const radius = 20 + Math.random() * 10; // Medium radius between 20-30 units
     const x = Math.cos(angle) * radius;
     const z = Math.sin(angle) * radius;
-    // Keep higher for proper shadow
-    const y = 2.5 + Math.random() * 0.5;
+    // Lower height for ground level
+    const y = 0.8 + Math.random() * 0.3;
     
     // Replace some of the existing positions with these medium distance ones
     if (positions.length > i) {
@@ -198,8 +198,8 @@ export const createMainWorld = (projects: Project[]): World => {
     ambientLightIntensity: 0.8,
     directionalLightColor: '#ffffff',
     directionalLightIntensity: 1.2,
-    cameraPosition: { x: 0, y: 2.5, z: 12 },
-    cameraTarget: { x: 0, y: 2, z: -4 },
+    cameraPosition: { x: 0, y: 1.0, z: 8 },
+    cameraTarget: { x: 0, y: 0.8, z: -4 },
     objects: projectObjects
   };
   
@@ -217,66 +217,53 @@ function generateDeterministicPositions(projects: Project[]): PositionWithId[] {
   const result: PositionWithId[] = [];
   
   // NPC is at position [0, 0, -4]
-  // Use smaller radii to keep cards closer to NPC
-  const circleRadiusBase = 12; // Reduced from 30
-  const spiralRadiusBase = 8;  // Reduced from 20
-  const gridSpacing = 6;       // Reduced spacing for grid formation
-  const numGridColumns = 4;    // Number of columns for grid
+  const circleRadiusBase = 50; // Increased from 25 to 50 for much more spacing
+  const gridSpacing = 30;      // Increased from 15 to 30 for much more spacing
+  const numGridColumns = 4;    // Number of columns for grid layout
 
-  // Assign each project to a formation and position based on ID
+  // Assign each project to a position based on ID
   projects.forEach(project => {
     const projectId = project.id;
     let position: [number, number, number];
     
-    // Deterministic position assignment
-    const projectIndexFactor = projectId * 1.5; // Smaller factor to keep cards closer
-
+    // Use project ID to determine position type
     if (projectId % 3 === 0) {
-      // Circle formation around NPC
-      const angle = (projectIndexFactor * 0.5) % (Math.PI * 2);
-      const radiusVariation = (projectId % 3) * 1.5; // Smaller variation (0, 1.5, 3)
-      const currentRadius = circleRadiusBase + radiusVariation;
-      const x = Math.cos(angle) * currentRadius;
-      // NPC is at z = -4, so center circle there
-      const z = -4 + Math.sin(angle) * currentRadius;
-      const y = 1.5 + (projectIndexFactor * 0.1) % 1.0; // Lower height, less variation
+      // Projects divisible by 3: Place in a larger circle around NPC
+      const angle = (projectId * 0.5) % (Math.PI * 2);
+      const radius = circleRadiusBase + (projectId % 7) * 4; // Increased radius variation
+      const x = Math.cos(angle) * radius;
+      const z = -4 + Math.sin(angle) * radius; // Center around NPC at z=-4
+      // Much more height variation (between 1.5 and 4.5)
+      const y = 1.5 + (Math.sin(projectId * 0.7) * 1.5) + (Math.random() * 1.5);
       position = [x, y, z];
     } else if (projectId % 3 === 1) {
-      // Spiral formation starting near NPC
-      const progress = (projectIndexFactor * 0.07) % 1; 
-      const angle = progress * Math.PI * 6; // Fewer turns
-      const radiusAtPoint = spiralRadiusBase * (1 - progress * 0.3) + (projectId % 3); 
-      const x = Math.cos(angle) * radiusAtPoint;
-      // Center at NPC's z position
-      const z = -4 + Math.sin(angle) * radiusAtPoint;
-      const y = 2.0 + progress * 3; // Lower maximum height
+      // Projects with remainder 1: Place in a grid pattern
+      const gridIndex = Math.floor(projectId / 3);
+      const row = Math.floor(gridIndex / numGridColumns);
+      const col = gridIndex % numGridColumns;
+      const x = (col - numGridColumns/2) * gridSpacing + (Math.random() * 8 - 4); // More X randomness
+      const z = -4 - (row + 1) * gridSpacing + (Math.random() * 8 - 4); // More Z randomness
+      // More height variation (between 2.0 and 5.0)
+      const y = 2.0 + (Math.cos(row + col) * 1.5) + (Math.random() * 1.5);
       position = [x, y, z];
     } else {
-      // Grid formation in front of NPC
-      const gridIndex = projectIndexFactor % (numGridColumns * numGridColumns);
-      const gridRow = Math.floor(gridIndex / numGridColumns);
-      const gridCol = gridIndex % numGridColumns;
-      
-      const xOffset = (gridCol - Math.floor(numGridColumns / 2)) * gridSpacing;
-      const zOffset = (gridRow - Math.floor(numGridColumns / 2)) * gridSpacing;
-      
-      // Add some pseudo-random height variation but still deterministic
-      const yVariation = ((projectId * 17) % 10) * 0.15; // Smaller height variation
-      
-      // Center grid near NPC
-      const x = xOffset;
-      const y = 1.5 + yVariation;
-      const z = -4 + zOffset - 8; // Start grid in front of NPC
-      
+      // Projects with remainder 2: Place in a spiral around the NPC
+      const spiralIndex = Math.floor(projectId / 3);
+      const angle = spiralIndex * 0.7; // Spiral angle increment
+      const radius = 30 + spiralIndex * 2.4; // Increased base radius and increment
+      const x = Math.cos(angle) * radius;
+      const z = -4 + Math.sin(angle) * radius;
+      // More height variation (between 1.8 and 4.8)
+      const y = 1.8 + (Math.sin(angle) * 1.5) + (Math.random() * 1.5);
       position = [x, y, z];
     }
-    
+
     result.push({
-      projectId: projectId,
+      projectId: project.id,
       position: position
     });
   });
-  
+
   return result;
 }
 
@@ -379,8 +366,8 @@ function generateGalleryPositions(count: number): [number, number, number][] {
     // Add to placed positions
     placedPositions.push({x, z});
     
-    // Random height between 1.5 and 3.5
-    const y = 1.5 + Math.random() * 2;
+    // Lower height between 0.7 and 1.2 (ground level)
+    const y = 0.7 + Math.random() * 0.5;
     
     return [x, y, z];
   };
@@ -621,7 +608,9 @@ const generateCircularPositions = (count: number, centerY: number, radius: numbe
     const angle = (i / count) * Math.PI * 2;
     const x = Math.cos(angle) * radius;
     const z = Math.sin(angle) * radius;
-    positions.push([x, centerY, z]);
+    // Vary height slightly based on position
+    const y = 0.8 + (Math.sin(angle) * 0.2);
+    positions.push([x, y, z]);
   }
   return positions;
 };

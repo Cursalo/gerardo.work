@@ -12,6 +12,7 @@ interface PDFCardProps {
   rotation?: [number, number, number];
   scale?: number;
   onClick?: () => void;
+  isInSubWorld?: boolean;
 }
 
 /**
@@ -27,6 +28,7 @@ export const PDFCard: React.FC<PDFCardProps> = ({
   rotation = [0, 0, 0],
   scale = 1,
   onClick,
+  isInSubWorld = false,
 }) => {
   const groupRef = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.Mesh>(null);
@@ -40,6 +42,12 @@ export const PDFCard: React.FC<PDFCardProps> = ({
 
   // Handle hover state
   const updateHoverState = (state: boolean) => {
+    // If in a sub-world, don't apply hover effects
+    if (isInSubWorld) {
+      setHovered(false);
+      return;
+    }
+    
     setHovered(state);
   };
 
@@ -133,9 +141,9 @@ export const PDFCard: React.FC<PDFCardProps> = ({
       >
         <boxGeometry args={[2, 2.8, 0.05]} />
         <meshStandardMaterial 
-          color={hovered ? "#ffffff" : "#f0f0f0"}
-          emissive={hovered ? "#ffffff" : "#cccccc"}
-          emissiveIntensity={hovered ? 0.5 : 0.1}
+          color={isInSubWorld ? "#f0f0f0" : (hovered ? "#ffffff" : "#f0f0f0")}
+          emissive={isInSubWorld ? "#cccccc" : (hovered ? "#ffffff" : "#cccccc")}
+          emissiveIntensity={isInSubWorld ? 0.1 : (hovered ? 0.5 : 0.1)}
           metalness={0.2}
           roughness={0.3}
         />
@@ -230,7 +238,7 @@ export const PDFCard: React.FC<PDFCardProps> = ({
             boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
             backdropFilter: 'blur(2px)',
             opacity: 0.8,
-            transform: `scale(${hovered ? 1.1 : 1})`,
+            transform: isInSubWorld ? 'scale(1)' : `scale(${hovered ? 1.1 : 1})`,
             transition: 'all 0.2s ease'
           }}
         >

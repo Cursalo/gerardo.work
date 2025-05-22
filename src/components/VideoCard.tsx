@@ -13,6 +13,7 @@ interface VideoCardProps {
   position: [number, number, number];
   rotation?: [number, number, number];
   description?: string;
+  isInSubWorld?: boolean;
 }
 
 /**
@@ -27,7 +28,8 @@ export const VideoCard: React.FC<VideoCardProps> = ({
   videoUrl,
   description,
   position,
-  rotation = [0, 0, 0]
+  rotation = [0, 0, 0],
+  isInSubWorld = false
 }) => {
   const [hovered, setHovered] = useState(false);
   const [isPlaying, setIsPlaying] = useState(true);
@@ -81,6 +83,12 @@ export const VideoCard: React.FC<VideoCardProps> = ({
 
   // Handle hover tracking internally
   const updateHoverState = (isHovered: boolean) => {
+    // If in a sub-world, don't apply hover effects
+    if (isInSubWorld) {
+      setHovered(false);
+      return;
+    }
+    
     setHovered(isHovered);
     
     // Apply scale effect on hover
@@ -189,11 +197,11 @@ export const VideoCard: React.FC<VideoCardProps> = ({
       >
         <boxGeometry args={[frameWidth / 100, frameHeight / 100, 0.05]} />
         <meshStandardMaterial 
-          color={hovered ? "#ffffff" : "#f0f0f0"} 
+          color={isInSubWorld ? "#f0f0f0" : (hovered ? "#ffffff" : "#f0f0f0")} 
           metalness={0.7}
           roughness={0.2}
-          emissive={hovered ? "#ffffff" : "#aaaaaa"}
-          emissiveIntensity={hovered ? 0.5 : 0.2}
+          emissive={isInSubWorld ? "#aaaaaa" : (hovered ? "#ffffff" : "#aaaaaa")}
+          emissiveIntensity={isInSubWorld ? 0.2 : (hovered ? 0.5 : 0.2)}
         />
       </mesh>
       

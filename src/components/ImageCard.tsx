@@ -12,6 +12,7 @@ interface ImageCardProps {
   position: [number, number, number];
   rotation?: [number, number, number];
   scale?: [number, number, number];
+  isInSubWorld?: boolean;
 }
 
 /**
@@ -25,13 +26,18 @@ export const ImageCard: React.FC<ImageCardProps> = ({
   description,
   position = [0, 0, 0],
   rotation = [0, 0, 0],
-  scale = [1, 1, 1]
+  scale = [1, 1, 1],
+  isInSubWorld = false
 }) => {
   const [hovered, setHovered] = useState(false);
   const groupRef = useRef<Group>(null);
   const meshRef = useRef<Mesh>(null);
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
   const [hasError, setHasError] = useState(false);
+  
+  // Add floating animation state
+  const floatOffset = useRef(Math.random() * Math.PI * 2); // Random starting phase
+  const initialY = useRef(position[1]); // Store initial Y position
 
   const { camera } = useThree();
   const { registerPosition, checkOverlap } = useContext(VisibilityContext);
@@ -63,7 +69,30 @@ export const ImageCard: React.FC<ImageCardProps> = ({
     }
   }, [position]);
 
+  // Add floating animation in useFrame
+  useFrame((state) => {
+    if (groupRef.current && !isInSubWorld) { // Only float if not in sub-world
+      const time = state.clock.getElapsedTime();
+      
+      // Floating motion
+      const floatY = Math.sin(time * 0.5 + floatOffset.current) * 0.2; // Gentle floating
+      groupRef.current.position.y = initialY.current + floatY;
+      
+      // Subtle rotation
+      const rotX = Math.sin(time * 0.3 + floatOffset.current) * 0.02;
+      const rotZ = Math.cos(time * 0.4 + floatOffset.current) * 0.02;
+      groupRef.current.rotation.x = rotX;
+      groupRef.current.rotation.z = rotZ;
+    }
+  });
+
   const updateHoverState = (isHovered: boolean) => {
+    // If in a sub-world, don't apply hover effects
+    if (isInSubWorld) {
+      setHovered(false);
+      return;
+    }
+    
     setHovered(isHovered);
     if (groupRef.current) {
       const targetScale = isHovered ? 1.15 : 1.0;
@@ -97,11 +126,12 @@ export const ImageCard: React.FC<ImageCardProps> = ({
         const canvas = document.createElement('canvas');
         const imgAspectRatio = img.width / img.height;
         
-        // Improved handling for vertical/portrait images when viewed up close
-        // Use a more balanced canvas size for different aspect ratios
-        if (imgAspectRatio < 0.8) { // Portrait/vertical image
-          canvas.height = canvasTextureWidth;
-          canvas.width = canvasTextureWidth * imgAspectRatio;
+        // Enhanced handling for portrait/vertical images (9:16 aspect ratio)
+        if (imgAspectRatio < 0.8) { // Portrait/vertical image (including 9:16)
+          // For extreme portrait images, ensure full height is captured
+          const canvasHeight = Math.max(canvasTextureWidth, canvasTextureWidth / imgAspectRatio * 1.2);
+          canvas.height = canvasHeight;
+          canvas.width = canvasHeight * imgAspectRatio;
         } else {
           canvas.width = canvasTextureWidth;
           canvas.height = canvasTextureWidth / imgAspectRatio;
@@ -196,6 +226,9 @@ export const ImageCard: React.FC<ImageCardProps> = ({
   const aspectRatio = texture && texture.image ? texture.image.width / texture.image.height : 16 / 9;
   const cardWidth = 3;
   const cardHeight = cardWidth / aspectRatio;
+  
+  // Calculate title position adjustment for portrait images
+  const titlePositionY = aspectRatio < 0.8 ? -(cardHeight / 2 + 0.2) : -(cardHeight / 2 + 0.15);
 
   return (
     <group
@@ -232,7 +265,7 @@ export const ImageCard: React.FC<ImageCardProps> = ({
       <Html
         transform
         distanceFactor={8}
-        position={[0, -(cardHeight / 2 + 0.15), 0.05]}
+        position={[0, titlePositionY, 0.05]}
         style={{
           width: '180px',
           maxWidth: '90%',
