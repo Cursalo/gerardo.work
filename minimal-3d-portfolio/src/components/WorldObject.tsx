@@ -103,14 +103,26 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
   // Make card-like objects face the camera (billboarding)
   useFrame(() => {
     if (objectRef.current && shouldBillboard(object.type)) {
-      // Create a target position that's at the camera's XZ coordinates,
-      // but at the object's current Y height. This ensures the object
-      // only rotates horizontally (yaw) and doesn't tilt up/down.
-      const targetPosition = new THREE.Vector3(
-        camera.position.x,
-        objectRef.current.position.y, // Keep the object's current height
-        camera.position.z
+      // Get the camera's forward direction
+      const cameraDirection = new THREE.Vector3();
+      camera.getWorldDirection(cameraDirection);
+
+      // Project a point in front of the camera along its direction
+      // The distance (e.g., 10 units) doesn't strictly matter for orientation,
+      // but ensures the target point is distinct.
+      const projectedPoint = new THREE.Vector3().addVectors(
+        camera.position,
+        cameraDirection.multiplyScalar(10)
       );
+
+      // Create a target position that's at the projected point's XZ,
+      // but at the object's current Y height.
+      const targetPosition = new THREE.Vector3(
+        projectedPoint.x,
+        objectRef.current.position.y, // Keep the object's current height
+        projectedPoint.z
+      );
+
       objectRef.current.lookAt(targetPosition);
       
       // OPTIONAL: If the above makes the card face backward (shows its back),
