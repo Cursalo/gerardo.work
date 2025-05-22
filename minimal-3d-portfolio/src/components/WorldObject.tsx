@@ -114,23 +114,35 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
       const highThreshold = isMobile ? DETAIL_LEVELS.HIGH * 0.7 : DETAIL_LEVELS.HIGH;
       const mediumThreshold = isMobile ? DETAIL_LEVELS.MEDIUM * 0.7 : DETAIL_LEVELS.MEDIUM;
       
+      // Check if detail level would actually change before setting state
+      let newDetailLevel: 'high' | 'medium' | 'low';
       if (distance < highThreshold) {
-        setDetailLevel('high');
+        newDetailLevel = 'high';
       } else if (distance < mediumThreshold) {
-        setDetailLevel('medium');
+        newDetailLevel = 'medium';
       } else {
-        setDetailLevel('low');
+        newDetailLevel = 'low';
+      }
+      
+      // Only update state if detail level is changing
+      if (newDetailLevel !== detailLevel) {
+        setDetailLevel(newDetailLevel);
       }
     };
     
     // Initial update
     updateDetailLevel();
     
-    // Setup interval for updates but not too frequently
-    const intervalId = setInterval(updateDetailLevel, isMobile ? 1000 : 500);
+    // Reduce update frequency to prevent excessive re-renders
+    // Use a less frequent interval and make it even less frequent for distant objects
+    const intervalId = setInterval(updateDetailLevel, 
+      detailLevel === 'low' ? 2000 : // Very infrequent for distant objects
+      detailLevel === 'medium' ? 1000 : // Less frequent for medium distance
+      isMobile ? 1000 : 500 // Standard frequency for close objects
+    );
     
     return () => clearInterval(intervalId);
-  }, [camera, isMobile]);
+  }, [camera, isMobile, detailLevel]);
 
   // Load project details if this is a project object
   useEffect(() => {

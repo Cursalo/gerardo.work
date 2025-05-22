@@ -1,4 +1,4 @@
-import React, { useState, useRef, useContext, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useContext, useEffect, useCallback, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { Mesh, Group, Vector3 } from 'three';
@@ -22,6 +22,7 @@ const ProjectWindow = React.memo(({ project, position }: ProjectWindowProps) => 
   const [hovered, setHovered] = useState(false);
   const [isOverlapping, setIsOverlapping] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [detailLevel, setDetailLevel] = useState<'high' | 'medium' | 'low'>('high');
   const hasErrored = useRef(false);
   const groupRef = useRef<Group>(null);
   const meshRef = useRef<Mesh>(null);
@@ -37,6 +38,10 @@ const ProjectWindow = React.memo(({ project, position }: ProjectWindowProps) => 
 
   // Generate a stable ID for this card
   const idRef = useRef<number>(project.id);
+  
+  // Force updates for thumbnail retries
+  const [, updateState] = useState({});
+  const forceUpdate = useCallback(() => updateState({}), []);
   
   // Register position and check for overlaps
   useEffect(() => {
@@ -125,6 +130,18 @@ const ProjectWindow = React.memo(({ project, position }: ProjectWindowProps) => 
     if (!hasErrored.current) {
       console.error(`Error loading image for project: ${project.name}, attempting fallback paths`);
       
+      // Check if we've already flagged this thumbnail as problematic in session storage
+      const errorKey = `thumbnail_error_${project.id}`;
+      if (sessionStorage.getItem(errorKey)) {
+        // Already tried and failed before, just use fallback immediately
+        hasErrored.current = true;
+        setImageError(true);
+        return;
+      }
+      
+      // Mark this thumbnail as problematic
+      sessionStorage.setItem(errorKey, 'true');
+      
       // Attempt to use an alternative path if the current path failed
       if (project.thumbnail && project.thumbnail.includes('/thumbnail/thumbnail.png')) {
         // Try the old path structure as fallback
@@ -154,20 +171,21 @@ const ProjectWindow = React.memo(({ project, position }: ProjectWindowProps) => 
       hasErrored.current = true;
       setImageError(true);
     }
-  }, [project.name, project.thumbnail]);
+  }, [project.name, project.thumbnail, project.id, forceUpdate]);
 
-  // Force updates for thumbnail retries
-  const [, updateState] = useState({});
-  const forceUpdate = useCallback(() => updateState({}), []);
-
+  const [thumbnailAttempted, setThumbnailAttempted] = useState(false);
+  
   // Use a lighter thumbnail if available
   const getThumbnailUrl = useCallback(() => {
     if (!project.thumbnail || imageError) {
       return `https://placehold.co/320x180/cccccc/333333?text=${encodeURIComponent(project.name)}`;
     }
     
-    // Debug info for thumbnail loading
-    console.log(`Trying to load thumbnail: ${project.thumbnail} for project: ${project.name}`);
+    // Only log on first attempt to reduce console spam
+    if (!thumbnailAttempted) {
+      console.log(`Trying to load thumbnail: ${project.thumbnail} for project: ${project.name}`);
+      setThumbnailAttempted(true);
+    }
     
     // If the thumbnail is a local file, resolve as before
     if (project.thumbnail.startsWith('file://')) {
@@ -186,13 +204,39 @@ const ProjectWindow = React.memo(({ project, position }: ProjectWindowProps) => 
       }
     }
     
-    // Add timestamp to bust cache
+    // Check if we've already loaded this thumbnail successfully in this session
+    const cacheKey = `thumbnail_cache_${project.id}`;
+    const cachedResult = sessionStorage.getItem(cacheKey);
+    if (cachedResult === 'success') {
+      // Return the URL without timestamp to use browser caching
+      return project.thumbnail;
+    }
+    
+    // Add a ONE-TIME timestamp to bust cache, but only on first load
+    // This ensures we only try to load each thumbnail once per session
     if (project.thumbnail.includes('/thumbnail/')) {
-      return `${project.thumbnail}?t=${Date.now()}`;
+      // Store success in session storage when image loads
+      const img = new Image();
+      img.onload = () => {
+        sessionStorage.setItem(cacheKey, 'success');
+      };
+      img.src = project.thumbnail;
+      
+      // Use a static timestamp instead of Date.now() to allow caching
+      // This timestamp will be the same for the entire session
+      const staticTimestamp = sessionStorage.getItem('static_timestamp') || 
+                              Date.now().toString();
+      
+      // Store the timestamp if it doesn't exist
+      if (!sessionStorage.getItem('static_timestamp')) {
+        sessionStorage.setItem('static_timestamp', staticTimestamp);
+      }
+      
+      return `${project.thumbnail}?t=${staticTimestamp}`;
     }
     
     return project.thumbnail;
-  }, [project.name, project.thumbnail, imageError]);
+  }, [project.name, project.thumbnail, imageError, thumbnailAttempted]);
 
   // Limit scale/animation when close to camera for performance
   const getScale = useCallback(() => {
@@ -207,6 +251,51 @@ const ProjectWindow = React.memo(({ project, position }: ProjectWindowProps) => 
       return Math.max(0.7, 0.9 - ((distance - 20) / 40) * 0.1);
     }
   }, [hovered, camera, position]);
+
+  // Add memoization for project thumbnails to prevent unnecessary rerenders
+  const memoizedThumbnail = useMemo(() => {
+    // If we're in low detail level, don't even attempt to load the thumbnail
+    if (detailLevel === 'low') {
+      return null;
+    }
+    
+    if (imageError) {
+      return (
+        <div style={{
+          width: '100%',
+          height: '100%',
+          backgroundColor: `hsl(${(project.id * 37) % 360}, 80%, 80%)`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexDirection: 'column',
+          color: '#333333',
+          padding: '20px',
+          textAlign: 'center'
+        }}>
+          <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>
+            Image Not Available
+          </div>
+          <div>{project.name}</div>
+        </div>
+      );
+    }
+    
+    return (
+      <img 
+        src={getThumbnailUrl()} 
+        alt={project.name}
+        style={{ 
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+        }} 
+        onError={handleImageError}
+        loading={"lazy"}
+        crossOrigin="anonymous"
+      />
+    );
+  }, [project.id, project.name, imageError, getThumbnailUrl, handleImageError, detailLevel]);
 
   return (
     <group 
@@ -322,38 +411,7 @@ const ProjectWindow = React.memo(({ project, position }: ProjectWindowProps) => 
                 overflow: 'hidden'
               }}
             >
-              {!imageError ? (
-                <img 
-                  src={getThumbnailUrl()} 
-                  alt={project.name}
-                  style={{ 
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                  }} 
-                  onError={handleImageError}
-                  loading={"eager"}
-                  crossOrigin="anonymous"
-                />
-              ) : (
-                <div style={{
-                  width: '100%',
-                  height: '100%',
-                  backgroundColor: `hsl(${(project.id * 37) % 360}, 80%, 80%)`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexDirection: 'column',
-                  color: '#333333',
-                  padding: '20px',
-                  textAlign: 'center'
-                }}>
-                  <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>
-                    Image Not Available
-                  </div>
-                  <div>{project.name}</div>
-                </div>
-              )}
+              {memoizedThumbnail}
             </div>
           )}
           
