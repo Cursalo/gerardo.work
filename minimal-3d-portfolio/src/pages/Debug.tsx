@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import CacheResetButton from '../components/CacheResetButton';
 // import FileStorageDebugger from '../components/admin/FileStorageDebugger'; // Removed admin import
 // import ThumbnailFixer from '../components/admin/ThumbnailFixer'; // Removed admin import
 
@@ -171,6 +172,28 @@ const Debug: React.FC = () => {
             border: '1px solid #ddd'
           }}>
             <h2>Common Fixes</h2>
+            
+            <div style={{
+              marginBottom: '20px',
+              padding: '15px',
+              background: 'white',
+              borderRadius: '8px',
+              border: '1px solid #eee'
+            }}>
+              <h3>Reset Project Cache</h3>
+              <p>This will clear the localStorage cache and reload all project data from the server. Use this if project links aren't working correctly or you're seeing stale data.</p>
+              <CacheResetButton
+                buttonText="Reset All Cache & Reload"
+                style={{
+                  padding: '10px 15px',
+                  backgroundColor: '#2196F3',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              />
+            </div>
             
             <div style={{
               marginBottom: '20px',

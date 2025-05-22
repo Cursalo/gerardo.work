@@ -154,9 +154,8 @@ const ProjectWorldViewer = () => {
       }
 
       try {
-        // Find the project with this custom link
-        const projects = await projectService.getProjects();
-        const project = projects.find(p => p.customLink === customLink);
+        // Find the project with this custom link using the new method
+        const project = await projectService.getProjectByCustomLink(customLink);
         
         if (!project) {
           console.error(`Project not found for custom link: ${customLink}`);
@@ -247,9 +246,8 @@ const ProjectWorldViewer = () => {
     }
 
     try {
-      // Find the project with this custom link
-      const projects = await projectService.getProjects();
-      const project = projects.find(p => p.customLink === customLink);
+      // Find the project with this custom link using the new method
+      const project = await projectService.getProjectByCustomLink(customLink);
       
       if (!project) {
         console.error(`Project not found for custom link: ${customLink}`);

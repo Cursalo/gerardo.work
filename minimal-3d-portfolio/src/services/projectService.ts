@@ -1,5 +1,8 @@
 import { WorldObject } from '../data/worlds'; // Added import
 
+// Define a cache version - increment this when project schema changes
+const CACHE_VERSION = 2; // Added version 2 to include customLink
+
 // Helper function to map project ID to name
 function getProjectName(id: number): string {
   const projectMap: Record<number, string> = {
@@ -69,6 +72,7 @@ export interface Project {
 class ProjectService {
   private projects: Project[] = [];
   private readonly STORAGE_KEY = 'portfolio_projects';
+  private readonly STORAGE_VERSION_KEY = 'portfolio_projects_version';
   private initialized = false;
 
   constructor() {
@@ -78,12 +82,47 @@ class ProjectService {
   private async loadProjects(): Promise<void> {
     console.log('ProjectService: Attempting to load projects from primary storage.');
     this.initialized = false; // Reset initialized state for a fresh load sequence
+    
+    // Check cache version before loading
+    const cacheVersion = localStorage.getItem(this.STORAGE_VERSION_KEY);
+    if (cacheVersion !== CACHE_VERSION.toString()) {
+      console.log(`ProjectService: Cache version mismatch. Stored: ${cacheVersion}, Current: ${CACHE_VERSION}. Clearing cache.`);
+      localStorage.removeItem(this.STORAGE_KEY);
+      localStorage.removeItem(`${this.STORAGE_KEY}_backup`);
+      localStorage.setItem(this.STORAGE_VERSION_KEY, CACHE_VERSION.toString());
+    }
+    
     try {
       const stored = localStorage.getItem(this.STORAGE_KEY);
       if (stored) {
         try {
           const parsedProjects = JSON.parse(stored);
           if (Array.isArray(parsedProjects)) {
+            // Validate projects have necessary fields including customLink
+            let projectsValid = true;
+            let missingCustomLinks = false;
+            
+            for (const project of parsedProjects) {
+              if (!project.id || !project.name || !project.description) {
+                projectsValid = false;
+                break;
+              }
+              
+              // Check if customLink is missing
+              if (!project.customLink) {
+                missingCustomLinks = true;
+                break;
+              }
+            }
+            
+            if (!projectsValid || missingCustomLinks) {
+              console.log('ProjectService: Invalid project data or missing customLinks in localStorage. Clearing cache to reload from files.');
+              localStorage.removeItem(this.STORAGE_KEY);
+              localStorage.removeItem(`${this.STORAGE_KEY}_backup`);
+              await this.loadFromJsonFiles();
+              return;
+            }
+            
             this.projects = parsedProjects.map(p => { // Ensure all known fields are at least present
               let correctedThumbnail = p.thumbnail;
               
@@ -399,6 +438,67 @@ class ProjectService {
       console.log(`ProjectService: Found project with ID ${id}:`, project);
     } else {
       console.warn(`ProjectService: Project with ID ${id} not found`);
+    }
+    
+    return project;
+  }
+
+  // Add a new method to get a project by its customLink
+  async getProjectByCustomLink(customLink: string): Promise<Project | undefined> {
+    console.log(`ProjectService: Looking for project with customLink: ${customLink}`);
+    
+    const projects = await this.getProjects();
+    
+    // Try direct match first
+    let project = projects.find(p => p.customLink === customLink);
+    
+    // If not found, try case-insensitive match
+    if (!project) {
+      project = projects.find(p => 
+        p.customLink && p.customLink.toLowerCase() === customLink.toLowerCase()
+      );
+    }
+    
+    // If still not found, try to match by slugified name
+    if (!project) {
+      const slugify = (text: string) => {
+        return text
+          .toString()
+          .toLowerCase()
+          .replace(/\s+/g, '-')       // Replace spaces with -
+          .replace(/[^\w\-]+/g, '')   // Remove all non-word chars
+          .replace(/\-\-+/g, '-')     // Replace multiple - with single -
+          .replace(/^-+/, '')         // Trim - from start of text
+          .replace(/-+$/, '');        // Trim - from end of text
+      };
+      
+      project = projects.find(p => slugify(p.name) === customLink);
+    }
+    
+    if (project) {
+      console.log(`ProjectService: Found project with customLink ${customLink}:`, project);
+      
+      // If the project doesn't have a customLink, add it now and save
+      if (!project.customLink) {
+        const slugify = (text: string) => {
+          return text
+            .toString()
+            .toLowerCase()
+            .replace(/\s+/g, '-')     // Replace spaces with -
+            .replace(/[^\w\-]+/g, '') // Remove all non-word chars
+            .replace(/\-\-+/g, '-')   // Replace multiple - with single -
+            .replace(/^-+/, '')       // Trim - from start of text
+            .replace(/-+$/, '');      // Trim - from end of text
+        };
+        
+        project.customLink = slugify(project.name);
+        console.log(`ProjectService: Added missing customLink ${project.customLink} to project ${project.id}`);
+        
+        // Save the updated project
+        this.saveProject(project);
+      }
+    } else {
+      console.warn(`ProjectService: Project with customLink ${customLink} not found`);
     }
     
     return project;
