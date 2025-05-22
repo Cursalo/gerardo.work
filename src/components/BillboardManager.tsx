@@ -3,17 +3,14 @@ import { useRef } from 'react'
 import * as THREE from 'three'
 
 /**
- * Simple BillboardManager that only rotates objects to face the camera
- * Without changing their position or applying any matrix transforms
+ * BillboardManager that handles card rotations while maintaining their positions
  */
 export default function BillboardManager() {
   const { camera, scene } = useThree()
   
-  // Use a ref to track if pointer is locked
-  const pointerLockedRef = useRef(false)
-  
   // Camera position vector (reused)
   const camPos = useRef(new THREE.Vector3())
+  const targetPos = useRef(new THREE.Vector3())
   
   // Target types that should billboard
   const targetTypes = [
@@ -22,11 +19,6 @@ export default function BillboardManager() {
   
   // Update on each frame
   useFrame(() => {
-    // Only apply billboarding when pointer is locked (gameplay mode)
-    pointerLockedRef.current = !!document.pointerLockElement
-    
-    if (!pointerLockedRef.current) return
-    
     // Get camera world position once per frame
     camera.getWorldPosition(camPos.current)
 
@@ -44,18 +36,25 @@ export default function BillboardManager() {
           ))
         )) {
         
-        // SIMPLE APPROACH: Just make the object look at the camera's XZ position
-        // This preserves the object's original position entirely
+        // Store original position
+        const originalY = obj.position.y
         
-        // Create a target position at the same height as the object
-        const targetPosition = new THREE.Vector3(
+        // Calculate target position at same height as object
+        targetPos.current.set(
           camPos.current.x,
-          obj.position.y, // Keep same height
+          obj.position.y,
           camPos.current.z
-        );
+        )
         
-        // Make the object look at the camera (only horizontally)
-        obj.lookAt(targetPosition);
+        // Make object look at camera position (only horizontally)
+        obj.lookAt(targetPos.current)
+        
+        // Reset Y position to maintain original height
+        obj.position.y = originalY
+        
+        // Lock rotation to only Y-axis
+        obj.rotation.x = 0
+        obj.rotation.z = 0
       }
     })
   })

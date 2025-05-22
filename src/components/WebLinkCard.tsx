@@ -68,13 +68,15 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
   // Find and update the useFrame function
   useFrame((state) => {
     if (groupRef.current) {
-      // Set fixed base position
-      groupRef.current.position.x = position[0];
-      groupRef.current.position.z = position[2];
+      // Maintain fixed position with small floating animation
+      const floatHeight = Math.sin(state.clock.elapsedTime * 0.5) * 0.05;
       
-      // Apply gentle floating animation only to Y-axis
-      const floatHeight = Math.sin(state.clock.elapsedTime * 0.5 + position[0]) * 0.1;
-      groupRef.current.position.y = position[1] + floatHeight;
+      // Set position directly without any additional calculations
+      groupRef.current.position.set(
+        position[0],
+        position[1] + floatHeight,
+        position[2]
+      );
     }
   });
 
