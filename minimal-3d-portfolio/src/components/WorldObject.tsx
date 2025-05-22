@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useThree } from '@react-three/fiber';
+import { useThree, useFrame } from '@react-three/fiber';
 import { Text, Html, Instance, Instances } from '@react-three/drei';
 import { WorldObject as WorldObjectType } from '../data/worlds';
 import { Project, projects as projectData } from '../data/projects';
@@ -26,13 +26,6 @@ interface StoredFile {
   size: number;
   timestamp: number;
 }
-
-// Performance optimization - distance thresholds
-const DETAIL_LEVELS = {
-  HIGH: 10,    // Full detail below this distance
-  MEDIUM: 25,  // Medium detail below this distance
-  LOW: 50      // Low detail below this distance
-};
 
 // Helper function to resolve file URLs (can remain as is if still needed for non-project types)
 const resolveFileUrl = (url: string): string => {
@@ -89,7 +82,6 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
   const [hovered, setHovered] = useState(false);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [projectDetail, setProjectDetail] = useState<Project | null>(null);
-  const [detailLevel, setDetailLevel] = useState<'high' | 'medium' | 'low'>('low');
   const { camera } = useThree();
   const objectRef = useRef<THREE.Group | null>(null);
   const { isMobile } = useMobileDetection();
@@ -103,52 +95,25 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
   const rotation = object.rotation || [0, 0, 0];
   const scale = object.scale || [1, 1, 1];
   
-  // Calculate distance to camera for LOD
-  useEffect(() => {
-    if (!objectRef.current || !camera) return;
-    
-    const updateDetailLevel = () => {
-      const distance = camera.position.distanceTo(objectRef.current!.position);
-      
-      // Adjust thresholds based on device
-      const highThreshold = isMobile ? DETAIL_LEVELS.HIGH * 0.7 : DETAIL_LEVELS.HIGH;
-      const mediumThreshold = isMobile ? DETAIL_LEVELS.MEDIUM * 0.7 : DETAIL_LEVELS.MEDIUM;
-      
-      // Check if detail level would actually change before setting state
-      let newDetailLevel: 'high' | 'medium' | 'low';
-      if (distance < highThreshold) {
-        newDetailLevel = 'high';
-      } else if (distance < mediumThreshold) {
-        newDetailLevel = 'medium';
-      } else {
-        newDetailLevel = 'low';
-      }
-      
-      // Only update state if detail level is changing
-      if (newDetailLevel !== detailLevel) {
-        setDetailLevel(newDetailLevel);
-      }
-    };
-    
-    // Initial update
-    updateDetailLevel();
-    
-    // Reduce update frequency to prevent excessive re-renders
-    // Use a less frequent interval and make it even less frequent for distant objects
-    const intervalId = setInterval(updateDetailLevel, 
-      detailLevel === 'low' ? 2000 : // Very infrequent for distant objects
-      detailLevel === 'medium' ? 1000 : // Less frequent for medium distance
-      isMobile ? 1000 : 500 // Standard frequency for close objects
-    );
-    
-    return () => clearInterval(intervalId);
-  }, [camera, isMobile, detailLevel]);
-
+  // Make card-like objects face the camera (billboarding)
+  useFrame(() => {
+    if (objectRef.current && camera && 
+        (object.type === 'project' || 
+         object.type === 'video' || 
+         object.type === 'image' || 
+         object.type === 'pdf')) {
+      // Ensure the object looks at the camera but only rotates around its Y axis
+      // to prevent it from tilting up/down unnaturally.
+      const targetPosition = new THREE.Vector3(camera.position.x, objectRef.current.position.y, camera.position.z);
+      objectRef.current.lookAt(targetPosition);
+    }
+  });
+  
   // Load project details if this is a project object
   useEffect(() => {
     if (object.type === 'project' && object.projectId !== undefined) {
       if (process.env.NODE_ENV === 'development') {
-        console.log(`Loading project details for ID: ${object.projectId}, Detail Level: ${detailLevel}`);
+        console.log(`Loading project details for ID: ${object.projectId}`);
       }
       
       // First try to get from localStorage to ensure we have the latest data
@@ -202,18 +167,15 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
         }
       });
     }
-  }, [object.type, object.projectId, detailLevel, projectDetail]);
+  }, [object.type, object.projectId, projectDetail]);
   
   // useEffect to resolve fileUrl for non-project types if still needed
   useEffect(() => {
-    // Skip for low detail level
-    if (detailLevel === 'low') return;
-    
     if (object.url && object.url.startsWith('file://') && object.type !== 'project') {
       const resolved = resolveFileUrl(object.url);
       setFileUrl(resolved);
     }
-  }, [object.url, object.type, detailLevel]);
+  }, [object.url, object.type]);
   
   const handleClick = (e?: any) => {
     // Check if we have a valid object and if we're currently interacting
@@ -329,16 +291,6 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
       );
     }
     
-    // For non-project types, apply low detail placeholder if applicable
-    if (detailLevel === 'low') {
-      return (
-        <mesh castShadow={!isMobile} receiveShadow={!isMobile}>
-          <boxGeometry args={[1.5, 1, 0.1]} />
-          <primitive object={object.type === 'button' ? sharedMaterials.button : sharedMaterials.default} attach="material" />
-        </mesh>
-      );
-    }
-    
     // For video types (medium/high detail)
     if (object.type === 'video' && object.url) {
       const url = (object.url.startsWith('file://') ? fileUrl : object.url) || object.url;
@@ -402,18 +354,16 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
             <boxGeometry args={[2, 0.6, 0.1]} />
             <primitive object={hovered ? sharedMaterials.hovered : sharedMaterials.button} attach="material" />
           </mesh>
-          {detailLevel === 'high' && (
-            <Text
-              position={[0, 0, 0.06]}
-              fontSize={0.2}
-              color="#ffffff"
-              fontWeight="bold"
-              anchorX="center"
-              anchorY="middle"
-            >
-              {object.title}
-            </Text>
-          )}
+          <Text
+            position={[0, 0, 0.06]}
+            fontSize={0.2}
+            color="#ffffff"
+            fontWeight="bold"
+            anchorX="center"
+            anchorY="middle"
+          >
+            {object.title}
+          </Text>
         </group>
       );
     }
@@ -426,17 +376,15 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
             <boxGeometry args={[1.5, 0.8, 0.1]} />
             <primitive object={hovered ? sharedMaterials.hovered : sharedMaterials.default} attach="material" />
           </mesh>
-          {detailLevel === 'high' && (
-            <Text
-              position={[0, 0, 0.06]}
-              fontSize={0.15}
-              color="#000000"
-              anchorX="center"
-              anchorY="middle"
-            >
-              {object.title}
-            </Text>
-          )}
+          <Text
+            position={[0, 0, 0.06]}
+            fontSize={0.15}
+            color="#000000"
+            anchorX="center"
+            anchorY="middle"
+          >
+            {object.title}
+          </Text>
         </group>
       );
     }
@@ -448,17 +396,15 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
           <boxGeometry args={[1, 1, 0.1]} />
           <primitive object={hovered ? sharedMaterials.hovered : sharedMaterials.error} attach="material" />
         </mesh>
-        {detailLevel === 'high' && (
-          <Text
-            position={[0, 0, 0.06]}
-            fontSize={0.1}
-            color="#ffffff"
-            anchorX="center"
-            anchorY="middle"
-          >
-            {object.title || "Unknown Type"}
-          </Text>
-        )}
+        <Text
+          position={[0, 0, 0.06]}
+          fontSize={0.1}
+          color="#ffffff"
+          anchorX="center"
+          anchorY="middle"
+        >
+          {object.title || "Unknown Type"}
+        </Text>
       </group>
     );
   };
@@ -476,7 +422,7 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
     >
       {renderContent()}
       {/* Show description on hover only at high detail level */}
-      {hovered && object.description && detailLevel === 'high' && (
+      {hovered && object.description && (
         <Html
           position={[0, 0.75, 0.2]} // Adjusted y and z for better visibility
           style={{

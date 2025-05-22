@@ -198,7 +198,8 @@ export const createMainWorld = (projects: Project[]): World => {
     ambientLightIntensity: 0.8,
     directionalLightColor: '#ffffff',
     directionalLightIntensity: 1.2,
-    cameraPosition: { x: 0, y: 5, z: 30 },
+    cameraPosition: { x: 5, y: 5, z: 30 },
+    cameraTarget: { x: 0, y: 4, z: 0 },
     objects: projectObjects
   };
   

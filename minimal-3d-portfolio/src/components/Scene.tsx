@@ -18,9 +18,6 @@ import DesktopBackHint from './DesktopBackHint';
 import { SpeakerExperience } from './SpeakerExperience';
 import ReloadButton from './ReloadButton';
 
-// Maximum distance for full quality rendering
-const MAX_RENDER_DISTANCE = 50;
-
 // Create a context to share visibility information for overlapping detection
 export const VisibilityContext = createContext<{
   registerPosition: (id: number, position: [number, number, number]) => void;
@@ -56,26 +53,9 @@ const SceneContent = ({ worldId }: SceneContentProps) => {
   const visibleObjects = useMemo(() => {
     if (!currentWorld?.objects || currentWorld.objects.length === 0) return [];
     
-    // For desktop, we can render more objects at a greater distance
-    const maxRenderDistance = isMobile ? MAX_RENDER_DISTANCE * 0.7 : MAX_RENDER_DISTANCE;
-    
-    // Filter out objects that are too far away
-    return currentWorld.objects.filter(object => {
-      // Always include project objects regardless of distance
-      if (object.type === 'project') return true;
-      
-      if (!object.position) return true; // Always render objects without position data
-      
-      const objPos = new Vector3(
-        object.position[0] || 0,
-        object.position[1] || 0,
-        object.position[2] || 0
-      );
-      
-      const distance = camera.position.distanceTo(objPos);
-      return distance < maxRenderDistance;
-    });
-  }, [currentWorld?.objects, camera.position, isMobile]); // Explicit dependencies
+    // Return all objects directly
+    return currentWorld.objects;
+  }, [currentWorld?.objects]); // Simplified dependencies, camera.position and isMobile no longer needed here
   
   // Register FP interaction hook
   useFirstPersonInteractions();
@@ -147,6 +127,15 @@ const SceneContent = ({ worldId }: SceneContentProps) => {
                 currentWorld.cameraPosition.z
               )
             : new Vector3(0, 1.7, 15)
+        }
+        target={
+          currentWorld.cameraTarget
+            ? new Vector3(
+                currentWorld.cameraTarget.x,
+                currentWorld.cameraTarget.y,
+                currentWorld.cameraTarget.z
+              )
+            : undefined
         }
         height={1.7} 
         moveSpeed={0.25}
