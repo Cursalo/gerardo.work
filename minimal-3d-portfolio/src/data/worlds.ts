@@ -439,14 +439,14 @@ export const createProjectWorld = (project: Project, isTouchDevice: boolean): Wo
       
       // Determine the asset type
       let assetType: 'image' | 'video' | 'pdf' = 'image';
-      let scale: [number, number, number] = [1.2, 0.8, 0.1]; // Default scale (3:2 landscape)
+      let scale: [number, number, number] = [1.0, 1.0, 0.1]; // Default scale, ImageCard will handle aspect ratio.
       let thumbnail = asset.url;
       
       if (asset.type === 'video' || 
           (asset.url && (asset.url.endsWith('.mp4') || asset.url.endsWith('.MP4') || 
                         asset.url.endsWith('.webm') || asset.url.endsWith('.mov')))) {
         assetType = 'video';
-        scale = [1.2, 0.675, 0.1]; // 16:9 aspect ratio for videos
+        scale = [1.2, 0.675, 0.1]; // 16:9 aspect ratio for videos (Videos use their own card type)
         
         // Generate thumbnail from video URL if it exists
         if (asset.url) {
@@ -458,22 +458,12 @@ export const createProjectWorld = (project: Project, isTouchDevice: boolean): Wo
       } else if (asset.type === 'document' || 
                 (asset.url && (asset.url.endsWith('.pdf') || asset.url.endsWith('.PDF')))) {
         assetType = 'pdf';
-        scale = [0.8, 1.15, 0.1]; // Portrait document ratio
+        scale = [0.8, 1.15, 0.1]; // Portrait document ratio (PDFs use their own card type)
       } else {
-        // This is an image - adjust scale based on asset name or properties
-        if (asset.url) {
-          if (asset.url.includes('horizontal') || 
-              asset.url.includes('landscape') || 
-              asset.url.toLowerCase().includes('panorama')) {
-            scale = [1.2, 0.675, 0.1]; // Wider than tall - 16:9
-          } else if (asset.url.includes('vertical') || 
-                    asset.url.includes('portrait')) {
-            scale = [0.8, 1.0, 0.1]; // Taller than wide - 4:5 aspect ratio (less skinny)
-          } else if (asset.url.includes('square') || 
-                    asset.url.toLowerCase().includes('logo')) {
-            scale = [0.9, 0.9, 0.1]; // Square - 1:1
-          }
-        }
+        // This is an image. The ImageCard.tsx component will now primarily handle its aspect ratio.
+        // The scale here [1.0, 1.0, 0.1] will be a uniform size multiplier.
+        // No need for specific landscape/portrait/square scaling here anymore.
+        assetType = 'image'; 
       }
       
       // Get clean name without file extension for display
