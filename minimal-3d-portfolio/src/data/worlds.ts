@@ -285,9 +285,11 @@ const isObjectInteractive = (object: WorldObject): boolean => {
 // Helper function to generate positions for gallery items
 function generateGalleryPositions(count: number): [number, number, number][] {
   const positions: [number, number, number][] = [];
-  const minDistanceBetweenAssets = 10; // Doubled from 5 to 10 for much more space
-  const spaceArea = 60; // Increased from 40 to 60 for a truly huge space
+  const minDistanceBetweenAssets = 12; // Increased from 10 to 12 for more space
+  const spaceArea = 80; // Increased from 60 to 80 for a larger gallery space
   const halfSpace = spaceArea / 2;
+  const maxHeight = 3.5; // Maximum height for assets
+  const minHeight = 0.8; // Minimum height for assets
   
   // Function to calculate distance between two points
   const distance = (x1: number, z1: number, x2: number, z2: number): number => {
@@ -304,54 +306,104 @@ function generateGalleryPositions(count: number): [number, number, number][] {
     return false;
   };
   
-  // Place the first position near the entrance for easy access
-  positions.push([0, 1 + Math.random(), -halfSpace + 15]);
-  
-  // Generate remaining positions with minimum separation
-  let attempts = 0;
-  const maxAttempts = 500; // Prevent infinite loops
-  
-  for (let i = 1; i < count; i++) {
+  // Function to generate a position in a specific quadrant
+  const generateQuadrantPosition = (quadrant: number): [number, number, number] => {
     let x = 0;
     let z = 0;
     let y = 0;
     let validPosition = false;
+    let attempts = 0;
+    const maxAttempts = 200;
+    
+    // Determine quadrant bounds
+    let xMin = 0;
+    let xMax = 0;
+    let zMin = 0;
+    let zMax = 0;
+    
+    switch (quadrant) {
+      case 0: // Front-right
+        xMin = 5;
+        xMax = halfSpace;
+        zMin = -halfSpace;
+        zMax = -5;
+        break;
+      case 1: // Front-left
+        xMin = -halfSpace;
+        xMax = -5;
+        zMin = -halfSpace;
+        zMax = -5;
+        break;
+      case 2: // Back-left
+        xMin = -halfSpace;
+        xMax = -5;
+        zMin = 5;
+        zMax = halfSpace;
+        break;
+      case 3: // Back-right
+        xMin = 5;
+        xMax = halfSpace;
+        zMin = 5;
+        zMax = halfSpace;
+        break;
+    }
     
     while (!validPosition && attempts < maxAttempts) {
-      // Generate candidate position in a much wider area
-      x = (Math.random() * spaceArea) - halfSpace; // -30 to 30
-      z = (Math.random() * spaceArea) - halfSpace; // -30 to 30
-      
-      // Skip positions too close to center (where the main content is)
-      if (Math.abs(x) < 8 && Math.abs(z) > -15 && Math.abs(z) < 8) {
-        attempts++;
-        continue;
-      }
+      // Generate position within the quadrant
+      x = xMin + Math.random() * (xMax - xMin);
+      z = zMin + Math.random() * (zMax - zMin);
       
       // Check if this position is far enough from all existing positions
       validPosition = !isTooClose(x, z);
       attempts++;
     }
     
-    if (validPosition) {
-      // Generate a random height between 0.8 and 2.5 units
-      // This creates a nice floating effect at different heights
-      y = 0.8 + Math.random() * 1.7;
-      positions.push([x, y, z]);
-    } else {
-      console.warn(`Could not find valid position for asset ${i} after ${maxAttempts} attempts`);
-      // Push a fallback position with forced separation
-      const angle = (i / count) * Math.PI * 2;
-      const radius = 20 + (i % 5) * 8; // Increased radius for fallback positions
-      positions.push([
-        Math.cos(angle) * radius,
-        1 + Math.random() * 1.5,
-        Math.sin(angle) * radius
-      ]);
+    // If we couldn't find a valid position, place it along the quadrant edge
+    if (!validPosition) {
+      const angle = Math.random() * Math.PI / 2; // Random angle within 90 degrees
+      
+      // Adjust angle based on quadrant
+      const quadrantOffset = quadrant * Math.PI / 2;
+      const finalAngle = angle + quadrantOffset;
+      
+      // Use an increasing radius for each attempt to ensure spreading
+      const radius = 20 + (attempts % 5) * 8;
+      
+      x = Math.cos(finalAngle) * radius;
+      z = Math.sin(finalAngle) * radius;
     }
     
-    // Reset attempts counter
-    attempts = 0;
+    // Generate a y position that varies based on distance from center
+    const distanceFromCenter = Math.sqrt(x * x + z * z);
+    const heightVariance = Math.sin(distanceFromCenter * 0.1) * 1.0; // Create a wave pattern
+    y = minHeight + heightVariance + Math.random() * (maxHeight - minHeight - heightVariance);
+    
+    return [x, y, z];
+  };
+  
+  // Place the first position near the entrance for easy access
+  positions.push([0, 1.5, -halfSpace + 15]);
+  
+  // Distribute remaining assets evenly across quadrants
+  if (count > 1) {
+    // Calculate how many assets per quadrant
+    const assetsPerQuadrant = Math.ceil((count - 1) / 4);
+    
+    // For each quadrant
+    for (let quadrant = 0; quadrant < 4; quadrant++) {
+      // Calculate how many assets to place in this quadrant
+      const assetsInQuadrant = Math.min(
+        assetsPerQuadrant,
+        count - 1 - (quadrant * assetsPerQuadrant)
+      );
+      
+      if (assetsInQuadrant <= 0) break;
+      
+      // Place assets in this quadrant
+      for (let i = 0; i < assetsInQuadrant; i++) {
+        positions.push(generateQuadrantPosition(quadrant));
+      }
+    }
   }
   
   return positions;
@@ -543,6 +595,7 @@ export const getWorldServiceInstance = (): WorldService => {
 export class WorldService {
   private worlds: Map<string, World> = new Map();
   private loaded: boolean = false;
+  private loading: boolean = false;
   
   constructor() {
     this.loadWorlds();
@@ -555,15 +608,29 @@ export class WorldService {
   }
   
   private async loadWorlds(): Promise<void> {
+    // Prevent multiple simultaneous loading
+    if (this.loading) {
+      console.log('WorldService: Already loading worlds, skipping duplicate call');
+      return;
+    }
+    
+    this.loading = true;
     console.log('WorldService: Loading worlds');
+    
     try {
       // Always initialize default worlds to ensure consistency across devices
       await this.initializeDefaultWorlds();
+      
+      // Log all loaded world IDs for debugging
+      const worldIds = Array.from(this.worlds.keys());
+      console.log('WorldService: Loaded worlds:', worldIds);
+      
+      this.loaded = true;
     } catch (error) {
       console.error('WorldService: Error loading worlds:', error);
+    } finally {
+      this.loading = false;
     }
-    
-    this.loaded = true;
   }
   
   // Initialize with default worlds
@@ -585,7 +652,13 @@ export class WorldService {
       
       for (const project of projects) {
         const projectWorld = createProjectWorld(project, isTouchDevice);
-        this.worlds.set(projectWorld.id, projectWorld);
+        const worldId = projectWorld.id;
+        
+        // Log each world creation
+        console.log(`WorldService: Created project world: ${worldId} for project ${project.id}`);
+        
+        // Store world in the map
+        this.worlds.set(worldId, projectWorld);
       }
       
       console.log(`WorldService: Created ${this.worlds.size} default worlds`);
@@ -639,16 +712,24 @@ export class WorldService {
     
     // Ensure worlds are loaded
     if (!this.loaded) {
+      console.log(`WorldService: Worlds not loaded yet, loading now before getting ${worldId}`);
+      // Force synchronous loading for immediate access
       this.loadWorlds();
     }
     
+    // Normalize the world ID to handle different formats
+    const normalizedId = this.normalizeWorldId(worldId);
+    
     // Get the world
-    const world = this.worlds.get(worldId);
+    const world = this.worlds.get(normalizedId);
     
     if (world) {
       return { ...world };
     }
     
+    // If world not found, log and return null
+    console.error(`WorldService: World not found: ${worldId} (normalized: ${normalizedId})`);
+    console.log(`WorldService: Available worlds: ${Array.from(this.worlds.keys()).join(', ')}`);
     return null;
   }
 

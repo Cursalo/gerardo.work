@@ -42,35 +42,6 @@ const Loading3D = () => {
   );
 };
 
-// Determine which objects to render based on camera position and performance requirements
-const useObjectFiltering = (objects: any[], cameraPosition: Vector3, isMobile: boolean) => {
-  return useMemo(() => {
-    if (!objects || objects.length === 0) return [];
-    
-    // For desktop, we can render more objects at a greater distance
-    const maxRenderDistance = isMobile ? MAX_RENDER_DISTANCE * 0.7 : MAX_RENDER_DISTANCE;
-    
-    // Filter out objects that are too far away
-    return objects.filter(object => {
-      // Always include project objects regardless of distance
-      if (object.type === 'project') {
-        return true;
-      }
-      
-      if (!object.position) return true; // Always render objects without position data
-      
-      const objPos = new Vector3(
-        object.position.x || 0,
-        object.position.y || 0,
-        object.position.z || 0
-      );
-      
-      const distance = cameraPosition.distanceTo(objPos);
-      return distance < maxRenderDistance;
-    });
-  }, [objects, cameraPosition, isMobile]);
-};
-
 interface SceneContentProps {
   worldId?: string;
 }
@@ -81,12 +52,30 @@ const SceneContent = ({ worldId }: SceneContentProps) => {
   const { isMobile } = useMobileDetection();
   const { camera } = useThree();
   
-  // Get filtered objects based on distance
-  const visibleObjects = useObjectFiltering(
-    currentWorld?.objects || [],
-    camera.position as Vector3,
-    isMobile
-  );
+  // Get filtered objects based on distance - now memoized with better dependencies
+  const visibleObjects = useMemo(() => {
+    if (!currentWorld?.objects || currentWorld.objects.length === 0) return [];
+    
+    // For desktop, we can render more objects at a greater distance
+    const maxRenderDistance = isMobile ? MAX_RENDER_DISTANCE * 0.7 : MAX_RENDER_DISTANCE;
+    
+    // Filter out objects that are too far away
+    return currentWorld.objects.filter(object => {
+      // Always include project objects regardless of distance
+      if (object.type === 'project') return true;
+      
+      if (!object.position) return true; // Always render objects without position data
+      
+      const objPos = new Vector3(
+        object.position[0] || 0,
+        object.position[1] || 0,
+        object.position[2] || 0
+      );
+      
+      const distance = camera.position.distanceTo(objPos);
+      return distance < maxRenderDistance;
+    });
+  }, [currentWorld?.objects, camera.position, isMobile]); // Explicit dependencies
   
   // Register FP interaction hook
   useFirstPersonInteractions();
@@ -99,14 +88,14 @@ const SceneContent = ({ worldId }: SceneContentProps) => {
   }, [worldId, currentWorld?.id, setCurrentWorldId]);
   
   // Handler for sub-world navigation (move to project world)
-  const handleNavigateToSubworld = (event: any) => {
+  const handleNavigateToSubworld = useCallback((event: any) => {
     event.stopPropagation();
     if (event.object?.userData?.worldId) {
       const targetWorldId = event.object.userData.worldId;
       console.log(`Navigating to world: ${targetWorldId}`);
       setCurrentWorldId(targetWorldId);
     }
-  };
+  }, [setCurrentWorldId]);
   
   // Handle "B" key press to return to main world
   useEffect(() => {
@@ -114,7 +103,10 @@ const SceneContent = ({ worldId }: SceneContentProps) => {
       if (e.key.toLowerCase() === 'b') {
         // Check if we're in a project world by looking at the world ID pattern
         if (currentWorld && currentWorld.id.startsWith('project-world-')) {
-          console.log("B key pressed - returning to main world");
+          // Reduce logging - only log in development
+          if (process.env.NODE_ENV === 'development') {
+            console.log("B key pressed - returning to main world");
+          }
           setCurrentWorldId('mainWorld');
           // Prevent any other keyboard handlers from activating
           e.preventDefault();
@@ -129,11 +121,17 @@ const SceneContent = ({ worldId }: SceneContentProps) => {
   }, [currentWorld, setCurrentWorldId]);
   
   if (isLoading || !currentWorld) {
-    console.log("SceneContent returning Loading3D");
+    // Only log in development mode
+    if (process.env.NODE_ENV === 'development') {
+      console.log("SceneContent returning Loading3D");
+    }
     return <Loading3D />;
   }
   
-  console.log("SceneContent rendering world:", currentWorld.id, "with visible objects:", visibleObjects.length, "of", currentWorld.objects.length);
+  // Only log in development mode and reduce frequency
+  if (process.env.NODE_ENV === 'development' && Math.random() < 0.1) { // Log only ~10% of renders
+    console.log("SceneContent rendering world:", currentWorld.id, "with visible objects:", visibleObjects.length, "of", currentWorld.objects.length);
+  }
   
   return (
     <>
@@ -199,6 +197,9 @@ const Scene = ({ worldId }: SceneProps) => {
   // State for visibility checking (managed here)
   const [positions, setPositions] = useState<Map<number, [number, number, number]>>(new Map());
   
+  // Track WebGL context state
+  const [contextLost, setContextLost] = useState<boolean>(false);
+  
   // Get necessary contexts/hooks for passing down
   const { currentWorld, isLoading, setCurrentWorldId } = useWorld();
   const { isTouchDevice } = useMobileDetection();
@@ -237,6 +238,36 @@ const Scene = ({ worldId }: SceneProps) => {
     return false;
   }, [positions]); // Dependency on positions map
 
+  // Handle WebGL context loss/restoration
+  const handleContextLost = useCallback((event: Event) => {
+    console.warn('WebGL context lost', event);
+    event.preventDefault(); // Prevent default handling
+    setContextLost(true);
+  }, []);
+
+  const handleContextRestored = useCallback((event: Event) => {
+    console.log('WebGL context restored', event);
+    setContextLost(false);
+  }, []);
+
+  // Set up event listeners for WebGL context events
+  useEffect(() => {
+    const canvasContainer = document.getElementById('canvas-container');
+    const canvas = canvasContainer?.querySelector('canvas');
+    
+    if (canvas) {
+      // Add listeners for context loss/restoration
+      canvas.addEventListener('webglcontextlost', handleContextLost);
+      canvas.addEventListener('webglcontextrestored', handleContextRestored);
+      
+      // Clean up listeners when component unmounts
+      return () => {
+        canvas.removeEventListener('webglcontextlost', handleContextLost);
+        canvas.removeEventListener('webglcontextrestored', handleContextRestored);
+      };
+    }
+  }, [handleContextLost, handleContextRestored]);
+
   // Memoize the context value itself - MUST be before early return
   const visibilityContextValue = React.useMemo(() => ({ 
     registerPosition, 
@@ -248,6 +279,46 @@ const Scene = ({ worldId }: SceneProps) => {
   if (isLoading || !currentWorld) {
     console.log("Scene returning LoadingScreen");
     return <LoadingScreen />; // Now safe to return early
+  }
+
+  // Show context lost message if applicable
+  if (contextLost) {
+    return (
+      <div 
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: '#1a1a2e',
+          color: '#ffffff',
+          zIndex: 1000
+        }}
+      >
+        <h2>WebGL Context Lost</h2>
+        <p>The 3D rendering context was lost. This may be due to hardware issues or browser limitations.</p>
+        <button
+          onClick={() => window.location.reload()}
+          style={{
+            padding: '10px 20px',
+            margin: '20px',
+            backgroundColor: '#4dffaa',
+            color: '#000000',
+            border: 'none',
+            borderRadius: '5px',
+            cursor: 'pointer',
+            fontSize: '16px'
+          }}
+        >
+          Reload Page
+        </button>
+      </div>
+    );
   }
 
   // Return providers wrapping the Canvas container and the UI buttons directly
@@ -288,7 +359,10 @@ const Scene = ({ worldId }: SceneProps) => {
                   antialias: true,
                   alpha: false,
                   stencil: false,
+                  // Add context attributes for better context loss handling
                   powerPreference: 'high-performance',
+                  failIfMajorPerformanceCaveat: false,
+                  preserveDrawingBuffer: true
                 }}
                 raycaster={{
                   far: 100
@@ -304,6 +378,12 @@ const Scene = ({ worldId }: SceneProps) => {
                   top: 0,
                   left: 0,
                   backgroundColor: '#ffffff',
+                }}
+                onCreated={({ gl }) => {
+                  // Set additional parameters on the WebGL renderer
+                  gl.setClearColor('#ffffff', 1);
+                  // Log that the WebGL context was created successfully
+                  console.log('WebGL context created successfully');
                 }}
               >
                 <color attach="background" args={['#ffffff']} />

@@ -216,17 +216,11 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
   }, [object.url, object.type, detailLevel]);
   
   const handleClick = (e?: any) => {
-    if (e) {
-      e.stopPropagation();
+    // Check if we have a valid object and if we're currently interacting
+    if (!object) {
+      console.error('Missing object data in handleClick');
+      return;
     }
-    
-    // Add better debug information
-    console.log(`WorldObject handleClick triggered for object:`, {
-      id: object.id,
-      type: object.type,
-      projectId: object.projectId,
-      subWorldId: object.subWorldId
-    });
     
     // Handle project navigation properly
     if (object.projectId !== undefined && object.type === 'project') {
@@ -235,7 +229,7 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
       const targetWorldId = object.subWorldId || `project-world-${object.projectId}`;
       console.log(`Target world ID: ${targetWorldId}`);
       setCurrentWorldId(targetWorldId);
-      if(e) e.preventDefault();
+      if(e && typeof e.preventDefault === 'function') e.preventDefault();
       return;
     }
     
@@ -243,11 +237,11 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
       console.log(`Button clicked with destination: ${object.destination}, subWorldId: ${object.subWorldId}`);
       if (object.destination === 'hub' || object.destination === 'mainWorld') {
         setCurrentWorldId('mainWorld');
-        if(e) e.preventDefault();
+        if(e && typeof e.preventDefault === 'function') e.preventDefault();
         return;
       } else if (object.subWorldId) {
         setCurrentWorldId(object.subWorldId);
-        if(e) e.preventDefault();
+        if(e && typeof e.preventDefault === 'function') e.preventDefault();
         return;
       }
     }
@@ -255,11 +249,11 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
       console.log(`Link clicked with subWorldId: ${object.subWorldId}, url: ${object.url}`);
       if (object.subWorldId) {
         setCurrentWorldId(object.subWorldId);
-        if(e) e.preventDefault();
+        if(e && typeof e.preventDefault === 'function') e.preventDefault();
         return;
       } else if (object.url) {
         window.open(object.url, '_blank');
-        if(e) e.preventDefault();
+        if(e && typeof e.preventDefault === 'function') e.preventDefault();
       }
     }
   };
