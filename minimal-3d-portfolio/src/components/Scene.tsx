@@ -17,6 +17,7 @@ import InteractionButton from './InteractionButton';
 import DesktopBackHint from './DesktopBackHint';
 import { SpeakerExperience } from './SpeakerExperience';
 import ReloadButton from './ReloadButton';
+import BillboardManager from './BillboardManager';
 
 // Create a context to share visibility information for overlapping detection
 export const VisibilityContext = createContext<{
@@ -116,6 +117,9 @@ const SceneContent = ({ worldId }: SceneContentProps) => {
   return (
     <>
       <Environment />
+      
+      {/* Add the global BillboardManager */}
+      <BillboardManager />
       
       {/* First Person Camera with position from world data if available */}
       <FirstPersonCamera 

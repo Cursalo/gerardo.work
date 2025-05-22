@@ -80,7 +80,8 @@ const sharedMaterials = {
 
 // Helper function to determine if an object should billboard (face the camera)
 const shouldBillboard = (objectType: string): boolean => {
-  return ['project', 'image', 'video', 'pdf', 'link', 'button'].includes(objectType);
+  const shouldBillboard = ['project', 'image', 'video', 'pdf', 'link', 'button'].includes(objectType);
+  return shouldBillboard;
 };
 
 const WorldObject = React.memo(({ object }: WorldObjectProps) => {
@@ -102,32 +103,10 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
   const scale = object.scale || [1, 1, 1];
   
   // Make card-like objects face the camera (billboarding)
+  // This individual billboarding is now handled by the global BillboardManager
   useFrame(() => {
-    if (objectRef.current && shouldBillboard(object.type)) {
-      if (document.pointerLockElement === gl.domElement) {
-        const MIN_LOOKAT_DISTANCE = 0.2;
-
-        const objectWorldPosition = new THREE.Vector3();
-        objectRef.current.getWorldPosition(objectWorldPosition);
-
-        const distanceToCamera = camera.position.distanceTo(objectWorldPosition);
-
-        if (distanceToCamera > MIN_LOOKAT_DISTANCE) {
-          // 1. Make the object look at the camera's current world position
-          objectRef.current.lookAt(camera.position);
-
-          // 2. Correct the roll (Z-axis rotation) to keep the card upright
-          const euler = new THREE.Euler().setFromQuaternion(objectRef.current.quaternion, 'YXZ');
-          euler.z = 0;
-          objectRef.current.quaternion.setFromEuler(euler);
-        } else {
-          // Optional: When very close, ensure it still tries to face the camera but without the full lookAt dynamics
-          // This can prevent it snapping to its original rotation too abruptly.
-          // For now, we'll let it revert to its corrected orientation from the last frame it was > MIN_LOOKAT_DISTANCE.
-          // If an explicit orientation is needed when *very* close, it could be set here.
-        }
-      }
-    }
+    // Individual billboarding disabled in favor of global solution in BillboardManager
+    // The BillboardManager now handles all billboarding for cards and media
   });
   
   // Load project details if this is a project object
@@ -475,6 +454,7 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
         onClick={handleClick}
         onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }}
         onPointerOut={(e) => { e.stopPropagation(); setHovered(false); }}
+        name={`${object.type}-${object.id}-card`}
       >
         {renderContent()}
         {/* Show description on hover only at high detail level */}
