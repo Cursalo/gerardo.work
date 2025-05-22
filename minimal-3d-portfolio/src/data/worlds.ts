@@ -286,8 +286,8 @@ const isObjectInteractive = (object: WorldObject): boolean => {
 // Helper function to generate positions for gallery items
 function generateGalleryPositions(count: number): [number, number, number][] {
   const positions: [number, number, number][] = [];
-  const minDistanceBetweenAssets = 12; // Increased from 10 to 12 for more space
-  const spaceArea = 80; // Increased from 60 to 80 for a larger gallery space
+  const minDistanceBetweenAssets = 18; // Increased from 12 to 18 for much more space
+  const spaceArea = 100; // Increased from 80 to 100 for a larger gallery space
   const halfSpace = spaceArea / 2;
   const maxHeight = 3.5; // Maximum height for assets
   const minHeight = 0.8; // Minimum height for assets
@@ -547,8 +547,8 @@ export const createProjectWorld = (project: Project, isTouchDevice: boolean): Wo
   
   // Adjust camera position based on device type
   const cameraPosition = isTouchDevice
-    ? { x: 0, y: 4, z: 10 } // Higher and further back for touch devices
-    : { x: 0, y: 2.5, z: 8 }; // Standard position for mouse/keyboard
+    ? { x: 0, y: 4, z: 20 } // Increased from z: 10 to z: 20 for touch devices
+    : { x: 0, y: 2.5, z: 16 }; // Increased from z: 8 to z: 16 for mouse/keyboard
   
   const projectWorld: World = {
     id: `project-world-${project.id}`,
