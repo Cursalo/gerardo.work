@@ -3,8 +3,8 @@ import { useRef } from 'react'
 import * as THREE from 'three'
 
 /**
- * Global manager for billboarding all cards and media objects in the scene
- * This approach traverses the scene once per frame and handles all billboarding in one place
+ * Enhanced BillboardManager for perfect horizontal-only billboard effect
+ * Uses a flat approach with direct matrix manipulation to eliminate all tilting
  */
 export default function BillboardManager() {
   const { camera, scene } = useThree()
@@ -12,16 +12,20 @@ export default function BillboardManager() {
   // Use a ref to track if pointer is locked
   const pointerLockedRef = useRef(false)
   
-  // Create reusable vectors and quaternion to avoid garbage collection
+  // Create reusable objects to avoid garbage collection
   const camPos = useRef(new THREE.Vector3())
-  const targetPos = useRef(new THREE.Vector3())
   const objPos = useRef(new THREE.Vector3())
-  const direction = useRef(new THREE.Vector3())
-  const quaternion = useRef(new THREE.Quaternion())
-  const euler = useRef(new THREE.Euler())
+  const tempMatrix = useRef(new THREE.Matrix4())
+  const tempQuaternion = useRef(new THREE.Quaternion())
+  const yAxis = useRef(new THREE.Vector3(0, 1, 0))
   
   // Minimum distance to prevent erratic behavior when too close
-  const MIN_LOOKAT_DISTANCE = 0.2
+  const MIN_LOOKAT_DISTANCE = 0.5
+  
+  // Target types that should billboard
+  const targetTypes = [
+    'project', 'image', 'video', 'pdf', 'link', 'button'
+  ]
   
   // Update on each frame
   useFrame(() => {
@@ -30,19 +34,17 @@ export default function BillboardManager() {
     
     if (!pointerLockedRef.current) return
     
-    // Get camera world position once
+    // Get camera world position once per frame
     camera.getWorldPosition(camPos.current)
 
     // Traverse the scene once to find all card/media objects
     scene.traverse((obj) => {
-      // Check for interactive project cards, all WorldObjects that should billboard
+      // Skip non-visible objects or those with disabled billboarding
+      if (!obj.visible || obj.userData?.disableBillboard) return
+      
+      // Check if this object should be billboarded
       if (obj.userData && (
-          obj.userData.objectType === 'project' || 
-          obj.userData.objectType === 'image' || 
-          obj.userData.objectType === 'video' || 
-          obj.userData.objectType === 'pdf' || 
-          obj.userData.objectType === 'link' || 
-          obj.userData.objectType === 'button' ||
+          targetTypes.includes(obj.userData.objectType) || 
           (obj.name && (
             obj.name.toLowerCase().includes('card') || 
             obj.name.toLowerCase().includes('media')
@@ -51,32 +53,36 @@ export default function BillboardManager() {
         // Get object's world position
         obj.getWorldPosition(objPos.current)
         
-        // Calculate direction vector from object to camera
-        direction.current.subVectors(camPos.current, objPos.current)
-        
         // Calculate distance to camera
-        const distanceToCamera = direction.current.length()
+        const distanceToCamera = objPos.current.distanceTo(camPos.current)
         
-        // Only billboard if camera is far enough away to prevent erratic behavior
+        // Only billboard if camera is far enough away
         if (distanceToCamera > MIN_LOOKAT_DISTANCE) {
-          // Create a target position at the same height as the object
-          targetPos.current.set(camPos.current.x, objPos.current.y, camPos.current.z)
+          // Calculate horizontal direction to camera (zero out Y component)
+          const dx = camPos.current.x - objPos.current.x
+          const dz = camPos.current.z - objPos.current.z
           
-          // Make object look at camera (horizontal only)
-          obj.lookAt(targetPos.current)
+          // Calculate rotation around Y axis only (yaw)
+          const yRotation = Math.atan2(dx, dz)
           
-          // Get the current rotation as a quaternion
-          obj.getWorldQuaternion(quaternion.current)
+          // Create rotation around Y axis only
+          tempQuaternion.current.setFromAxisAngle(yAxis.current, yRotation)
           
-          // Convert quaternion to Euler angles
-          euler.current.setFromQuaternion(quaternion.current, 'YXZ')
+          // Apply Y-axis rotation directly, preserving object's local scale
+          const objScale = new THREE.Vector3()
+          obj.getWorldScale(objScale)
           
-          // Zero out X and Z rotations (keep only Y rotation)
-          euler.current.x = 0
-          euler.current.z = 0
+          // Build a matrix with position, Y-rotation only, and original scale
+          tempMatrix.current.compose(
+            objPos.current, 
+            tempQuaternion.current,
+            objScale
+          )
           
-          // Apply the modified rotation back to the object
-          obj.rotation.copy(euler.current)
+          // Apply the matrix directly to the object's world transform
+          obj.matrixAutoUpdate = false
+          obj.matrix.copy(tempMatrix.current)
+          obj.matrixWorldNeedsUpdate = true
         }
       }
     })

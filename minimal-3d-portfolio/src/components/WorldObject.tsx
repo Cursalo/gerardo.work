@@ -52,11 +52,6 @@ const sharedMaterials = {
     emissive: "#ffffff",
     emissiveIntensity: 0.2,
   }),
-  hovered: new THREE.MeshStandardMaterial({
-    color: "#4dffa9",
-    emissive: "#4dffa9",
-    emissiveIntensity: 0.5,
-  }),
   button: new THREE.MeshStandardMaterial({
     color: "#3b82f6",
     emissive: "#3b82f6",
@@ -86,7 +81,6 @@ const shouldBillboard = (objectType: string): boolean => {
 
 const WorldObject = React.memo(({ object }: WorldObjectProps) => {
   const { setCurrentWorldId } = useWorld();
-  const [hovered, setHovered] = useState(false);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [projectDetail, setProjectDetail] = useState<Project | null>(null);
   const { camera, gl } = useThree();
@@ -102,12 +96,7 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
   const rotation = object.rotation || [0, 0, 0];
   const scale = object.scale || [1, 1, 1];
   
-  // Make card-like objects face the camera (billboarding)
-  // This individual billboarding is now handled by the global BillboardManager
-  useFrame(() => {
-    // Individual billboarding disabled in favor of global solution in BillboardManager
-    // The BillboardManager now handles all billboarding for cards and media
-  });
+  // Individual billboarding disabled - now handled by BillboardManager
   
   // Load project details if this is a project object
   useEffect(() => {
@@ -372,7 +361,7 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
         <group>
           <mesh castShadow={!isMobile} receiveShadow={!isMobile}>
             <boxGeometry args={[2, 0.6, 0.1]} />
-            <primitive object={hovered ? sharedMaterials.hovered : sharedMaterials.button} attach="material" />
+            <primitive object={sharedMaterials.button} attach="material" />
           </mesh>
           <Text
             position={[0, 0, 0.06]}
@@ -394,7 +383,7 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
         <group>
           <mesh castShadow={!isMobile} receiveShadow={!isMobile}>
             <boxGeometry args={[1.5, 0.8, 0.1]} />
-            <primitive object={hovered ? sharedMaterials.hovered : sharedMaterials.default} attach="material" />
+            <primitive object={sharedMaterials.default} attach="material" />
           </mesh>
           <Text
             position={[0, 0, 0.06]}
@@ -414,7 +403,7 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
       <group>
         <mesh castShadow={!isMobile} receiveShadow={!isMobile}>
           <boxGeometry args={[1, 1, 0.1]} />
-          <primitive object={hovered ? sharedMaterials.hovered : sharedMaterials.error} attach="material" />
+          <primitive object={sharedMaterials.error} attach="material" />
         </mesh>
         <Text
           position={[0, 0, 0.06]}
@@ -452,30 +441,9 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
       <group
         ref={objectRef}
         onClick={handleClick}
-        onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }}
-        onPointerOut={(e) => { e.stopPropagation(); setHovered(false); }}
         name={`${object.type}-${object.id}-card`}
       >
         {renderContent()}
-        {/* Show description on hover only at high detail level */}
-        {hovered && object.description && (
-          <Html
-            position={[0, 0.75, 0.2]} // Adjusted y and z for better visibility
-            style={{
-              backgroundColor: 'rgba(0, 0, 0, 0.8)',
-              padding: '8px',
-              borderRadius: '4px',
-              color: 'white',
-              width: '180px',
-              fontSize: '12px',
-              textAlign: 'center',
-              pointerEvents: 'none',
-              transform: 'translate(-50%, -110%)' // Center above and behind slightly
-            }}
-          >
-            {object.description}
-          </Html>
-        )}
       </group>
     </Hitbox>
   );
