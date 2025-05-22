@@ -123,35 +123,67 @@ class ProjectService {
               return;
             }
             
-            this.projects = parsedProjects.map(p => { // Ensure all known fields are at least present
+            this.projects = parsedProjects.map(p => { 
               let correctedThumbnail = p.thumbnail;
+              let projectNameForPath = p.name; // Default to p.name
+
+              // Attempt to get project name using getProjectName for consistency and if p.name might be unreliable
+              if (p.id) {
+                  const mappedName = getProjectName(p.id);
+                  // Use mappedName if it's valid and not a generic placeholder
+                  if (mappedName && !mappedName.startsWith('Project-')) { 
+                      projectNameForPath = mappedName;
+                  }
+              }
               
-              // Fix YouTube thumbnail issues
+              // Existing YouTube thumbnail issues correction
               if (typeof p.thumbnail === 'string') {
                 // Fix truncated maxresdefault URLs
                 if (p.thumbnail.includes('img.youtube.com/vi/') && 
-                    p.thumbnail.endsWith('/maxresdefau')) {
-                  correctedThumbnail = p.thumbnail.replace('/maxresdefau', '/maxresdefault.jpg');
-                  console.log(`ProjectService: Corrected thumbnail URL for project ID ${p.id || 'N/A'}: from ${p.thumbnail} to ${correctedThumbnail}`);
-                }
+                  p.thumbnail.endsWith('/maxresdefau')) {
+                correctedThumbnail = p.thumbnail.replace('/maxresdefau', '/maxresdefault.jpg');
+                console.log(`ProjectService: Corrected thumbnail URL for project ID ${p.id || 'N/A'}: from ${p.thumbnail} to ${correctedThumbnail}`);
+              }
                 
-                // Fix .webp extensions
+                // Fix .webp extensions (and default.web) for YouTube
                 if (p.thumbnail.includes('img.youtube.com/vi/') && 
                     (p.thumbnail.includes('.webp') || p.thumbnail.includes('default.web'))) {
                   // Extract videoId from the URL
-                  const videoIdMatch = p.thumbnail.match(/img\.youtube\.com\/vi\/([^\/]+)/);
+                  const videoIdMatch = p.thumbnail.match(/img\.youtube\.com\/vi\/([^/]+)/);
                   if (videoIdMatch && videoIdMatch[1]) {
-                    correctedThumbnail = `https://img.youtube.com/vi/${videoIdMatch[1]}/mqdefault.jpg`;
-                    console.log(`ProjectService: Replaced webp thumbnail with jpg for project ID ${p.id || 'N/A'}: from ${p.thumbnail} to ${correctedThumbnail}`);
+                    correctedThumbnail = `https://img.youtube.com/vi/${videoIdMatch[1]}/mqdefault.jpg`; // Standardized to mqdefault.jpg
+                    console.log(`ProjectService: Replaced YouTube webp/default.web thumbnail with jpg for project ID ${p.id || 'N/A'}: from ${p.thumbnail} to ${correctedThumbnail}`);
                   }
+                }
+              }
+
+              // NEW LOGIC: Validate and correct local thumbnail paths from localStorage
+              if (typeof correctedThumbnail === 'string' && 
+                  !correctedThumbnail.startsWith('http') && // It's a local path
+                  projectNameForPath) { // We have a project name to build the path
+                
+                // Check if it matches the expected pattern: /projects/ProjectName/thumbnail/thumbnail.(png|webp|jpg)
+                // This regex is case-insensitive for the extension part.
+                const standardPathRegex = new RegExp(`^/projects/${projectNameForPath}/thumbnail/thumbnail\.(png|webp|jpg)$`, 'i');
+                
+                if (!standardPathRegex.test(correctedThumbnail)) {
+                  // If it's a local path but doesn't match the standard structure,
+                  // (e.g., it might be an old /assets/images/ path or something else like the Burgertify case)
+                  // force it to the standard /thumbnail/thumbnail.png path.
+                  const newStandardPath = `/projects/${projectNameForPath}/thumbnail/thumbnail.png`;
+                  console.warn(`ProjectService (localStorage load): Correcting potentially non-standard local thumbnail for project '${projectNameForPath}' (ID: ${p.id || 'N/A'}) from '${correctedThumbnail}' to '${newStandardPath}'. This indicates stale or inconsistent data in localStorage.`);
+                  correctedThumbnail = newStandardPath;
                 }
               }
               
               return {
                 ...p,
-                thumbnail: correctedThumbnail, // Use the corrected thumbnail
-                mediaObjects: Array.isArray(p.mediaObjects) ? p.mediaObjects : [], // Ensure mediaObjects is always an array
-                worldSettings: p.worldSettings || undefined // Ensure worldSettings is present or undefined
+                thumbnail: correctedThumbnail,
+                mediaObjects: Array.isArray(p.mediaObjects) ? p.mediaObjects : [],
+                worldSettings: p.worldSettings || undefined,
+                // Ensure customLink is present, defaulting to a slugified name if strictly necessary
+                // (though validation should catch most unlinked projects from old cache versions)
+                customLink: p.customLink || (projectNameForPath ? projectNameForPath.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '') : `project-${p.id || 'unknown'}`)
               };
             });
             console.log(`ProjectService: Successfully loaded and parsed ${this.projects.length} projects from primary storage.`);
