@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useChat } from '../context/ChatContext';
 import useMobileDetection from '../hooks/useMobileDetection';
 
@@ -432,27 +432,27 @@ const getModifierKey = () => {
 // Add global styles for cursor visibility in chat
 const cursorStyles = `
   .chat-open {
-    cursor: url(/cursors/cursor-green.png), auto !important;
+    cursor: auto !important; /* Use system default cursor */
   }
   .chat-open * {
-    cursor: inherit;
+    cursor: inherit; /* Inherit from .chat-open */
   }
   .chat-open button, 
   .chat-open input, 
   .chat-open [role="button"], 
   .chat-open a {
-    cursor: url(/cursors/cursor-pointer.png), pointer !important;
+    cursor: pointer !important; /* Use system pointer for interactive elements */
   }
-  .chat-open .draggable {
-    cursor: url(/cursors/cursor-move.png), move !important;
+  .chat-open .draggable { /* Assuming a 'draggable' class is applied to the header */
+    cursor: move !important; /* Use system move cursor */
   }
   
   /* Add styles for dragging state */
   .dragging-chat {
-    cursor: url(/cursors/cursor-move.png), move !important;
+    cursor: move !important; /* Use system move cursor */
   }
   .dragging-chat * {
-    cursor: url(/cursors/cursor-move.png), move !important;
+    cursor: move !important; /* Ensure all children also show move cursor */
   }
 `;
 

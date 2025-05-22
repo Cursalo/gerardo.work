@@ -102,35 +102,40 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
   
   // Make card-like objects face the camera (billboarding)
   useFrame(() => {
-    // We need gl from useThree to check for pointer lock element
+    const { gl, camera } = useThree(); // Destructure gl and camera here
+
     if (objectRef.current && shouldBillboard(object.type)) {
-      // Only update billboarding if pointer is locked to the game canvas
       if (document.pointerLockElement === gl.domElement) {
-        // Get the camera's forward direction
-        const cameraDirection = new THREE.Vector3();
-        camera.getWorldDirection(cameraDirection);
+        const MIN_LOOKAT_DISTANCE = 1.5; // Minimum distance to update lookAt
 
-        // Project a point in front of the camera along its direction
-        const projectedPoint = new THREE.Vector3().addVectors(
-          camera.position,
-          cameraDirection.multiplyScalar(10)
-        );
+        // Calculate XZ distance between camera and object
+        const dx = camera.position.x - objectRef.current.position.x;
+        const dz = camera.position.z - objectRef.current.position.z;
+        const distanceXZ = Math.sqrt(dx * dx + dz * dz);
 
-        // Create a target position at the projected point's XZ, object's Y
-        const targetPosition = new THREE.Vector3(
-          projectedPoint.x,
-          objectRef.current.position.y, // Keep object's current height
-          projectedPoint.z
-        );
+        if (distanceXZ > MIN_LOOKAT_DISTANCE) {
+          const cameraDirection = new THREE.Vector3();
+          camera.getWorldDirection(cameraDirection);
 
-        objectRef.current.lookAt(targetPosition);
+          const projectedPoint = new THREE.Vector3().addVectors(
+            camera.position,
+            cameraDirection.multiplyScalar(10)
+          );
 
-        // OPTIONAL: If the above makes the card face backward
-        // objectRef.current.rotation.y += Math.PI;
+          const targetPosition = new THREE.Vector3(
+            projectedPoint.x,
+            objectRef.current.position.y,
+            projectedPoint.z
+          );
+
+          objectRef.current.lookAt(targetPosition);
+
+          // OPTIONAL: If the above makes the card face backward
+          // objectRef.current.rotation.y += Math.PI;
+        }
+        // If too close, do nothing, maintaining last orientation
       } else {
-        // Optional: When pointer is not locked, you might want the cards
-        // to hold their last orientation or revert to a default one.
-        // For now, we'll simply not update their lookAt target.
+        // Pointer not locked, do nothing or maintain last orientation
       }
     }
   });
