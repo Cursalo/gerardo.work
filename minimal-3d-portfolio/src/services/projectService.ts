@@ -222,10 +222,25 @@ class ProjectService {
           
           const project = await response.json();
 
-          // Fix any URL issues - ensure they all start with /projects/
-          if (project.thumbnail && !project.thumbnail.startsWith('/projects/')) {
-            project.thumbnail = `/projects/${projectName}/assets/images/thumbnail.jpg`;
+          // --- Start of thumbnail processing ---
+          let finalThumbnail = project.thumbnail; // Get the value from project.json
+
+          if (typeof finalThumbnail === 'string' && finalThumbnail.trim() !== '') {
+            // If it's a non-empty string
+            if (!finalThumbnail.startsWith('/projects/') && !finalThumbnail.startsWith('http')) {
+              // It's a relative path that needs to be made absolute OR it's a malformed path we override
+              // Defaulting to 'thumbnail.jpg' in this scenario.
+              console.log(`ProjectService: Thumbnail for ${projectName} ('${finalThumbnail}') is relative or malformed. Re-pathing to default.`);
+              finalThumbnail = `/projects/${projectName}/assets/images/thumbnail.jpg`;
+            }
+            // If it starts with /projects/ or http, assume it's correct and leave as is.
+          } else {
+            // Thumbnail is missing, empty, null, or not a string. Assign a default.
+            console.log(`ProjectService: Thumbnail for ${projectName} is missing or invalid. Assigning default.`);
+            finalThumbnail = `/projects/${projectName}/assets/images/thumbnail.jpg`;
           }
+          project.thumbnail = finalThumbnail; // Assign the processed thumbnail back
+          // --- End of thumbnail processing ---
           
           if (project.videoUrl && !project.videoUrl.startsWith('/projects/')) {
             project.videoUrl = `/projects/${projectName}/assets/videos/demo.mp4`;
