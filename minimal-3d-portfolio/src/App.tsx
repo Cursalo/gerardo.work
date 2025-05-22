@@ -412,8 +412,12 @@ const AppContent = () => {
         localStorage.setItem('admin_password', adminPassword);
       }
       
-      // Reload the page
-      window.location.reload();
+      // Add a flag to the URL to indicate a forced reset
+      const url = new URL(window.location.href);
+      url.searchParams.set('force_reset', 'true');
+      
+      // Reload the page with the force_reset parameter
+      window.location.href = url.toString();
     }
   };
 
@@ -430,9 +434,9 @@ const AppContent = () => {
     setIsLoading(true);
     
     try {
-      // Clear all storage first to force a complete reload
+      // Clear projects storage to force a complete reload
       localStorage.removeItem('portfolio_projects');
-      localStorage.removeItem('portfolio_worlds');
+      // No need to remove worlds storage as we're not using it anymore
       
       if ('caches' in window) {
         try {
@@ -577,37 +581,23 @@ const AppContent = () => {
       )}
       <div style={styles.sceneContainer} id="scene-container"><Scene /></div>
       <DraggableChatUI />
-      {showResetInfo && showUI && (
+      {showRefreshNotification && (
         <div style={{
           position: 'fixed',
-          bottom: '20px',
-          left: '20px',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
           backgroundColor: 'rgba(0, 0, 0, 0.8)',
           color: '#4dffa9',
           padding: '15px',
           borderRadius: '8px',
-          maxWidth: '300px',
           zIndex: 1000,
-          fontSize: '14px',
+          fontSize: '16px',
           boxShadow: '0 2px 10px rgba(0, 0, 0, 0.3)',
-          border: '1px solid #4dffa9'
+          border: '1px solid #4dffa9',
+          textAlign: 'center'
         }}>
-          <div style={{ marginBottom: '10px' }}>
-            If you're seeing different worlds on mobile vs desktop, try adding <b>?force_reset=true</b> to the URL and reload.
-          </div>
-          <button 
-            onClick={() => setShowResetInfo(false)}
-            style={{
-              backgroundColor: '#4dffa9',
-              color: 'black',
-              border: 'none',
-              padding: '5px 10px',
-              borderRadius: '4px',
-              cursor: 'pointer'
-            }}
-          >
-            Got it
-          </button>
+          Data refreshed successfully!
         </div>
       )}
     </div>

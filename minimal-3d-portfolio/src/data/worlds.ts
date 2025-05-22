@@ -543,7 +543,6 @@ export const getWorldServiceInstance = (): WorldService => {
 export class WorldService {
   private worlds: Map<string, World> = new Map();
   private loaded: boolean = false;
-  private STORAGE_KEY = 'portfolio_worlds';
   
   constructor() {
     this.loadWorlds();
@@ -556,46 +555,18 @@ export class WorldService {
   }
   
   private async loadWorlds(): Promise<void> {
-    console.log('WorldService: Loading worlds from storage');
+    console.log('WorldService: Loading worlds');
     try {
-      const worldsJson = localStorage.getItem(this.STORAGE_KEY);
-      
-      if (worldsJson) {
-        try {
-          const parsed = JSON.parse(worldsJson);
-          
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            this.worlds.clear();
-            
-            // Process each world
-            parsed.forEach(world => {
-              if (world && world.id) {
-                this.worlds.set(world.id, world);
-              }
-            });
-            
-            console.log(`WorldService: Loaded ${this.worlds.size} worlds from storage`);
-          } else {
-            console.warn('WorldService: Invalid worlds data in storage, initializing with default worlds');
-            await this.initializeDefaultWorlds();
-          }
-        } catch (error) {
-          console.error('WorldService: Error parsing worlds from storage:', error);
-          await this.initializeDefaultWorlds();
-        }
-      } else {
-        console.log('WorldService: No worlds found in storage, initializing with default worlds');
-        await this.initializeDefaultWorlds();
-      }
+      // Always initialize default worlds to ensure consistency across devices
+      await this.initializeDefaultWorlds();
     } catch (error) {
       console.error('WorldService: Error loading worlds:', error);
-      await this.initializeDefaultWorlds();
     }
     
     this.loaded = true;
   }
   
-  // Initialize with default worlds if none found in storage
+  // Initialize with default worlds
   private async initializeDefaultWorlds(): Promise<void> {
     console.log('WorldService: Initializing default worlds');
     this.worlds.clear();
@@ -618,7 +589,6 @@ export class WorldService {
       }
       
       console.log(`WorldService: Created ${this.worlds.size} default worlds`);
-      this.saveAllWorlds();
     } catch (error) {
       console.error('WorldService: Error initializing default worlds:', error);
     }
@@ -654,10 +624,6 @@ export class WorldService {
     try {
       // Set the world in memory
       this.worlds.set(world.id, { ...world });
-      
-      // Save all worlds to localStorage
-      this.saveAllWorlds();
-      
       return true;
     } catch (error) {
       console.error(`WorldService: Error updating world ${world.id}:`, error);
@@ -693,24 +659,4 @@ export class WorldService {
     
     return Array.from(this.worlds.values()).map(world => ({ ...world }));
   }
-
-  public saveAllWorlds(): boolean {
-    try {
-      console.log('WorldService: Saving all worlds to localStorage');
-      
-      // Convert worlds Map to array
-      const worldsArray = Array.from(this.worlds.values());
-      
-      // Save to localStorage
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(worldsArray));
-      
-      console.log(`WorldService: Successfully saved ${worldsArray.length} worlds to localStorage`);
-      return true;
-    } catch (error) {
-      console.error('WorldService: Error saving worlds to localStorage:', error);
-      return false;
-    }
-  }
-  
-  // ... other existing methods
 } 
