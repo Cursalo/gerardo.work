@@ -104,30 +104,25 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
   // Make card-like objects face the camera (billboarding)
   useFrame(() => {
     if (objectRef.current && shouldBillboard(object.type)) {
-      // Only apply billboarding when pointer is locked (gameplay mode)
       if (document.pointerLockElement === gl.domElement) {
-        const MIN_LOOKAT_DISTANCE = 1.5; // Minimum distance to update lookAt
+        const MIN_LOOKAT_DISTANCE = 1.5;
 
-        // Get the object's world position
         const objectWorldPosition = new THREE.Vector3();
         objectRef.current.getWorldPosition(objectWorldPosition);
 
-        // Calculate distance between camera and object in world space
-        const dx = camera.position.x - objectWorldPosition.x;
-        const dz = camera.position.z - objectWorldPosition.z;
-        const distanceXZ = Math.sqrt(dx * dx + dz * dz);
+        const distanceToCamera = camera.position.distanceTo(objectWorldPosition);
 
-        // Only update orientation if the camera is far enough away
-        if (distanceXZ > MIN_LOOKAT_DISTANCE) {
-          // Create a target position at the same world y-height as the object
-          const targetPosition = new THREE.Vector3(
-            camera.position.x,
-            objectWorldPosition.y, // Use object's world Y
-            camera.position.z
-          );
+        if (distanceToCamera > MIN_LOOKAT_DISTANCE) {
+          // 1. Make the object look at the camera's current world position
+          objectRef.current.lookAt(camera.position);
 
-          // Make the object look at the camera (at same height level)
-          objectRef.current.lookAt(targetPosition);
+          // 2. Correct the roll (Z-axis rotation) to keep the card upright
+          // Convert quaternion to Euler angles
+          const euler = new THREE.Euler().setFromQuaternion(objectRef.current.quaternion, 'YXZ');
+          // Set the roll (Z rotation) to 0
+          euler.z = 0;
+          // Convert back to quaternion and apply
+          objectRef.current.quaternion.setFromEuler(euler);
         }
       }
     }
