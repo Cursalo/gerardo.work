@@ -207,9 +207,15 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
     if (e) {
       e.stopPropagation();
     }
+    
+    // Handle project navigation properly
     if (object.projectId !== undefined && object.type === 'project') {
+      console.log(`Navigating to project world for project ID: ${object.projectId}`);
+      setCurrentWorldId(`project-world-${object.projectId}`);
+      if(e) e.preventDefault();
       return;
     }
+    
     if (object.type === 'button' && object.action === 'navigate') {
       if (object.destination === 'hub' || object.destination === 'mainWorld') {
         setCurrentWorldId('mainWorld');

@@ -123,17 +123,52 @@ const ProjectWindow = React.memo(({ project, position }: ProjectWindowProps) => 
   // Handle image loading errors
   const handleImageError = useCallback(() => {
     if (!hasErrored.current) {
-      console.error(`Error loading image for project: ${project.name}`);
+      console.error(`Error loading image for project: ${project.name}, attempting fallback paths`);
+      
+      // Attempt to use an alternative path if the current path failed
+      if (project.thumbnail && project.thumbnail.includes('/thumbnail/thumbnail.png')) {
+        // Try the old path structure as fallback
+        const oldPathThumbnail = project.thumbnail.replace('/thumbnail/thumbnail.png', '/assets/images/thumbnail.webp');
+        console.log(`Trying fallback path: ${oldPathThumbnail}`);
+        
+        // Set the fallback image to try
+        const img = new Image();
+        img.onload = () => {
+          // If the fallback loads, use it
+          console.log(`Fallback image loaded successfully: ${oldPathThumbnail}`);
+          setImageError(false);
+          hasErrored.current = false;
+          // Force a re-render with the new URL
+          forceUpdate();
+        };
+        img.onerror = () => {
+          // If fallback also fails, mark as error
+          console.error(`Fallback image also failed: ${oldPathThumbnail}`);
+          hasErrored.current = true;
+          setImageError(true);
+        };
+        img.src = oldPathThumbnail;
+        return;
+      }
+      
       hasErrored.current = true;
       setImageError(true);
     }
-  }, [project.name]);
+  }, [project.name, project.thumbnail]);
+
+  // Force updates for thumbnail retries
+  const [, updateState] = useState({});
+  const forceUpdate = useCallback(() => updateState({}), []);
 
   // Use a lighter thumbnail if available
   const getThumbnailUrl = useCallback(() => {
     if (!project.thumbnail || imageError) {
-      return 'https://placehold.co/320x180/cccccc/333333?text=No+Image';
+      return `https://placehold.co/320x180/cccccc/333333?text=${encodeURIComponent(project.name)}`;
     }
+    
+    // Debug info for thumbnail loading
+    console.log(`Trying to load thumbnail: ${project.thumbnail} for project: ${project.name}`);
+    
     // If the thumbnail is a local file, resolve as before
     if (project.thumbnail.startsWith('file://')) {
       try {
@@ -150,13 +185,14 @@ const ProjectWindow = React.memo(({ project, position }: ProjectWindowProps) => 
         console.error('Error resolving thumbnail URL:', error);
       }
     }
-    // Try to use a lighter version if available (e.g., .thumb or .webp)
-    if (project.thumbnail.endsWith('.jpg') || project.thumbnail.endsWith('.jpeg') || project.thumbnail.endsWith('.png')) {
-      const thumb = project.thumbnail.replace(/\.(jpg|jpeg|png)$/i, '.webp');
-      return thumb;
+    
+    // Add timestamp to bust cache
+    if (project.thumbnail.includes('/thumbnail/')) {
+      return `${project.thumbnail}?t=${Date.now()}`;
     }
+    
     return project.thumbnail;
-  }, [project.thumbnail, imageError]);
+  }, [project.name, project.thumbnail, imageError]);
 
   // Limit scale/animation when close to camera for performance
   const getScale = useCallback(() => {

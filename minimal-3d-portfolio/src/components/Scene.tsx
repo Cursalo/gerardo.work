@@ -16,6 +16,7 @@ import { InteractionProvider } from '../context/InteractionContext';
 import InteractionButton from './InteractionButton'; 
 import DesktopBackHint from './DesktopBackHint';
 import { SpeakerExperience } from './SpeakerExperience';
+import ReloadButton from './ReloadButton';
 
 // Maximum distance for full quality rendering
 const MAX_RENDER_DISTANCE = 50;
@@ -318,6 +319,7 @@ const Scene = ({ worldId }: SceneProps) => {
           <BackButton />
           <DesktopBackHint />
           <InteractionButton />
+          <ReloadButton />
         </>
       </MobileControlsProvider>
     </InteractionProvider>
