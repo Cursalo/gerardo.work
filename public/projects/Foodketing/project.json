@@ -1,0 +1,70 @@
+{
+  "id": 6,
+  "name": "Foodketing",
+  "description": "Project details for Foodketing.",
+  "link": "/projects/Foodketing/index.html",
+  "thumbnail": "/projects/Foodketing/thumbnail/thumbnail.png",
+  "status": "completed",
+  "type": "standard",
+  "videoUrl": "/projects/Foodketing/assets/videos/demo.mp4",
+  "worldSettings": {
+    "backgroundColor": "hsl(188, 92%, 60%)",
+    "floorColor": "#ffffff",
+    "skyColor": "hsl(248, 92%, 80%)",
+    "floorTexture": "",
+    "skyTexture": "",
+    "ambientLightColor": "#ffffff",
+    "ambientLightIntensity": 0.7,
+    "directionalLightColor": "hsl(158, 100%, 80%)",
+    "directionalLightIntensity": 1
+  },
+  "mediaObjects": [
+    {
+      "id": "video-player-6",
+      "type": "video",
+      "title": "Foodketing Main Video",
+      "description": "Main video content for Foodketing.",
+      "url": "/projects/Foodketing/assets/videos/demo.mp4",
+      "thumbnail": "/projects/Foodketing/thumbnail/thumbnail.png",
+      "position": [
+        0,
+        2.5,
+        -8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        4,
+        2.25,
+        1
+      ]
+    },
+    {
+      "id": "info-panel-6",
+      "type": "image",
+      "title": "About Foodketing",
+      "description": "Information and assets for the Foodketing project.",
+      "thumbnail": "/projects/Foodketing/thumbnail/thumbnail.png",
+      "position": [
+        -4,
+        2,
+        -7
+      ],
+      "rotation": [
+        0,
+        0.39269908169872414,
+        0
+      ],
+      "scale": [
+        2,
+        1.5,
+        0.1
+      ]
+    }
+  ],
+  "assetGallery": [],
+  "customLink": "foodketing"
+}

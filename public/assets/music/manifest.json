@@ -1,0 +1,23 @@
+[
+  {
+    "id": "voyage",
+    "title": "Voyage Sans Retour",
+    "artist": "Portfolio Artist",
+    "audioSrc": "/assets/music/Voyage.mp3",
+    "coverSrc": "/assets/music/covers/song1.jpg"
+  },
+  {
+    "id": "begin_again",
+    "title": "Begin Again",
+    "artist": "Portfolio Artist",
+    "audioSrc": "/assets/music/Begin Again.wav",
+    "coverSrc": "/assets/music/covers/song2.jpg"
+  },
+  {
+    "id": "appetizer",
+    "title": "Appetizer's Whisper",
+    "artist": "Portfolio Artist",
+    "audioSrc": "/assets/music/Appetizer's Whisper (Anticipation) (1).wav",
+    "coverSrc": "/assets/music/covers/song3.jpg"
+  }
+] 

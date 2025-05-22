@@ -1,0 +1,412 @@
+:root {
+  font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: #333;
+  background-color: #ffffff; /* Changed back to white background */
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent; /* Prevent tap highlight globally */
+}
+
+html {
+  width: 100%;
+  height: 100%;
+  overflow: hidden; /* Prevent scrollbars on html */
+  -webkit-text-size-adjust: 100%; /* Prevent text auto-sizing */
+  touch-action: none; /* Disable default touch actions like pinch-zoom globally for html */
+}
+
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden; /* Prevent scrollbars on body */
+  position: fixed; /* Ensure full viewport coverage for body */
+  top: 0;
+  left: 0;
+  background: #ffffff;
+  color: #333;
+  touch-action: none; /* Reinforce for body */
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden; /* Ensure content fits within root */
+  position: relative; /* Establish positioning context */
+}
+
+canvas {
+  display: block !important; /* Remove extra space below canvas */
+  width: 100% !important; /* Force full width */
+  height: 100% !important; /* Force full height */
+  position: fixed !important; /* Ensure canvas covers viewport */
+  top: 0 !important;
+  left: 0 !important;
+  touch-action: none !important; /* Consistent touch handling for canvas */
+}
+
+/* Canvas container styles - ensure full coverage */
+.scene-container, #canvas-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: #ffffff;
+}
+
+/* Styling for the "in-progress" project animation */
+@keyframes glitch {
+  0% { opacity: 1; }
+  7% { opacity: 0.7; }
+  10% { opacity: 0.9; }
+  20% { opacity: 0.8; }
+  33% { opacity: 1; }
+  45% { opacity: 0.7; }
+  50% { opacity: 0.9; }
+  62% { opacity: 0.8; }
+  80% { opacity: 1; }
+  90% { opacity: 0.9; }
+  100% { opacity: 1; }
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+a:hover {
+  color: #535bf2;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s, transform 0.2s;
+}
+button:hover {
+  border-color: #646cff;
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff; /* White background */
+  }
+  a:hover {
+    color: #747bff;
+  }
+  button {
+    background-color: #f9f9f9;
+  }
+}
+
+/* Ensure the crosshair is visible */
+#unified-crosshair {
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  width: 12px !important;
+  height: 12px !important;
+  background-color: rgba(77, 255, 170, 1) !important; /* Custom green color */
+  border-radius: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  pointer-events: none !important;
+  z-index: 10000 !important; /* Very high z-index */
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.5) !important;
+  display: block !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Force cursor to be hidden on the whole app except for interactive elements */
+html, body, #root, .app, canvas {
+  cursor: none !important;
+}
+
+/* Allow cursor on interactive elements */
+.enter-game-button {
+  cursor: url(/cursors/cursor-pointer.png), pointer !important;
+}
+
+/* Add hover effect for the game entry button */
+.enter-game-button:hover {
+  transform: scale(1.05);
+  background-color: rgba(77, 255, 170, 1) !important;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Crosshair container styling */
+#crosshair-container {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  pointer-events: none !important;
+  z-index: 10000 !important;
+  display: block !important;
+  visibility: visible !important;
+}
+
+/* Toggle button styles */
+.toggle-btn {
+  position: fixed;
+  z-index: 1001;
+  background-color: rgba(255, 255, 255, 0.8); /* Changed to white with transparency */
+  color: #333;
+  border: 1px solid rgba(77, 255, 170, 0.5);
+  border-radius: 20px;
+  padding: 8px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(4px);
+}
+
+.toggle-btn:hover {
+  background-color: rgba(77, 255, 170, 0.2);
+  transform: translateY(-2px);
+}
+
+.toggle-instructions {
+  top: 20px;
+  right: 20px;
+}
+
+.toggle-chat {
+  bottom: 20px;
+  right: 20px;
+}
+
+/* Media queries for responsive design - specific mobile overrides */
+@media screen and (max-width: 768px) {
+  html, body, #root {
+    /* Ensure these elements are strictly covering the viewport */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    touch-action: none;
+    -webkit-user-select: none; /* Disable text selection on mobile */
+    user-select: none;
+  }
+
+  canvas, .scene-container, #canvas-container {
+    /* Ensure canvas and its containers also strictly cover the viewport */
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    touch-action: none !important;
+  }
+
+  /* Allow text selection in input fields and text areas specifically */
+  input, textarea {
+    -webkit-user-select: auto;
+    user-select: auto;
+  }
+
+  /* General UI element scaling - avoid transforms if they cause issues */
+  .instructions, .startPrompt, .toggle-btn, .toggle-ui-btn, .talk-to-npc-button {
+    /* Primarily use width, padding, font-size for scaling these on mobile */
+    transform: none !important; /* Explicitly remove transforms if causing zoom */
+  }
+
+  .instructions {
+    width: 90% !important;
+    max-width: 95% !important; /* Adjusted */
+    font-size: 14px !important;
+    top: 50px !important; /* Adjusted for better visibility */
+    left: 50% !important;
+    transform: translateX(-50%) !important; /* Keep for centering */
+    padding: 10px !important;
+    max-height: 50vh !important; /* Adjusted */
+    overflow-y: auto !important;
+  }
+  
+  .startPrompt {
+    width: 90% !important;
+    font-size: 14px !important;
+    padding: 15px !important;
+  }
+  
+  /* Ensure toggle buttons are reasonably sized and positioned */
+  .toggle-btn, .toggle-ui-btn {
+    padding: 8px 12px !important;
+    font-size: 12px !important;
+    min-height: 36px !important; 
+    min-width: 36px !important;
+  }
+  
+  .toggle-instructions {
+    top: 10px !important;
+    right: 10px !important;
+  }
+  
+  .toggle-chat {
+    bottom: 10px !important;
+    right: 10px !important;
+  }
+
+  .toggle-ui-btn {
+    bottom: 15px !important;
+    right: 15px !important;
+  }
+
+  .talk-to-npc-button {
+    bottom: 60px !important; /* Adjust if overlapping with .toggle-ui-btn */
+    right: 15px !important;
+  }
+  
+  #chat-container {
+    width: 90% !important;
+    max-width: 380px !important; /* Max width for chat */
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important; /* Centering */
+    /* Ensure no other transform is accidentally applied */
+  }
+  
+  ::-webkit-scrollbar {
+    width: 4px !important;
+    height: 4px !important;
+  }
+}
+
+/* New UI toggle button styles */
+.toggle-ui-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 10px 16px;
+  background-color: white;
+  color: #000;
+  border: 2px solid #4dffaa;
+  border-radius: 20px;
+  font-weight: bold;
+  cursor: pointer;
+  z-index: 1002;
+  font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.toggle-ui-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  background-color: rgba(77, 255, 170, 0.1);
+}
+
+/* For mobile screens */
+@media screen and (max-width: 768px) {
+  .toggle-ui-btn {
+    bottom: 15px;
+    right: 15px;
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+}
+
+/* Add fade effect for instructions panel */
+.instructions {
+  opacity: 1;
+  transition: opacity 1s ease-in-out;
+}
+
+.instructions.fade {
+  opacity: 0;
+}
+
+/* Add proper styling for the Talk to NPC button to ensure it's always readable */
+.talk-to-npc-button {
+  position: fixed !important;
+  bottom: 70px !important; /* Position above the toggle UI button */
+  right: 20px !important;
+  padding: 10px 16px !important;
+  background-color: rgb(77, 255, 170) !important;
+  color: #000 !important;
+  border-radius: 20px !important;
+  font-weight: bold !important;
+  cursor: pointer !important;
+  z-index: 1001 !important;
+  transform: scale(1, 1) !important;
+  backface-visibility: hidden !important;
+  transform-style: preserve-3d !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+  transition: all 0.2s ease !important;
+  font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif !important;
+}
+
+.talk-to-npc-button:hover {
+  transform: translateY(-2px) scale(1, 1) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Add transition for the instructions toggle button */
+.toggle-instructions {
+  transition: all 0.3s ease;
+}
+
+/* Add animation for the chat label */
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(1); opacity: 0.8; }
+}
+
+/* Update chat button styling to improve readability and appearance */
+.chat-button {
+  padding: 8px 16px;
+  border-radius: 12px;
+  background-color: rgba(0, 0, 0, 0.8); /* Dark background */
+  color: #ffffff; /* White text */
+  font-family: 'Arial', sans-serif; /* Clean, readable font */
+  font-size: 16px;
+  font-weight: bold;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transform: scale(0.8);
+  transition: transform 0.2s ease, opacity 0.3s ease;
+  user-select: none;
+  min-width: 160px; /* Ensure enough width for the text */
+  text-align: center;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}

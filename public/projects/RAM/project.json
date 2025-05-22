@@ -1,0 +1,70 @@
+{
+  "id": 26,
+  "name": "RAM",
+  "description": "Project details for RAM.",
+  "link": "/projects/RAM/index.html",
+  "thumbnail": "/projects/RAM/thumbnail/thumbnail.png",
+  "status": "completed",
+  "type": "standard",
+  "videoUrl": "/projects/RAM/assets/videos/demo.mp4",
+  "worldSettings": {
+    "backgroundColor": "hsl(188, 92%, 60%)",
+    "floorColor": "#ffffff",
+    "skyColor": "hsl(248, 92%, 80%)",
+    "floorTexture": "",
+    "skyTexture": "",
+    "ambientLightColor": "#ffffff",
+    "ambientLightIntensity": 0.7,
+    "directionalLightColor": "hsl(158, 100%, 80%)",
+    "directionalLightIntensity": 1
+  },
+  "mediaObjects": [
+    {
+      "id": "video-player-26",
+      "type": "video",
+      "title": "RAM Main Video",
+      "description": "Main video content for RAM.",
+      "url": "/projects/RAM/assets/videos/demo.mp4",
+      "thumbnail": "/projects/RAM/thumbnail/thumbnail.png",
+      "position": [
+        0,
+        2.5,
+        -8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        4,
+        2.25,
+        1
+      ]
+    },
+    {
+      "id": "info-panel-26",
+      "type": "image",
+      "title": "About RAM",
+      "description": "Information and assets for the RAM project.",
+      "thumbnail": "/projects/RAM/thumbnail/thumbnail.png",
+      "position": [
+        -4,
+        2,
+        -7
+      ],
+      "rotation": [
+        0,
+        0.39269908169872414,
+        0
+      ],
+      "scale": [
+        2,
+        1.5,
+        0.1
+      ]
+    }
+  ],
+  "assetGallery": [],
+  "customLink": "ram"
+}

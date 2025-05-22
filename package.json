@@ -1,0 +1,38 @@
+{
+  "name": "minimal-3d-portfolio",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@react-three/drei": "^9.88.0",
+    "@react-three/fiber": "^8.15.11",
+    "@react-three/gltfjsx": "^4.3.4",
+    "@types/three": "^0.174.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-joystick-component": "^6.2.1",
+    "react-router-dom": "^6.20.0",
+    "rollup": "^4.9.0",
+    "three": "^0.174.0"
+  },
+  "optionalDependencies": {
+    "canvas": "^2.11.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.21",
+    "@types/react": "^18.2.37",
+    "@types/react-dom": "^18.2.15",
+    "@vitejs/plugin-react": "^4.2.0",
+    "eslint": "^8.53.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.4",
+    "typescript": "^5.2.2",
+    "vite": "^5.0.0"
+  }
+}

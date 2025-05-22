@@ -1,0 +1,70 @@
+{
+  "id": 7,
+  "name": "Foodelopers",
+  "description": "Project details for Foodelopers.",
+  "link": "/projects/Foodelopers/index.html",
+  "thumbnail": "/projects/Foodelopers/thumbnail/thumbnail.png",
+  "status": "completed",
+  "type": "standard",
+  "videoUrl": "/projects/Foodelopers/assets/videos/demo.mp4",
+  "worldSettings": {
+    "backgroundColor": "hsl(188, 92%, 60%)",
+    "floorColor": "#ffffff",
+    "skyColor": "hsl(248, 92%, 80%)",
+    "floorTexture": "",
+    "skyTexture": "",
+    "ambientLightColor": "#ffffff",
+    "ambientLightIntensity": 0.7,
+    "directionalLightColor": "hsl(158, 100%, 80%)",
+    "directionalLightIntensity": 1
+  },
+  "mediaObjects": [
+    {
+      "id": "video-player-7",
+      "type": "video",
+      "title": "Foodelopers Main Video",
+      "description": "Main video content for Foodelopers.",
+      "url": "/projects/Foodelopers/assets/videos/demo.mp4",
+      "thumbnail": "/projects/Foodelopers/thumbnail/thumbnail.png",
+      "position": [
+        0,
+        2.5,
+        -8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        4,
+        2.25,
+        1
+      ]
+    },
+    {
+      "id": "info-panel-7",
+      "type": "image",
+      "title": "About Foodelopers",
+      "description": "Information and assets for the Foodelopers project.",
+      "thumbnail": "/projects/Foodelopers/thumbnail/thumbnail.png",
+      "position": [
+        -4,
+        2,
+        -7
+      ],
+      "rotation": [
+        0,
+        0.39269908169872414,
+        0
+      ],
+      "scale": [
+        2,
+        1.5,
+        0.1
+      ]
+    }
+  ],
+  "assetGallery": [],
+  "customLink": "foodelopers"
+}

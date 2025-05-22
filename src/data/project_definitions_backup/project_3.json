@@ -1,0 +1,68 @@
+{
+  "id": 3,
+  "name": "Dune",
+  "description": "Official trailer showcase for Dune.",
+  "link": "https://www.youtube.com/watch?v=8g18jFHCLXk",
+  "thumbnail": "https://img.youtube.com/vi/8g18jFHCLXk/mqdefault.jpg",
+  "status": "completed",
+  "type": "video",
+  "videoUrl": "https://www.youtube.com/watch?v=8g18jFHCLXk",
+  "worldSettings": {
+    "backgroundColor": "hsl(141, 84%, 55%)",
+    "floorColor": "hsl(141, 74%, 45%)",
+    "skyColor": "hsl(201, 84%, 75%)",
+    "floorTexture": "https://picsum.photos/seed/floor3/1024/1024",
+    "skyTexture": "https://picsum.photos/seed/sky3/2048/1024",
+    "ambientLightColor": "#ffffff",
+    "ambientLightIntensity": 1,
+    "directionalLightColor": "hsl(111, 100%, 80%)",
+    "directionalLightIntensity": 0.8
+  },
+  "mediaObjects": [
+    {
+      "id": "video-player-3",
+      "type": "video",
+      "title": "Dune",
+      "description": "Main video content.",
+      "url": "https://www.youtube.com/watch?v=8g18jFHCLXk",
+      "thumbnail": "https://img.youtube.com/vi/8g18jFHCLXk/hqdefault.jpg",
+      "position": [
+        0,
+        2.5,
+        -8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        4,
+        2.25,
+        1
+      ]
+    },
+    {
+      "id": "info-panel-3",
+      "type": "image",
+      "title": "About This Video",
+      "description": "This is the official trailer for Dune. Enjoy the showcase!",
+      "thumbnail": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='hsl(141, 64%, 60%)' /%3E%3Ctext x='200' y='150' font-family='Arial' font-size='20' fill='white' text-anchor='middle' dominant-baseline='middle'%3EInfo for Dune%3C/text%3E%3C/svg%3E",
+      "position": [
+        -4,
+        2,
+        -7
+      ],
+      "rotation": [
+        0,
+        0.39269908169872414,
+        0
+      ],
+      "scale": [
+        2,
+        1.5,
+        0.1
+      ]
+    }
+  ]
+}
