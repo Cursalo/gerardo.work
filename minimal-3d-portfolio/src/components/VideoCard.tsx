@@ -271,24 +271,23 @@ export const VideoCard: React.FC<VideoCardProps> = ({
               top: '-30px',
               left: '0',
               right: '0',
-              fontSize: '16px', 
+              fontSize: '12px', 
               fontWeight: '500',
-              color: hovered || isOverlapping ? '#ffffff' : '#333333',
+              color: '#ffffff',
               textAlign: 'center',
-              padding: '5px 0',
+              padding: '3px 6px',
               width: '100%',
               zIndex: 10,
               fontFamily: 'Helvetica, Arial, sans-serif',
               letterSpacing: '0.5px',
-              textShadow: hovered || isOverlapping
-                ? '0 2px 4px rgba(0,0,0,0.4)' 
-                : '0 1px 2px rgba(255,255,255,0.8), 0 1px 3px rgba(0,0,0,0.2)',
-              transition: 'color 0.3s ease, text-shadow 0.3s ease',
-              opacity: hovered ? 1 : 0,
-              transform: `translateY(${hovered ? '0' : '-10px'})`,
+              textShadow: '0 1px 2px rgba(0,0,0,0.5)',
+              backgroundColor: 'rgba(0,0,0,0.4)',
+              opacity: 0.8,
+              transform: hovered ? 'scale(1.1)' : 'scale(1)',
+              transition: 'all 0.2s ease'
             }}
           >
-            {title}
+            {title.replace(/\.[^/.]+$/, "")}
           </div>
           
           {isDirectVideo(videoUrl) ? (

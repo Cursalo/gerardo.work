@@ -104,8 +104,16 @@ export const ImageCard: React.FC<ImageCardProps> = ({
 
         const canvas = document.createElement('canvas');
         const imgAspectRatio = img.width / img.height;
-        canvas.width = canvasTextureWidth;
-        canvas.height = canvasTextureWidth / imgAspectRatio;
+        
+        // Improved handling for vertical/portrait images when viewed up close
+        // Use a more balanced canvas size for different aspect ratios
+        if (imgAspectRatio < 0.8) { // Portrait/vertical image
+          canvas.height = canvasTextureWidth;
+          canvas.width = canvasTextureWidth * imgAspectRatio;
+        } else {
+          canvas.width = canvasTextureWidth;
+          canvas.height = canvasTextureWidth / imgAspectRatio;
+        }
 
         const ctx = canvas.getContext('2d');
         if (!ctx) {
@@ -242,24 +250,24 @@ export const ImageCard: React.FC<ImageCardProps> = ({
       >
         <div
           style={{
-            backgroundColor: 'rgba(0,0,0,0.7)',
+            backgroundColor: 'rgba(0,0,0,0.5)',
             color: '#ffffff',
-            padding: '4px 8px',
+            padding: '3px 6px',
             borderRadius: '4px',
-            fontSize: '12px',
+            fontSize: '10px',
             fontFamily: 'Arial, sans-serif',
             fontWeight: 'bold',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
             backdropFilter: 'blur(2px)',
-            opacity: hovered ? 1 : 0,
+            opacity: 0.8,
             transform: `scale(${hovered ? 1.1 : 1})`,
             transition: 'all 0.2s ease'
           }}
         >
-          {title}
+          {title.replace(/\.[^/.]+$/, "")}
         </div>
       </Html>
       
