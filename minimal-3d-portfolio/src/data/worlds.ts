@@ -569,10 +569,23 @@ export const createProjectWorld = (project: Project, isTouchDevice: boolean): Wo
     });
   }
   
-  // Adjust camera position based on device type
-  const cameraPosition = isTouchDevice
-    ? { x: 0, y: 4, z: 25 } // Increased from z: 20 to z: 25 for touch devices
-    : { x: 0, y: 2.5, z: 20 }; // Increased from z: 16 to z: 20 for mouse/keyboard
+  // Define multiple possible spawn positions and randomly select one
+  const spawnPositions = [
+    { x: -12, y: isTouchDevice ? 4 : 2.5, z: 15 },   // Left side
+    { x: 12, y: isTouchDevice ? 4 : 2.5, z: 15 },    // Right side
+    { x: 0, y: isTouchDevice ? 4 : 2.5, z: 25 },     // Further back (default)
+    { x: -8, y: isTouchDevice ? 4 : 2.5, z: 20 },    // Left diagonal
+    { x: 8, y: isTouchDevice ? 4 : 2.5, z: 20 },     // Right diagonal
+    { x: 15, y: isTouchDevice ? 4 : 2.5, z: 5 },     // Far right side
+    { x: -15, y: isTouchDevice ? 4 : 2.5, z: 5 },    // Far left side
+  ];
+  
+  // Select a random spawn position
+  const randomIndex = Math.floor(Math.random() * spawnPositions.length);
+  const cameraPosition = spawnPositions[randomIndex];
+  
+  // Set camera target to look at main content area
+  const cameraTarget = { x: 0, y: 2, z: -5 }; // Always look toward center
   
   const projectWorld: World = {
     id: `project-world-${project.id}`,
@@ -588,7 +601,7 @@ export const createProjectWorld = (project: Project, isTouchDevice: boolean): Wo
     directionalLightColor: settings.directionalLightColor,
     directionalLightIntensity: settings.directionalLightIntensity,
     cameraPosition: cameraPosition,
-    cameraTarget: { x: 0, y: 2, z: -5 }, // Look slightly ahead and up
+    cameraTarget: cameraTarget,
     objects: worldObjects
   };
   

@@ -109,17 +109,20 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
         const MIN_LOOKAT_DISTANCE = 1.5; // Minimum distance to update lookAt
 
         // Calculate distance between camera and object
-        const objectPosition = objectRef.current.position;
-        const dx = camera.position.x - objectPosition.x;
-        const dz = camera.position.z - objectPosition.z;
+        const objectPosition = objectRef.current.position; // This is local position
+        const dx = camera.position.x - objectPosition.x; // Mixing world and local here if object is child of rotated parent
+        const dz = camera.position.z - objectPosition.z; // Mixing world and local
         const distanceXZ = Math.sqrt(dx * dx + dz * dz);
 
         // Only update orientation if the camera is far enough away
         if (distanceXZ > MIN_LOOKAT_DISTANCE) {
-          // Create a target position at the same height as the object
+          const objectWorldPosition = new THREE.Vector3();
+          objectRef.current.getWorldPosition(objectWorldPosition);
+
+          // Create a target position at the same world y-height as the object
           const targetPosition = new THREE.Vector3(
             camera.position.x,
-            objectPosition.y,
+            objectWorldPosition.y, // Use object's world Y
             camera.position.z
           );
 
