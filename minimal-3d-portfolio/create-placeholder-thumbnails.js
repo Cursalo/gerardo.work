@@ -4,7 +4,16 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { createCanvas } from 'canvas';
+
+// Try to import canvas, but handle environments where it's not available
+let createCanvas;
+try {
+  const { createCanvas: importedCreateCanvas } = await import('canvas');
+  createCanvas = importedCreateCanvas;
+} catch (error) {
+  console.warn('Canvas module not available. Thumbnail generation will be skipped.');
+  createCanvas = null;
+}
 
 // Get current file directory
 const __filename = fileURLToPath(import.meta.url);
@@ -15,6 +24,12 @@ const projectsDir = path.join(__dirname, 'public', 'projects');
 
 // Function to create a placeholder thumbnail
 function createPlaceholderThumbnail(projectName, outputPath) {
+  // Skip if canvas is not available
+  if (!createCanvas) {
+    console.log(`Cannot create placeholder for ${projectName}: canvas module not available`);
+    return false;
+  }
+
   // Create a 800x600 canvas (standard thumbnail size)
   const width = 800;
   const height = 600;
@@ -65,11 +80,18 @@ function createPlaceholderThumbnail(projectName, outputPath) {
   fs.writeFileSync(outputPath, buffer);
   
   console.log(`Created placeholder thumbnail for ${projectName} at ${outputPath}`);
+  return true;
 }
 
 // Main function
 async function main() {
   console.log('Starting placeholder thumbnail creation...');
+  
+  // Skip if canvas is not available
+  if (!createCanvas) {
+    console.log('Canvas module not available. Cannot generate thumbnails.');
+    return;
+  }
   
   // Check if projects directory exists
   if (!fs.existsSync(projectsDir)) {
@@ -103,8 +125,9 @@ async function main() {
       const thumbnailPath = path.join(thumbnailDir, 'thumbnail.png');
       if (!fs.existsSync(thumbnailPath)) {
         console.log(`No thumbnail.png found for ${folderName}, creating placeholder...`);
-        createPlaceholderThumbnail(folderName, thumbnailPath);
-        thumbnailsCreated++;
+        if (createPlaceholderThumbnail(folderName, thumbnailPath)) {
+          thumbnailsCreated++;
+        }
       } else {
         console.log(`Thumbnail already exists for ${folderName}, skipping.`);
       }
