@@ -87,7 +87,7 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
   const [hovered, setHovered] = useState(false);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [projectDetail, setProjectDetail] = useState<Project | null>(null);
-  const { camera } = useThree();
+  const { camera, gl } = useThree();
   const objectRef = useRef<THREE.Group | null>(null);
   const { isMobile } = useMobileDetection();
   
@@ -102,32 +102,36 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
   
   // Make card-like objects face the camera (billboarding)
   useFrame(() => {
+    // We need gl from useThree to check for pointer lock element
     if (objectRef.current && shouldBillboard(object.type)) {
-      // Get the camera's forward direction
-      const cameraDirection = new THREE.Vector3();
-      camera.getWorldDirection(cameraDirection);
+      // Only update billboarding if pointer is locked to the game canvas
+      if (document.pointerLockElement === gl.domElement) {
+        // Get the camera's forward direction
+        const cameraDirection = new THREE.Vector3();
+        camera.getWorldDirection(cameraDirection);
 
-      // Project a point in front of the camera along its direction
-      // The distance (e.g., 10 units) doesn't strictly matter for orientation,
-      // but ensures the target point is distinct.
-      const projectedPoint = new THREE.Vector3().addVectors(
-        camera.position,
-        cameraDirection.multiplyScalar(10)
-      );
+        // Project a point in front of the camera along its direction
+        const projectedPoint = new THREE.Vector3().addVectors(
+          camera.position,
+          cameraDirection.multiplyScalar(10)
+        );
 
-      // Create a target position that's at the projected point's XZ,
-      // but at the object's current Y height.
-      const targetPosition = new THREE.Vector3(
-        projectedPoint.x,
-        objectRef.current.position.y, // Keep the object's current height
-        projectedPoint.z
-      );
+        // Create a target position at the projected point's XZ, object's Y
+        const targetPosition = new THREE.Vector3(
+          projectedPoint.x,
+          objectRef.current.position.y, // Keep object's current height
+          projectedPoint.z
+        );
 
-      objectRef.current.lookAt(targetPosition);
-      
-      // OPTIONAL: If the above makes the card face backward (shows its back),
-      // uncomment the following line to rotate it 180 degrees around its Y-axis.
-      // objectRef.current.rotation.y += Math.PI;
+        objectRef.current.lookAt(targetPosition);
+
+        // OPTIONAL: If the above makes the card face backward
+        // objectRef.current.rotation.y += Math.PI;
+      } else {
+        // Optional: When pointer is not locked, you might want the cards
+        // to hold their last orientation or revert to a default one.
+        // For now, we'll simply not update their lookAt target.
+      }
     }
   });
   
