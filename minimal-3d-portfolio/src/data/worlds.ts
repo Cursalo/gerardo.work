@@ -571,21 +571,25 @@ export const createProjectWorld = (project: Project, isTouchDevice: boolean): Wo
   
   // Define multiple possible spawn positions and randomly select one
   const spawnPositions = [
-    { x: -12, y: isTouchDevice ? 4 : 2.5, z: 15 },   // Left side
-    { x: 12, y: isTouchDevice ? 4 : 2.5, z: 15 },    // Right side
-    { x: 0, y: isTouchDevice ? 4 : 2.5, z: 25 },     // Further back (default)
-    { x: -8, y: isTouchDevice ? 4 : 2.5, z: 20 },    // Left diagonal
-    { x: 8, y: isTouchDevice ? 4 : 2.5, z: 20 },     // Right diagonal
-    { x: 15, y: isTouchDevice ? 4 : 2.5, z: 5 },     // Far right side
-    { x: -15, y: isTouchDevice ? 4 : 2.5, z: 5 },    // Far left side
+    // Positions further away and more to the sides
+    { x: -25, y: isTouchDevice ? 4 : 2.5, z: 30 },  // Far left, back
+    { x: 25, y: isTouchDevice ? 4 : 2.5, z: 30 },   // Far right, back
+    { x: 0, y: isTouchDevice ? 4 : 2.5, z: 40 },    // Very far back, center
+    { x: -30, y: isTouchDevice ? 4 : 2.5, z: 10 },  // Far left, more to the front side
+    { x: 30, y: isTouchDevice ? 4 : 2.5, z: 10 },   // Far right, more to the front side
+    { x: -20, y: isTouchDevice ? 4 : 2.5, z: -5 },  // Left side, near the typical "front" of the content
+    { x: 20, y: isTouchDevice ? 4 : 2.5, z: -5 },   // Right side, near the typical "front"
+    { x: 0, y: isTouchDevice ? 4 : 2.5, z: -15 },   // Directly in front of where content usually is, but further back
+    { x: -15, y: isTouchDevice ? 4 : 2.5, z: 35 },  // Mid-far left, back
+    { x: 15, y: isTouchDevice ? 4 : 2.5, z: 35 },   // Mid-far right, back
   ];
   
   // Select a random spawn position
   const randomIndex = Math.floor(Math.random() * spawnPositions.length);
   const cameraPosition = spawnPositions[randomIndex];
   
-  // Set camera target to look at main content area
-  const cameraTarget = { x: 0, y: 2, z: -5 }; // Always look toward center
+  // Set camera target to look at main content area, slightly lowered to aim at center of mass of content
+  const cameraTarget = { x: 0, y: 1.5, z: -5 }; // Always look toward center, but a bit lower
   
   const projectWorld: World = {
     id: `project-world-${project.id}`,
