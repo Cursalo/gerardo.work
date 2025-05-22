@@ -355,9 +355,7 @@ class ProjectService {
         worldService.updateWorld(projectWorld);
       }
       
-      // Save all worlds
-      worldService.saveAllWorlds();
-      
+      // No need to save worlds as we're using memory-only approach now
       console.log('ProjectService: Updated all worlds with fresh project data from disk');
     } catch (worldError) {
       console.error('ProjectService: Error updating worlds after disk reload:', worldError);
