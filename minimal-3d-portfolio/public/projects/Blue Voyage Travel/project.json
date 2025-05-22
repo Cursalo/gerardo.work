@@ -3,7 +3,7 @@
   "name": "Blue Voyage Travel",
   "description": "Project details for Blue Voyage Travel.",
   "link": "/projects/Blue Voyage Travel/index.html",
-  "thumbnail": "/projects/Blue Voyage Travel/assets/images/thumbnail.jpg",
+  "thumbnail": "/projects/Blue Voyage Travel/thumbnail/thumbnail.png",
   "status": "completed",
   "type": "standard",
   "videoUrl": "/projects/Blue Voyage Travel/assets/videos/demo.mp4",
@@ -25,7 +25,7 @@
       "title": "Blue Voyage Travel Main Video",
       "description": "Main video content for Blue Voyage Travel.",
       "url": "/projects/Blue Voyage Travel/assets/videos/demo.mp4",
-      "thumbnail": "/projects/Blue Voyage Travel/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Blue Voyage Travel/thumbnail/thumbnail.png",
       "position": [
         0,
         2.5,
@@ -47,7 +47,7 @@
       "type": "image",
       "title": "About Blue Voyage Travel",
       "description": "Information and assets for the Blue Voyage Travel project.",
-      "thumbnail": "/projects/Blue Voyage Travel/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Blue Voyage Travel/thumbnail/thumbnail.png",
       "position": [
         -4,
         2,

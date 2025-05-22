@@ -3,7 +3,7 @@
   "name": "Menu Crafters",
   "description": "Project details for Menu Crafters.",
   "link": "/projects/Menu Crafters/index.html",
-  "thumbnail": "/projects/Menu Crafters/assets/images/thumbnail.jpg",
+  "thumbnail": "/projects/Menu Crafters/thumbnail/thumbnail.png",
   "status": "completed",
   "type": "standard",
   "videoUrl": "/projects/Menu Crafters/assets/videos/demo.mp4",
@@ -25,7 +25,7 @@
       "title": "Menu Crafters Main Video",
       "description": "Main video content for Menu Crafters.",
       "url": "/projects/Menu Crafters/assets/videos/demo.mp4",
-      "thumbnail": "/projects/Menu Crafters/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Menu Crafters/thumbnail/thumbnail.png",
       "position": [
         0,
         2.5,
@@ -47,7 +47,7 @@
       "type": "image",
       "title": "About Menu Crafters",
       "description": "Information and assets for the Menu Crafters project.",
-      "thumbnail": "/projects/Menu Crafters/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Menu Crafters/thumbnail/thumbnail.png",
       "position": [
         -4,
         2,

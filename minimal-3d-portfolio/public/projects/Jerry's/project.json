@@ -3,7 +3,7 @@
   "name": "Jerry's",
   "description": "Project details for Jerry's.",
   "link": "/projects/Jerry's/index.html",
-  "thumbnail": "/projects/Jerry's/assets/images/thumbnail.jpg",
+  "thumbnail": "/projects/Jerry's/thumbnail/thumbnail.png",
   "status": "completed",
   "type": "standard",
   "videoUrl": "/projects/Jerry's/assets/videos/demo.mp4",
@@ -25,7 +25,7 @@
       "title": "Jerry's Main Video",
       "description": "Main video content for Jerry's.",
       "url": "/projects/Jerry's/assets/videos/demo.mp4",
-      "thumbnail": "/projects/Jerry's/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Jerry's/thumbnail/thumbnail.png",
       "position": [
         0,
         2.5,
@@ -47,7 +47,7 @@
       "type": "image",
       "title": "About Jerry's",
       "description": "Information and assets for the Jerry's project.",
-      "thumbnail": "/projects/Jerry's/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Jerry's/thumbnail/thumbnail.png",
       "position": [
         -4,
         2,

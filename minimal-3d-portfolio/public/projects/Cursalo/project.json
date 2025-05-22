@@ -3,7 +3,7 @@
   "name": "Cursalo",
   "description": "Project details for Cursalo.",
   "link": "/projects/Cursalo/index.html",
-  "thumbnail": "/projects/Cursalo/assets/images/thumbnail.jpg",
+  "thumbnail": "/projects/Cursalo/thumbnail/thumbnail.png",
   "status": "completed",
   "type": "standard",
   "videoUrl": "/projects/Cursalo/assets/videos/demo.mp4",
@@ -25,7 +25,7 @@
       "title": "Cursalo Main Video",
       "description": "Main video content for Cursalo.",
       "url": "/projects/Cursalo/assets/videos/demo.mp4",
-      "thumbnail": "/projects/Cursalo/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Cursalo/thumbnail/thumbnail.png",
       "position": [
         0,
         2.5,
@@ -47,7 +47,7 @@
       "type": "image",
       "title": "About Cursalo",
       "description": "Information and assets for the Cursalo project.",
-      "thumbnail": "/projects/Cursalo/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Cursalo/thumbnail/thumbnail.png",
       "position": [
         -4,
         2,

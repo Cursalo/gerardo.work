@@ -3,7 +3,7 @@
   "name": "PitchDeckGenie",
   "description": "Project details for PitchDeckGenie.",
   "link": "/projects/PitchDeckGenie/index.html",
-  "thumbnail": "/projects/PitchDeckGenie/assets/images/thumbnail.jpg",
+  "thumbnail": "/projects/PitchDeckGenie/thumbnail/thumbnail.png",
   "status": "completed",
   "type": "standard",
   "videoUrl": "/projects/PitchDeckGenie/assets/videos/demo.mp4",
@@ -25,7 +25,7 @@
       "title": "PitchDeckGenie Main Video",
       "description": "Main video content for PitchDeckGenie.",
       "url": "/projects/PitchDeckGenie/assets/videos/demo.mp4",
-      "thumbnail": "/projects/PitchDeckGenie/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/PitchDeckGenie/thumbnail/thumbnail.png",
       "position": [
         0,
         2.5,
@@ -47,7 +47,7 @@
       "type": "image",
       "title": "About PitchDeckGenie",
       "description": "Information and assets for the PitchDeckGenie project.",
-      "thumbnail": "/projects/PitchDeckGenie/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/PitchDeckGenie/thumbnail/thumbnail.png",
       "position": [
         -4,
         2,

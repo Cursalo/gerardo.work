@@ -1,7 +1,7 @@
 import { useState, useRef, useContext, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
-import { Mesh, Group, Vector3 } from 'three';
+import { Mesh, Group, Vector3, Matrix4, Quaternion } from 'three';
 import { VisibilityContext } from './Scene';
 import { useWorld } from '../context/WorldContext';
 import { useInteraction } from '../context/InteractionContext';
@@ -142,32 +142,50 @@ export const VideoCard: React.FC<VideoCardProps> = ({
   };
 
   useFrame((state) => {
-    if (groupRef.current) {
+    if (groupRef.current && camera) {
       // Floating animation
       groupRef.current.position.y = position[1] + Math.sin(state.clock.elapsedTime * 0.5 + position[0]) * 0.1;
-      
-      // Keep fixed position in world space
       groupRef.current.position.x = position[0];
       groupRef.current.position.z = position[2];
+
+      // Create vectors for billboard calculation
+      const cardPosition = new Vector3(
+        groupRef.current.position.x,
+        groupRef.current.position.y,
+        groupRef.current.position.z
+      );
       
-      // Face the camera when not hovered
-      if (camera && !hovered) {
-        const dirToCamera = new Vector3().subVectors(
-          new Vector3(camera.position.x, groupRef.current.position.y, camera.position.z),
-          groupRef.current.position
-        ).normalize();
-        
-        const targetRotationY = Math.atan2(dirToCamera.x, dirToCamera.z);
-        groupRef.current.rotation.y += (targetRotationY - groupRef.current.rotation.y) * 0.05;
+      // Get camera position and create direction vector
+      const cameraPosition = new Vector3(
+        camera.position.x,
+        camera.position.y,
+        camera.position.z
+      );
+      
+      // Calculate direction from card to camera
+      const direction = new Vector3().subVectors(cameraPosition, cardPosition).normalize();
+      
+      // Create rotation matrix to face camera
+      const matrix = new Matrix4();
+      matrix.lookAt(direction, new Vector3(0, 0, 0), new Vector3(0, 1, 0));
+      
+      // Convert matrix to quaternion
+      const quaternion = new Quaternion();
+      quaternion.setFromRotationMatrix(matrix);
+      
+      // Apply smooth rotation
+      if (!hovered) {
+        groupRef.current.quaternion.slerp(quaternion, 0.1);
+      } else {
+        // Add slight wobble effect when hovered
+        const wobbleQuaternion = new Quaternion();
+        const wobbleAngle = Math.sin(state.clock.elapsedTime * 2) * 0.03;
+        wobbleQuaternion.setFromAxisAngle(new Vector3(0, 1, 0), wobbleAngle);
+        quaternion.multiply(wobbleQuaternion);
+        groupRef.current.quaternion.slerp(quaternion, 0.1);
       }
       
-      // Add slight wobble when hovered
-      if (hovered) {
-        const wobble = Math.sin(state.clock.elapsedTime * 2) * 0.03;
-        groupRef.current.rotation.y += (wobble - groupRef.current.rotation.y * 0.1) * 0.1;
-      }
-      
-      // Check if this card is overlapping with another and update state
+      // Check for overlapping
       const currentPos: [number, number, number] = [
         groupRef.current.position.x,
         groupRef.current.position.y,

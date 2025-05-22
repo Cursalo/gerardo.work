@@ -3,7 +3,7 @@
   "name": "Foodelopers",
   "description": "Project details for Foodelopers.",
   "link": "/projects/Foodelopers/index.html",
-  "thumbnail": "/projects/Foodelopers/assets/images/thumbnail.jpg",
+  "thumbnail": "/projects/Foodelopers/thumbnail/thumbnail.png",
   "status": "completed",
   "type": "standard",
   "videoUrl": "/projects/Foodelopers/assets/videos/demo.mp4",
@@ -25,7 +25,7 @@
       "title": "Foodelopers Main Video",
       "description": "Main video content for Foodelopers.",
       "url": "/projects/Foodelopers/assets/videos/demo.mp4",
-      "thumbnail": "/projects/Foodelopers/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Foodelopers/thumbnail/thumbnail.png",
       "position": [
         0,
         2.5,
@@ -47,7 +47,7 @@
       "type": "image",
       "title": "About Foodelopers",
       "description": "Information and assets for the Foodelopers project.",
-      "thumbnail": "/projects/Foodelopers/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Foodelopers/thumbnail/thumbnail.png",
       "position": [
         -4,
         2,

@@ -3,7 +3,7 @@
   "name": "PostRaptor",
   "description": "Project details for PostRaptor.",
   "link": "/projects/PostRaptor/index.html",
-  "thumbnail": "/projects/PostRaptor/assets/images/thumbnail.jpg",
+  "thumbnail": "/projects/PostRaptor/thumbnail/thumbnail.png",
   "status": "completed",
   "type": "standard",
   "videoUrl": "/projects/PostRaptor/assets/videos/demo.mp4",
@@ -25,7 +25,7 @@
       "title": "PostRaptor Main Video",
       "description": "Main video content for PostRaptor.",
       "url": "/projects/PostRaptor/assets/videos/demo.mp4",
-      "thumbnail": "/projects/PostRaptor/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/PostRaptor/thumbnail/thumbnail.png",
       "position": [
         0,
         2.5,
@@ -47,7 +47,7 @@
       "type": "image",
       "title": "About PostRaptor",
       "description": "Information and assets for the PostRaptor project.",
-      "thumbnail": "/projects/PostRaptor/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/PostRaptor/thumbnail/thumbnail.png",
       "position": [
         -4,
         2,

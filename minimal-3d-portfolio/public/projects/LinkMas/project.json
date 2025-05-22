@@ -3,7 +3,7 @@
   "name": "LinkMas",
   "description": "Project details for LinkMas.",
   "link": "/projects/LinkMas/index.html",
-  "thumbnail": "/projects/LinkMas/assets/images/thumbnail.jpg",
+  "thumbnail": "/projects/LinkMas/thumbnail/thumbnail.png",
   "status": "completed",
   "type": "standard",
   "videoUrl": "/projects/LinkMas/assets/videos/demo.mp4",
@@ -25,7 +25,7 @@
       "title": "LinkMas Main Video",
       "description": "Main video content for LinkMas.",
       "url": "/projects/LinkMas/assets/videos/demo.mp4",
-      "thumbnail": "/projects/LinkMas/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/LinkMas/thumbnail/thumbnail.png",
       "position": [
         0,
         2.5,
@@ -47,7 +47,7 @@
       "type": "image",
       "title": "About LinkMas",
       "description": "Information and assets for the LinkMas project.",
-      "thumbnail": "/projects/LinkMas/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/LinkMas/thumbnail/thumbnail.png",
       "position": [
         -4,
         2,

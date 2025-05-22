@@ -3,7 +3,7 @@
   "name": "Tokitaka",
   "description": "Project details for Tokitaka.",
   "link": "/projects/Tokitaka/index.html",
-  "thumbnail": "/projects/Tokitaka/assets/images/thumbnail.jpg",
+  "thumbnail": "/projects/Tokitaka/thumbnail/thumbnail.png",
   "status": "completed",
   "type": "standard",
   "videoUrl": "/projects/Tokitaka/assets/videos/demo.mp4",
@@ -25,7 +25,7 @@
       "title": "Tokitaka Main Video",
       "description": "Main video content for Tokitaka.",
       "url": "/projects/Tokitaka/assets/videos/demo.mp4",
-      "thumbnail": "/projects/Tokitaka/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Tokitaka/thumbnail/thumbnail.png",
       "position": [
         0,
         2.5,
@@ -47,7 +47,7 @@
       "type": "image",
       "title": "About Tokitaka",
       "description": "Information and assets for the Tokitaka project.",
-      "thumbnail": "/projects/Tokitaka/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Tokitaka/thumbnail/thumbnail.png",
       "position": [
         -4,
         2,

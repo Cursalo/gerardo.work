@@ -3,7 +3,7 @@
   "name": "Foodketing",
   "description": "Project details for Foodketing.",
   "link": "/projects/Foodketing/index.html",
-  "thumbnail": "/projects/Foodketing/assets/images/thumbnail.jpg",
+  "thumbnail": "/projects/Foodketing/thumbnail/thumbnail.png",
   "status": "completed",
   "type": "standard",
   "videoUrl": "/projects/Foodketing/assets/videos/demo.mp4",
@@ -25,7 +25,7 @@
       "title": "Foodketing Main Video",
       "description": "Main video content for Foodketing.",
       "url": "/projects/Foodketing/assets/videos/demo.mp4",
-      "thumbnail": "/projects/Foodketing/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Foodketing/thumbnail/thumbnail.png",
       "position": [
         0,
         2.5,
@@ -47,7 +47,7 @@
       "type": "image",
       "title": "About Foodketing",
       "description": "Information and assets for the Foodketing project.",
-      "thumbnail": "/projects/Foodketing/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Foodketing/thumbnail/thumbnail.png",
       "position": [
         -4,
         2,

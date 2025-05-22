@@ -3,7 +3,7 @@
   "name": "Talevista",
   "description": "Project details for Talevista.",
   "link": "/projects/Talevista/index.html",
-  "thumbnail": "/projects/Talevista/assets/images/thumbnail.jpg",
+  "thumbnail": "/projects/Talevista/thumbnail/thumbnail.png",
   "status": "completed",
   "type": "standard",
   "videoUrl": "/projects/Talevista/assets/videos/demo.mp4",
@@ -25,7 +25,7 @@
       "title": "Talevista Main Video",
       "description": "Main video content for Talevista.",
       "url": "/projects/Talevista/assets/videos/demo.mp4",
-      "thumbnail": "/projects/Talevista/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Talevista/thumbnail/thumbnail.png",
       "position": [
         0,
         2.5,
@@ -47,7 +47,7 @@
       "type": "image",
       "title": "About Talevista",
       "description": "Information and assets for the Talevista project.",
-      "thumbnail": "/projects/Talevista/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Talevista/thumbnail/thumbnail.png",
       "position": [
         -4,
         2,

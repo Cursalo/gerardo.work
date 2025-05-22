@@ -241,177 +241,95 @@ export const WorldProvider = ({
       setIsLoading(true);
       
       try {
-        // CRITICAL FIX: Force projectService to reload projects from localStorage first
         console.log('WorldProvider: Forcing projectService to reload projects.');
         await projectService.forceReloadProjects(); // Ensure freshest projects
-        console.log('WorldProvider: projectService reload complete.');
+        const allLoadedProjects = await projectService.getProjects();
+        console.log(`WorldProvider: projectService reload complete. Loaded ${allLoadedProjects.length} projects.`);
 
-        // CRITICAL FIX: Always reload projects and recreate/update mainWorld on refreshTrigger change
-        console.log('WorldProvider: Reloading all projects and mainWorld due to refresh trigger or ID change.');
-        
-        // CRITICAL FIX: Verify project data is consistent
-        const loadedProjects = await projectService.getProjects();
-        
-        // CRITICAL FIX: Also get direct from localStorage to verify consistency
-        const directProjects = projectService.getProjectsDirectFromStorage();
-        
-        // Check if in-memory projects match localStorage
-        if (JSON.stringify(loadedProjects) !== JSON.stringify(directProjects)) {
-          console.warn('WorldProvider: In-memory projects don\'t match localStorage');
-          
-          // Determine which set to use - prefer the one with more projects
-          const projectsToUse = directProjects.length >= loadedProjects.length ? 
-            directProjects : loadedProjects;
-          
-          console.log(`WorldProvider: Using set with ${projectsToUse.length} projects`);
-          
-          // Sort for consistency
-          const sortedProjects = [...projectsToUse].sort((a, b) => a.id - b.id);
-          
-          // Save directly to localStorage
-          projectService.saveProjectsDirectToStorage(sortedProjects);
-          
-          // Also update in-memory state
-          for (let i = 0; i < sortedProjects.length; i++) {
-            await projectService.saveProject(sortedProjects[i]);
-          }
-          
-          // Force reload
-          await projectService.forceReloadProjects();
-          
-          console.log('WorldProvider: Projects synchronized between memory and localStorage');
-        } else {
-          // Verify by sorting and comparing - if inconsistent order, save back to localStorage
-          const sortedLoaded = [...loadedProjects].sort((a, b) => a.id - b.id);
-          const sortedDirect = [...directProjects].sort((a, b) => a.id - b.id);
-          
-          if (JSON.stringify(sortedLoaded) !== JSON.stringify(sortedDirect)) {
-            console.warn('WorldProvider: Projects have inconsistent order');
-            
-            // Save sorted version to localStorage
-            projectService.saveProjectsDirectToStorage(sortedLoaded);
-            
-            // Also update in-memory state
-            for (let i = 0; i < sortedLoaded.length; i++) {
-              await projectService.saveProject(sortedLoaded[i]);
-            }
-            
-            console.log('WorldProvider: Projects re-sorted and saved back to storage');
-          } else {
-            console.log('WorldProvider: Project data is consistent between memory and localStorage');
-          }
-        }
-        
-        // Verify the world storage is working correctly
-        const worldData = localStorage.getItem(STORAGE_KEY);
-        if (!worldData) {
-          console.log('WorldProvider: No world data found, need to initialize');
-        } else {
-          console.log(`WorldProvider: Found world data in localStorage: ${worldData.substring(0, 50)}...`);
-        }
+        worldService.reloadWorlds(); // Reload worlds from storage
 
-        // Reload the world service to ensure fresh data
-        worldService.reloadWorlds();
-        
-        // Get all loaded worlds from the world service
-        const loadedWorlds = worldService.getAllWorlds();
-        console.log(`WorldProvider: World service has ${loadedWorlds.length} worlds`);
-        
-        // Check if main world exists in world service
-        const mainWorld = worldService.getWorld('mainWorld');
-        
-        // If main world doesn't exist, create it with the loaded projects
+        let mainWorld = worldService.getWorld('mainWorld');
         if (!mainWorld) {
-          console.log('WorldProvider: Main world not found, creating it with loaded projects');
-          
-          // Get the latest projects
-          const projects = await projectService.getProjects();
-          
-          // Create and add the main world - explicit typing for createMainWorld parameter
-          const newMainWorld = createMainWorld(projects);
-          
-          // Add to world service
-          if (worldService.updateWorld(newMainWorld)) {
-            console.log('WorldProvider: Successfully created and added main world');
+          console.log('WorldProvider: Main world not found, creating it.');
+          if (allLoadedProjects.length > 0) {
+            const newMainWorld = createMainWorld(allLoadedProjects);
+            if (worldService.updateWorld(newMainWorld)) {
+              console.log('WorldProvider: Successfully created and added main world');
+              mainWorld = newMainWorld;
+            } else {
+              console.error('WorldProvider: Failed to add main world');
+            }
           } else {
-            console.error('WorldProvider: Failed to add main world');
+            console.warn('WorldProvider: Cannot create mainWorld, no projects loaded.');
           }
         } else {
-          console.log('WorldProvider: Main world found in world service');
-          
-          // Force refresh of main world with latest projects
-          const projects = await projectService.getProjects();
-          const updatedMainWorld = createMainWorld(projects);
-          worldService.updateWorld(updatedMainWorld);
-          console.log('WorldProvider: Updated main world with latest projects');
+          console.log('WorldProvider: Main world found in world service.');
         }
-        
-        // Create any missing project worlds
-        const projects = await projectService.getProjects();
-        let projectWorldsCreated = 0;
-        let projectWorldsUpdated = 0;
-        
-        for (const project of projects) {
-          const projectWorldId = `project-world-${project.id}`;
-          const existingWorld = worldService.getWorld(projectWorldId);
-          
-          if (!existingWorld) {
-            // Create project world
-            const newProjectWorld = createProjectWorld(project, isTouchDevice);
-            
-            // Add to world service
-            if (worldService.updateWorld(newProjectWorld)) {
-              projectWorldsCreated++;
-            }
-          } else {
-            // Update existing project world with latest project data
-            const updatedProjectWorld = createProjectWorld(project, isTouchDevice);
-            if (worldService.updateWorld(updatedProjectWorld)) {
-              projectWorldsUpdated++;
+
+        // Determine the target project world ID from currentWorldId
+        let targetProjectWorld = null;
+        if (currentWorldId && currentWorldId.startsWith('project-world-')) {
+          const targetProjectIdStr = currentWorldId.replace('project-world-', '');
+          const targetProjectId = parseInt(targetProjectIdStr, 10);
+
+          if (!isNaN(targetProjectId)) {
+            targetProjectWorld = worldService.getWorld(currentWorldId);
+            if (!targetProjectWorld) {
+              console.log(`WorldProvider: Target project world ${currentWorldId} not found, attempting to create it.`);
+              const projectForWorld = allLoadedProjects.find(p => p.id === targetProjectId);
+              if (projectForWorld) {
+                const newProjectWorld = createProjectWorld(projectForWorld, isTouchDevice);
+                if (worldService.updateWorld(newProjectWorld)) {
+                  console.log(`WorldProvider: Successfully created and added project world ${currentWorldId}`);
+                  targetProjectWorld = newProjectWorld;
+                } else {
+                  console.error(`WorldProvider: Failed to add project world ${currentWorldId}`);
+                }
+              } else {
+                console.error(`WorldProvider: Project with ID ${targetProjectId} not found for creating world ${currentWorldId}.`);
+              }
+            } else {
+               console.log(`WorldProvider: Target project world ${currentWorldId} found in world service.`);
             }
           }
         }
         
-        if (projectWorldsCreated > 0) {
-          console.log(`WorldProvider: Created ${projectWorldsCreated} missing project worlds`);
-        }
-        
-        if (projectWorldsUpdated > 0) {
-          console.log(`WorldProvider: Updated ${projectWorldsUpdated} existing project worlds`);
-        }
-        
-        // Get the updated list of worlds
-        const allWorlds = worldService.getAllWorlds();
-        
-        // Set the worlds state
-        setWorlds(allWorlds);
-        
-        // Make sure current world is set and valid
+        const allServiceWorlds = worldService.getAllWorlds();
+        setWorlds(allServiceWorlds);
+        console.log('WorldProvider: All worlds in service:', JSON.stringify(allServiceWorlds.map(w => w.id)));
+
         const currentWorldNormalized = worldService.normalizeWorldId(currentWorldId);
-        const currentWorldFromService = worldService.getWorld(currentWorldNormalized);
-        
-        if (currentWorldFromService) {
-          console.log(`WorldProvider: Setting current world to ${currentWorldNormalized}`);
-          setCurrentWorld(currentWorldFromService);
-        } else if (allWorlds.length > 0) {
-          // Fallback to first available world if current is invalid
-          console.log(`WorldProvider: Current world ${currentWorldNormalized} not found, falling back to ${allWorlds[0].id}`);
-          setCurrentWorld(allWorlds[0]);
-          setCurrentWorldIdState(allWorlds[0].id);
+        console.log(`WorldProvider: Attempting to set current world to normalized ID: '${currentWorldNormalized}'`);
+        const worldToSet = worldService.getWorld(currentWorldNormalized);
+
+        if (worldToSet) {
+          setCurrentWorld(worldToSet);
+          console.log(`WorldProvider: Successfully set current world to ${worldToSet.id}`);
         } else {
-          // No worlds available
-          console.error('WorldProvider: No worlds available');
-          setCurrentWorld(null);
+          console.error(`WorldProvider: World ${currentWorldNormalized} not found in service. Falling back to mainWorld if available.`);
+          if (mainWorld) {
+            setCurrentWorld(mainWorld);
+            // Avoid recursively setting currentWorldIdState here unless absolutely necessary
+            // and if so, ensure it doesn't cause a loop.
+            // For now, if the target isn't found, it will show mainWorld, URL might be out of sync.
+            console.log('WorldProvider: Set current world to mainWorld as fallback.');
+          } else {
+            setCurrentWorld(null);
+            console.error('WorldProvider: No world could be set (target not found, mainWorld not available).');
+          }
         }
+
       } catch (error) {
         console.error('WorldProvider: Error setting up worlds:', error);
+        setCurrentWorld(null); // Ensure a clear state on error
       } finally {
         setIsLoading(false);
+        console.log('WorldProvider: setupWorlds finished.');
       }
     };
 
     setupWorlds();
-  }, [currentWorldId, refreshTrigger, isTouchDevice]);
+  }, [currentWorldId, refreshTrigger, isTouchDevice]); // worldService removed as it's a stable ref
 
   const getCameraTarget = (): [number, number, number] => {
     if (currentWorld?.cameraTarget) {

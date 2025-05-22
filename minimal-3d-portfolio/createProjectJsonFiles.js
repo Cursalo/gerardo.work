@@ -54,7 +54,7 @@ function createProjectJson(id, folderName) {
     name: folderName,
     description: `Project details for ${folderName}.`,
     link: `/projects/${folderName}/index.html`,
-    thumbnail: `/projects/${folderName}/assets/images/thumbnail.jpg`,
+    thumbnail: `/projects/${folderName}/thumbnail/thumbnail.png`,
     status: "completed",
     type: "standard",
     videoUrl: `/projects/${folderName}/assets/videos/demo.mp4`,

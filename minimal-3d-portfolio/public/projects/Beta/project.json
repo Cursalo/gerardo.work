@@ -3,7 +3,7 @@
   "name": "Beta",
   "description": "Project details for Beta.",
   "link": "/projects/Beta/index.html",
-  "thumbnail": "/projects/Beta/assets/images/thumbnail.jpg",
+  "thumbnail": "/projects/Beta/thumbnail/thumbnail.png",
   "status": "completed",
   "type": "standard",
   "videoUrl": "/projects/Beta/assets/videos/demo.mp4",
@@ -25,7 +25,7 @@
       "title": "Beta Main Video",
       "description": "Main video content for Beta.",
       "url": "/projects/Beta/assets/videos/demo.mp4",
-      "thumbnail": "/projects/Beta/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Beta/thumbnail/thumbnail.png",
       "position": [
         0,
         2.5,
@@ -47,7 +47,7 @@
       "type": "image",
       "title": "About Beta",
       "description": "Information and assets for the Beta project.",
-      "thumbnail": "/projects/Beta/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Beta/thumbnail/thumbnail.png",
       "position": [
         -4,
         2,

@@ -3,7 +3,7 @@
   "name": "RAM",
   "description": "Project details for RAM.",
   "link": "/projects/RAM/index.html",
-  "thumbnail": "/projects/RAM/assets/images/thumbnail.jpg",
+  "thumbnail": "/projects/RAM/thumbnail/thumbnail.png",
   "status": "completed",
   "type": "standard",
   "videoUrl": "/projects/RAM/assets/videos/demo.mp4",
@@ -25,7 +25,7 @@
       "title": "RAM Main Video",
       "description": "Main video content for RAM.",
       "url": "/projects/RAM/assets/videos/demo.mp4",
-      "thumbnail": "/projects/RAM/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/RAM/thumbnail/thumbnail.png",
       "position": [
         0,
         2.5,
@@ -47,7 +47,7 @@
       "type": "image",
       "title": "About RAM",
       "description": "Information and assets for the RAM project.",
-      "thumbnail": "/projects/RAM/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/RAM/thumbnail/thumbnail.png",
       "position": [
         -4,
         2,

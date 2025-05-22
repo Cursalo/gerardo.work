@@ -3,7 +3,7 @@
   "name": "Power Up Pizza",
   "description": "Project details for Power Up Pizza.",
   "link": "/projects/Power Up Pizza/index.html",
-  "thumbnail": "/projects/Power Up Pizza/assets/images/thumbnail.jpg",
+  "thumbnail": "/projects/Power Up Pizza/thumbnail/thumbnail.png",
   "status": "completed",
   "type": "standard",
   "videoUrl": "/projects/Power Up Pizza/assets/videos/demo.mp4",
@@ -25,7 +25,7 @@
       "title": "Power Up Pizza Main Video",
       "description": "Main video content for Power Up Pizza.",
       "url": "/projects/Power Up Pizza/assets/videos/demo.mp4",
-      "thumbnail": "/projects/Power Up Pizza/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Power Up Pizza/thumbnail/thumbnail.png",
       "position": [
         0,
         2.5,
@@ -47,7 +47,7 @@
       "type": "image",
       "title": "About Power Up Pizza",
       "description": "Information and assets for the Power Up Pizza project.",
-      "thumbnail": "/projects/Power Up Pizza/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Power Up Pizza/thumbnail/thumbnail.png",
       "position": [
         -4,
         2,

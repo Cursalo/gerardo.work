@@ -3,7 +3,7 @@
   "name": "EaxiAI",
   "description": "Project details for EaxiAI.",
   "link": "/projects/EaxiAI/index.html",
-  "thumbnail": "/projects/EaxiAI/assets/images/thumbnail.jpg",
+  "thumbnail": "/projects/EaxiAI/thumbnail/thumbnail.png",
   "status": "completed",
   "type": "standard",
   "videoUrl": "/projects/EaxiAI/assets/videos/demo.mp4",
@@ -26,7 +26,7 @@
       "title": "EaxiAI Main Video",
       "description": "Main video content for EaxiAI.",
       "url": "/projects/EaxiAI/assets/videos/demo.mp4",
-      "thumbnail": "/projects/EaxiAI/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/EaxiAI/thumbnail/thumbnail.png",
       "position": [
         0,
         2.5,
@@ -48,7 +48,7 @@
       "type": "image",
       "title": "About EaxiAI",
       "description": "Information and assets for the EaxiAI project.",
-      "thumbnail": "/projects/EaxiAI/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/EaxiAI/thumbnail/thumbnail.png",
       "position": [
         -4,
         2,

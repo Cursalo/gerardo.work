@@ -3,7 +3,7 @@
   "name": "Monchee",
   "description": "Project details for Monchee.",
   "link": "/projects/Monchee/index.html",
-  "thumbnail": "/projects/Monchee/assets/images/thumbnail.jpg",
+  "thumbnail": "/projects/Monchee/thumbnail/thumbnail.png",
   "status": "completed",
   "type": "standard",
   "videoUrl": "/projects/Monchee/assets/videos/demo.mp4",
@@ -25,7 +25,7 @@
       "title": "Monchee Main Video",
       "description": "Main video content for Monchee.",
       "url": "/projects/Monchee/assets/videos/demo.mp4",
-      "thumbnail": "/projects/Monchee/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Monchee/thumbnail/thumbnail.png",
       "position": [
         0,
         2.5,
@@ -47,7 +47,7 @@
       "type": "image",
       "title": "About Monchee",
       "description": "Information and assets for the Monchee project.",
-      "thumbnail": "/projects/Monchee/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Monchee/thumbnail/thumbnail.png",
       "position": [
         -4,
         2,

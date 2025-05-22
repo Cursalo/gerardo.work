@@ -3,7 +3,7 @@
   "name": "AIClases.com",
   "description": "Project details for AIClases.com.",
   "link": "/projects/AIClases.com/index.html",
-  "thumbnail": "/projects/AIClases.com/assets/images/thumbnail.jpg",
+  "thumbnail": "/projects/AIClases.com/thumbnail/thumbnail.png",
   "status": "completed",
   "type": "standard",
   "videoUrl": "/projects/AIClases.com/assets/videos/demo.mp4",
@@ -25,7 +25,7 @@
       "title": "AIClases.com Main Video",
       "description": "Main video content for AIClases.com.",
       "url": "/projects/AIClases.com/assets/videos/demo.mp4",
-      "thumbnail": "/projects/AIClases.com/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/AIClases.com/thumbnail/thumbnail.png",
       "position": [
         0,
         2.5,
@@ -47,7 +47,7 @@
       "type": "image",
       "title": "About AIClases.com",
       "description": "Information and assets for the AIClases.com project.",
-      "thumbnail": "/projects/AIClases.com/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/AIClases.com/thumbnail/thumbnail.png",
       "position": [
         -4,
         2,

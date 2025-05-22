@@ -3,7 +3,7 @@
   "name": "Eaxily",
   "description": "Project details for Eaxily.",
   "link": "/projects/Eaxily/index.html",
-  "thumbnail": "/projects/Eaxily/assets/images/thumbnail.jpg",
+  "thumbnail": "/projects/Eaxily/thumbnail/thumbnail.png",
   "status": "completed",
   "type": "standard",
   "videoUrl": "/projects/Eaxily/assets/videos/demo.mp4",
@@ -25,7 +25,7 @@
       "title": "Eaxily Main Video",
       "description": "Main video content for Eaxily.",
       "url": "/projects/Eaxily/assets/videos/demo.mp4",
-      "thumbnail": "/projects/Eaxily/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Eaxily/thumbnail/thumbnail.png",
       "position": [
         0,
         2.5,
@@ -47,7 +47,7 @@
       "type": "image",
       "title": "About Eaxily",
       "description": "Information and assets for the Eaxily project.",
-      "thumbnail": "/projects/Eaxily/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Eaxily/thumbnail/thumbnail.png",
       "position": [
         -4,
         2,

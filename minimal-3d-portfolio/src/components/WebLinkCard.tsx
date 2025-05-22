@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import * as THREE from 'three';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { useAppContext } from '../hooks/useAppContext';
 
@@ -31,6 +31,9 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
   const [loadError, setLoadError] = useState(false);
   const { registerObject, unregisterObject, checkOverlap } = useAppContext();
 
+  // Add camera from useThree
+  const { camera } = useThree();
+
   // Handle hover state
   const updateHoverState = (state: boolean) => {
     setHovered(state);
@@ -48,9 +51,52 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
     }
   }, [title, position, registerObject, unregisterObject]);
 
-  // Check for overlapping with other objects
-  useFrame(() => {
-    if (groupRef.current) {
+  // Update useFrame with billboard behavior
+  useFrame((state) => {
+    if (groupRef.current && camera) {
+      // Update position with floating animation
+      groupRef.current.position.y = position[1] + Math.sin(state.clock.elapsedTime * 0.5 + position[0]) * 0.1;
+      groupRef.current.position.x = position[0];
+      groupRef.current.position.z = position[2];
+
+      // Create vectors for billboard calculation
+      const cardPosition = new THREE.Vector3(
+        groupRef.current.position.x,
+        groupRef.current.position.y,
+        groupRef.current.position.z
+      );
+      
+      // Get camera position and create direction vector
+      const cameraPosition = new THREE.Vector3(
+        camera.position.x,
+        camera.position.y,
+        camera.position.z
+      );
+      
+      // Calculate direction from card to camera
+      const direction = new THREE.Vector3().subVectors(cameraPosition, cardPosition).normalize();
+      
+      // Create rotation matrix to face camera
+      const matrix = new THREE.Matrix4();
+      matrix.lookAt(direction, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 1, 0));
+      
+      // Convert matrix to quaternion
+      const quaternion = new THREE.Quaternion();
+      quaternion.setFromRotationMatrix(matrix);
+      
+      // Apply smooth rotation
+      if (!hovered) {
+        groupRef.current.quaternion.slerp(quaternion, 0.1);
+      } else {
+        // Add slight wobble effect when hovered
+        const wobbleQuaternion = new THREE.Quaternion();
+        const wobbleAngle = Math.sin(state.clock.elapsedTime * 2) * 0.03;
+        wobbleQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), wobbleAngle);
+        quaternion.multiply(wobbleQuaternion);
+        groupRef.current.quaternion.slerp(quaternion, 0.1);
+      }
+
+      // Check for overlapping
       const worldPosition = new THREE.Vector3();
       groupRef.current.getWorldPosition(worldPosition);
       

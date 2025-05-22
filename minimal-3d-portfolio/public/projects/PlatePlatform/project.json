@@ -3,7 +3,7 @@
   "name": "PlatePlatform",
   "description": "Project details for PlatePlatform.",
   "link": "/projects/PlatePlatform/index.html",
-  "thumbnail": "/projects/PlatePlatform/assets/images/thumbnail.jpg",
+  "thumbnail": "/projects/PlatePlatform/thumbnail/thumbnail.png",
   "status": "completed",
   "type": "standard",
   "videoUrl": "/projects/PlatePlatform/assets/videos/demo.mp4",
@@ -25,7 +25,7 @@
       "title": "PlatePlatform Main Video",
       "description": "Main video content for PlatePlatform.",
       "url": "/projects/PlatePlatform/assets/videos/demo.mp4",
-      "thumbnail": "/projects/PlatePlatform/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/PlatePlatform/thumbnail/thumbnail.png",
       "position": [
         0,
         2.5,
@@ -47,7 +47,7 @@
       "type": "image",
       "title": "About PlatePlatform",
       "description": "Information and assets for the PlatePlatform project.",
-      "thumbnail": "/projects/PlatePlatform/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/PlatePlatform/thumbnail/thumbnail.png",
       "position": [
         -4,
         2,

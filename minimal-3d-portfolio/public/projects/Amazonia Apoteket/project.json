@@ -3,7 +3,7 @@
   "name": "Amazonia Apoteket",
   "description": "Project details for Amazonia Apoteket.",
   "link": "/projects/Amazonia Apoteket/index.html",
-  "thumbnail": "/projects/Amazonia Apoteket/assets/images/thumbnail.jpg",
+  "thumbnail": "/projects/Amazonia Apoteket/thumbnail/thumbnail.png",
   "status": "completed",
   "type": "standard",
   "videoUrl": "/projects/Amazonia Apoteket/assets/videos/demo.mp4",
@@ -25,7 +25,7 @@
       "title": "Amazonia Apoteket Main Video",
       "description": "Main video content for Amazonia Apoteket.",
       "url": "/projects/Amazonia Apoteket/assets/videos/demo.mp4",
-      "thumbnail": "/projects/Amazonia Apoteket/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Amazonia Apoteket/thumbnail/thumbnail.png",
       "position": [
         0,
         2.5,
@@ -47,7 +47,7 @@
       "type": "image",
       "title": "About Amazonia Apoteket",
       "description": "Information and assets for the Amazonia Apoteket project.",
-      "thumbnail": "/projects/Amazonia Apoteket/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Amazonia Apoteket/thumbnail/thumbnail.png",
       "position": [
         -4,
         2,

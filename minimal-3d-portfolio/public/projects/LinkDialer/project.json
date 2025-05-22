@@ -3,7 +3,7 @@
   "name": "LinkDialer",
   "description": "Project details for LinkDialer.",
   "link": "/projects/LinkDialer/index.html",
-  "thumbnail": "/projects/LinkDialer/assets/images/thumbnail.jpg",
+  "thumbnail": "/projects/LinkDialer/thumbnail/thumbnail.png",
   "status": "completed",
   "type": "standard",
   "videoUrl": "/projects/LinkDialer/assets/videos/demo.mp4",
@@ -25,7 +25,7 @@
       "title": "LinkDialer Main Video",
       "description": "Main video content for LinkDialer.",
       "url": "/projects/LinkDialer/assets/videos/demo.mp4",
-      "thumbnail": "/projects/LinkDialer/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/LinkDialer/thumbnail/thumbnail.png",
       "position": [
         0,
         2.5,
@@ -47,7 +47,7 @@
       "type": "image",
       "title": "About LinkDialer",
       "description": "Information and assets for the LinkDialer project.",
-      "thumbnail": "/projects/LinkDialer/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/LinkDialer/thumbnail/thumbnail.png",
       "position": [
         -4,
         2,

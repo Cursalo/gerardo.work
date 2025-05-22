@@ -3,7 +3,7 @@
   "name": "Eat Easier",
   "description": "Project details for Eat Easier.",
   "link": "/projects/Eat Easier/index.html",
-  "thumbnail": "/projects/Eat Easier/assets/images/thumbnail.jpg",
+  "thumbnail": "/projects/Eat Easier/thumbnail/thumbnail.png",
   "status": "completed",
   "type": "standard",
   "videoUrl": "/projects/Eat Easier/assets/videos/demo.mp4",
@@ -25,7 +25,7 @@
       "title": "Eat Easier Main Video",
       "description": "Main video content for Eat Easier.",
       "url": "/projects/Eat Easier/assets/videos/demo.mp4",
-      "thumbnail": "/projects/Eat Easier/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Eat Easier/thumbnail/thumbnail.png",
       "position": [
         0,
         2.5,
@@ -47,7 +47,7 @@
       "type": "image",
       "title": "About Eat Easier",
       "description": "Information and assets for the Eat Easier project.",
-      "thumbnail": "/projects/Eat Easier/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Eat Easier/thumbnail/thumbnail.png",
       "position": [
         -4,
         2,

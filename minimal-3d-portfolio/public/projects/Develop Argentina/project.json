@@ -3,7 +3,7 @@
   "name": "Develop Argentina",
   "description": "Project details for Develop Argentina.",
   "link": "/projects/Develop Argentina/index.html",
-  "thumbnail": "/projects/Develop Argentina/assets/images/thumbnail.jpg",
+  "thumbnail": "/projects/Develop Argentina/thumbnail/thumbnail.png",
   "status": "completed",
   "type": "standard",
   "videoUrl": "/projects/Develop Argentina/assets/videos/demo.mp4",
@@ -25,7 +25,7 @@
       "title": "Develop Argentina Main Video",
       "description": "Main video content for Develop Argentina.",
       "url": "/projects/Develop Argentina/assets/videos/demo.mp4",
-      "thumbnail": "/projects/Develop Argentina/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Develop Argentina/thumbnail/thumbnail.png",
       "position": [
         0,
         2.5,
@@ -47,7 +47,7 @@
       "type": "image",
       "title": "About Develop Argentina",
       "description": "Information and assets for the Develop Argentina project.",
-      "thumbnail": "/projects/Develop Argentina/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Develop Argentina/thumbnail/thumbnail.png",
       "position": [
         -4,
         2,

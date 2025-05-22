@@ -3,7 +3,7 @@
   "name": "Foodiez Apparel",
   "description": "Project details for Foodiez Apparel.",
   "link": "/projects/Foodiez Apparel/index.html",
-  "thumbnail": "/projects/Foodiez Apparel/assets/images/thumbnail.jpg",
+  "thumbnail": "/projects/Foodiez Apparel/thumbnail/thumbnail.png",
   "status": "completed",
   "type": "standard",
   "videoUrl": "/projects/Foodiez Apparel/assets/videos/demo.mp4",
@@ -25,7 +25,7 @@
       "title": "Foodiez Apparel Main Video",
       "description": "Main video content for Foodiez Apparel.",
       "url": "/projects/Foodiez Apparel/assets/videos/demo.mp4",
-      "thumbnail": "/projects/Foodiez Apparel/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Foodiez Apparel/thumbnail/thumbnail.png",
       "position": [
         0,
         2.5,
@@ -47,7 +47,7 @@
       "type": "image",
       "title": "About Foodiez Apparel",
       "description": "Information and assets for the Foodiez Apparel project.",
-      "thumbnail": "/projects/Foodiez Apparel/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Foodiez Apparel/thumbnail/thumbnail.png",
       "position": [
         -4,
         2,

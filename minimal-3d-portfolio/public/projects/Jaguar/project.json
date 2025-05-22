@@ -3,7 +3,7 @@
   "name": "Jaguar",
   "description": "Project details for Jaguar.",
   "link": "/projects/Jaguar/index.html",
-  "thumbnail": "/projects/Jaguar/assets/images/thumbnail.jpg",
+  "thumbnail": "/projects/Jaguar/thumbnail/thumbnail.png",
   "status": "completed",
   "type": "standard",
   "videoUrl": "/projects/Jaguar/assets/videos/demo.mp4",
@@ -25,7 +25,7 @@
       "title": "Jaguar Main Video",
       "description": "Main video content for Jaguar.",
       "url": "/projects/Jaguar/assets/videos/demo.mp4",
-      "thumbnail": "/projects/Jaguar/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Jaguar/thumbnail/thumbnail.png",
       "position": [
         0,
         2.5,
@@ -47,7 +47,7 @@
       "type": "image",
       "title": "About Jaguar",
       "description": "Information and assets for the Jaguar project.",
-      "thumbnail": "/projects/Jaguar/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Jaguar/thumbnail/thumbnail.png",
       "position": [
         -4,
         2,

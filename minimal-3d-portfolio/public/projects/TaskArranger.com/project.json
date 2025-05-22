@@ -3,7 +3,7 @@
   "name": "TaskArranger.com",
   "description": "Project details for TaskArranger.com.",
   "link": "/projects/TaskArranger.com/index.html",
-  "thumbnail": "/projects/TaskArranger.com/assets/images/thumbnail.jpg",
+  "thumbnail": "/projects/TaskArranger.com/thumbnail/thumbnail.png",
   "status": "completed",
   "type": "standard",
   "videoUrl": "/projects/TaskArranger.com/assets/videos/demo.mp4",
@@ -25,7 +25,7 @@
       "title": "TaskArranger.com Main Video",
       "description": "Main video content for TaskArranger.com.",
       "url": "/projects/TaskArranger.com/assets/videos/demo.mp4",
-      "thumbnail": "/projects/TaskArranger.com/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/TaskArranger.com/thumbnail/thumbnail.png",
       "position": [
         0,
         2.5,
@@ -47,7 +47,7 @@
       "type": "image",
       "title": "About TaskArranger.com",
       "description": "Information and assets for the TaskArranger.com project.",
-      "thumbnail": "/projects/TaskArranger.com/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/TaskArranger.com/thumbnail/thumbnail.png",
       "position": [
         -4,
         2,

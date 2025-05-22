@@ -3,7 +3,7 @@
   "name": "BonsaiPrep",
   "description": "Project details for BonsaiPrep.",
   "link": "/projects/BonsaiPrep/index.html",
-  "thumbnail": "/projects/BonsaiPrep/assets/images/thumbnail.jpg",
+  "thumbnail": "/projects/BonsaiPrep/thumbnail/thumbnail.png",
   "status": "completed",
   "type": "standard",
   "videoUrl": "/projects/BonsaiPrep/assets/videos/demo.mp4",
@@ -25,7 +25,7 @@
       "title": "BonsaiPrep Main Video",
       "description": "Main video content for BonsaiPrep.",
       "url": "/projects/BonsaiPrep/assets/videos/demo.mp4",
-      "thumbnail": "/projects/BonsaiPrep/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/BonsaiPrep/thumbnail/thumbnail.png",
       "position": [
         0,
         2.5,
@@ -47,7 +47,7 @@
       "type": "image",
       "title": "About BonsaiPrep",
       "description": "Information and assets for the BonsaiPrep project.",
-      "thumbnail": "/projects/BonsaiPrep/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/BonsaiPrep/thumbnail/thumbnail.png",
       "position": [
         -4,
         2,

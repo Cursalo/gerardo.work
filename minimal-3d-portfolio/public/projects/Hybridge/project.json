@@ -3,7 +3,7 @@
   "name": "Hybridge",
   "description": "Project details for Hybridge.",
   "link": "/projects/Hybridge/index.html",
-  "thumbnail": "/projects/Hybridge/assets/images/thumbnail.jpg",
+  "thumbnail": "/projects/Hybridge/thumbnail/thumbnail.png",
   "status": "completed",
   "type": "standard",
   "videoUrl": "/projects/Hybridge/assets/videos/demo.mp4",
@@ -25,7 +25,7 @@
       "title": "Hybridge Main Video",
       "description": "Main video content for Hybridge.",
       "url": "/projects/Hybridge/assets/videos/demo.mp4",
-      "thumbnail": "/projects/Hybridge/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Hybridge/thumbnail/thumbnail.png",
       "position": [
         0,
         2.5,
@@ -47,7 +47,7 @@
       "type": "image",
       "title": "About Hybridge",
       "description": "Information and assets for the Hybridge project.",
-      "thumbnail": "/projects/Hybridge/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Hybridge/thumbnail/thumbnail.png",
       "position": [
         -4,
         2,

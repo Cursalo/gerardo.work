@@ -217,45 +217,65 @@ class ProjectService {
           });
           
           if (!response.ok) {
-            throw new Error(`HTTP error ${response.status} for project ${i}`);
+            throw new Error(`HTTP error ${response.status} for project ${i}: ${projectName}`);
           }
           
           const project = await response.json();
 
           // --- Start of thumbnail processing ---
-          let finalThumbnail = project.thumbnail; // Get the value from project.json
+          let finalThumbnailPath: string;
+          const projectThumbnailValue = project.thumbnail;
 
-          if (typeof finalThumbnail === 'string' && finalThumbnail.trim() !== '') {
-            // If it's a non-empty string
-            if (!finalThumbnail.startsWith('/projects/') && !finalThumbnail.startsWith('http')) {
-              // It's a relative path that needs to be made absolute OR it's a malformed path we override
-              // Defaulting to 'thumbnail.jpg' in this scenario.
-              console.log(`ProjectService: Thumbnail for ${projectName} ('${finalThumbnail}') is relative or malformed. Re-pathing to default.`);
-              finalThumbnail = `/projects/${projectName}/assets/images/thumbnail.jpg`;
+          if (projectThumbnailValue && typeof projectThumbnailValue === 'string' && projectThumbnailValue.trim() !== '') {
+            if (projectThumbnailValue.startsWith('http') || projectThumbnailValue.startsWith('/projects/')) {
+              // Absolute URL or already correctly pathed from root (e.g. from a previous version)
+              // If it points to assets/images, we might want to redirect it to thumbnail/thumbnail.png
+              if (projectThumbnailValue.includes('/assets/images/')) {
+                finalThumbnailPath = `/projects/${projectName}/thumbnail/thumbnail.png`;
+                 console.log(`ProjectService: Redirecting legacy thumbnail path for ${projectName} from ${projectThumbnailValue} to ${finalThumbnailPath}`);
+              } else {
+                finalThumbnailPath = projectThumbnailValue;
+                console.log(`ProjectService: Using provided absolute/root-relative thumbnail for ${projectName}: ${finalThumbnailPath}`);
+              }
+            } else {
+              // Relative path, assume it's a filename within the new 'thumbnail' folder
+              finalThumbnailPath = `/projects/${projectName}/thumbnail/${projectThumbnailValue}`;
+              console.log(`ProjectService: Using relative thumbnail for ${projectName} ('${projectThumbnailValue}'), resolved to: ${finalThumbnailPath}`);
             }
-            // If it starts with /projects/ or http, assume it's correct and leave as is.
           } else {
-            // Thumbnail is missing, empty, null, or not a string. Assign a default.
-            console.log(`ProjectService: Thumbnail for ${projectName} is missing or invalid. Assigning default.`);
-            finalThumbnail = `/projects/${projectName}/assets/images/thumbnail.jpg`;
+            // Thumbnail is missing, empty, null, or not a string. Assign new default.
+            finalThumbnailPath = `/projects/${projectName}/thumbnail/thumbnail.png`;
+            console.log(`ProjectService: Thumbnail for ${projectName} is missing or invalid. Assigning default: ${finalThumbnailPath}`);
           }
-          project.thumbnail = finalThumbnail; // Assign the processed thumbnail back
+          project.thumbnail = finalThumbnailPath; // Assign the processed thumbnail back
           // --- End of thumbnail processing ---
           
-          if (project.videoUrl && !project.videoUrl.startsWith('/projects/')) {
-            project.videoUrl = `/projects/${projectName}/assets/videos/demo.mp4`;
+          if (project.videoUrl && !project.videoUrl.startsWith('/projects/') && !project.videoUrl.startsWith('http')) {
+            project.videoUrl = `/projects/${projectName}/assets/videos/demo.mp4`; // Assuming demo.mp4 is a standard
           }
           
           // Process media objects to ensure correct URLs
           if (project.mediaObjects && Array.isArray(project.mediaObjects)) {
             project.mediaObjects = project.mediaObjects.map((obj: WorldObject) => {
-              // Fix URL paths if needed
+              // Fix URL paths for obj.url if needed (likely points to assets/models, assets/images, etc.)
               if (obj.url && !obj.url.startsWith('/projects/') && !obj.url.startsWith('http')) {
-                obj.url = `/projects/${projectName}/${obj.url}`;
+                obj.url = `/projects/${projectName}/${obj.url}`; // General relative path correction
               }
               
-              if (obj.thumbnail && !obj.thumbnail.startsWith('/projects/') && !obj.thumbnail.startsWith('http')) {
-                obj.thumbnail = `/projects/${projectName}/${obj.thumbnail}`;
+              // Fix thumbnail paths for obj.thumbnail
+              if (obj.thumbnail && typeof obj.thumbnail === 'string' && obj.thumbnail.trim() !== '') {
+                if (obj.thumbnail.startsWith('http') || obj.thumbnail.startsWith('/projects/')) {
+                  // Absolute or root-relative path, use as is or redirect legacy
+                   if (obj.thumbnail.includes('/assets/images/')) {
+                     obj.thumbnail = `/projects/${projectName}/thumbnail/thumbnail.png`; // Or a specific name if available
+                   }
+                  // else leave obj.thumbnail as is
+                } else {
+                  // Relative path, assume it's a filename within the 'thumbnail' folder for this project
+                  obj.thumbnail = `/projects/${projectName}/thumbnail/${obj.thumbnail}`;
+                }
+              } else if (obj.type === 'image' || obj.type === 'video') { // Default for visual media if no thumbnail
+                 obj.thumbnail = `/projects/${projectName}/thumbnail/thumbnail.png`; // Default placeholder
               }
               
               return obj;
@@ -266,6 +286,9 @@ class ProjectService {
           if (project.assetGallery && Array.isArray(project.assetGallery)) {
             project.assetGallery = project.assetGallery.map((asset: {url?: string, name?: string, type?: string, category?: string}) => {
               if (asset.url && !asset.url.startsWith('/projects/') && !asset.url.startsWith('http')) {
+                // This is a general asset URL, could be image, model, document.
+                // It should be prefixed with the project path if relative.
+                // Example: assets/images/gallery_image1.png -> /projects/MyProject/assets/images/gallery_image1.png
                 asset.url = `/projects/${projectName}/${asset.url}`;
               }
               return asset;
@@ -276,14 +299,19 @@ class ProjectService {
           const validProject: Project = {
             ...project,
             id: i, // Ensure correct ID
+            name: project.name || getProjectName(i), // Ensure name exists
+            description: project.description || "No description available.", // Ensure description exists
+            link: project.link || "#", // Ensure link exists
+            status: project.status || 'in-progress',
+            type: project.type || 'standard',
             mediaObjects: Array.isArray(project.mediaObjects) ? project.mediaObjects : [],
             worldSettings: project.worldSettings || undefined
           };
 
           loadedProjects.push(validProject);
-          console.log(`ProjectService: Loaded project ${i} from ${projectUrl}`);
+          console.log(`ProjectService: Loaded project ${projectName} (ID ${i}) from ${projectUrl}`);
         } catch (error) {
-          console.warn(`ProjectService: Could not load project ${i}:`, error);
+          console.warn(`ProjectService: Could not load project ${getProjectName(i)} (ID ${i}):`, error);
         }
       }
 
@@ -321,9 +349,11 @@ class ProjectService {
           for (const request of requests) {
             if (request.url.includes('/projects/') && 
                 (request.url.includes('project.json') || 
-                 request.url.includes('/assets/') ||
+                 request.url.includes('/assets/') || // Broad match for assets
+                 request.url.includes('/thumbnail/') || // Include new thumbnail folder
                  request.url.includes('.jpg') ||
-                 request.url.includes('.png') ||
+                 request.url.includes('.png') || // Include PNG
+                 request.url.includes('.webp') ||
                  request.url.includes('.mp4') ||
                  request.url.includes('.pdf'))) {
               console.log(`ProjectService: Removing from cache: ${request.url}`);
@@ -448,7 +478,7 @@ class ProjectService {
     const project = projects.find(p => p.id === id);
     
     if (project) {
-      console.log(`ProjectService: Found project with ID ${id}:`, project);
+      console.log(`ProjectService: Found project with ID ${id}:`, project.name);
     } else {
       console.warn(`ProjectService: Project with ID ${id} not found`);
     }
@@ -489,7 +519,7 @@ class ProjectService {
     }
     
     if (project) {
-      console.log(`ProjectService: Found project with customLink ${customLink}:`, project);
+      console.log(`ProjectService: Found project with customLink ${customLink}:`, project.name);
       
       // If the project doesn't have a customLink, add it now and save
       if (!project.customLink) {
@@ -518,7 +548,7 @@ class ProjectService {
   }
 
   async saveProject(project: Project): Promise<Project> {
-    console.log(`ProjectService: Saving project ${project.id}`, project);
+    console.log(`ProjectService: Saving project ${project.id}`, project.name);
     
     // If it's a new project, assign an ID
     if (!project.id) {
@@ -637,11 +667,11 @@ class ProjectService {
       
       // Extract project data from form
       const project: Project = {
-        id: id || Date.now(),
+        id: id || Date.now(), // Temporary ID if new, will be replaced by getNextId or existing
         name: formData.get('name') as string || '',
         description: formData.get('description') as string || '',
         link: formData.get('link') as string || '',
-        thumbnail: formData.get('thumbnail') as string || '',
+        thumbnail: formData.get('thumbnail') as string || '', // Will be processed by saveProject or loadFromJsonFiles
         status: (formData.get('status') as 'completed' | 'in-progress') || 'in-progress',
         type: (formData.get('type') as 'standard' | 'video') || 'standard',
       };
@@ -698,7 +728,7 @@ class ProjectService {
       
       let result: Project;
       
-      if (id) {
+      if (id !== null && id !== undefined) { // Check if ID exists and is valid
         // Update existing project
         try {
           result = await this.updateProject(id, project);
@@ -707,56 +737,63 @@ class ProjectService {
           console.error(`ProjectService: Error updating project ${id}:`, updateError);
           
           // CRITICAL FIX: Fallback to direct save if update fails
-          console.log(`ProjectService: Attempting direct save as fallback`);
+          console.log(`ProjectService: Attempting direct save as fallback for update`);
           const existingIndex = this.projects.findIndex(p => p.id === id);
           
           if (existingIndex !== -1) {
-            this.projects[existingIndex] = { ...this.projects[existingIndex], ...project };
+            this.projects[existingIndex] = { ...this.projects[existingIndex], ...project, id: id }; // Ensure ID is correct
           } else {
+            // This case should ideally not happen if updateProject was called with a valid ID
+            project.id = id; // Ensure ID is set
             this.projects.push(project);
           }
           
           this.saveToStorage();
-          result = project;
+          result = this.projects.find(p => p.id ===id) || project; // Get the updated project from array
         }
       } else {
         // Create new project
+        project.id = this.getNextId(); // Assign a new ID
         try {
-          result = await this.saveProject(project);
+          result = await this.saveProject(project); // saveProject handles adding to this.projects and localStorage
           console.log(`ProjectService: Created new project with ID ${result.id} successfully`);
         } catch (saveError) {
           console.error('ProjectService: Error saving new project:', saveError);
           
           // CRITICAL FIX: Fallback to direct save
-          console.log('ProjectService: Attempting direct save as fallback');
-          const maxId = Math.max(0, ...this.projects.map(p => p.id));
-          const newProject = { ...project, id: project.id || maxId + 1 };
-          this.projects.push(newProject);
+          console.log('ProjectService: Attempting direct save as fallback for new project');
+          // project already has a new ID from getNextId()
+          if (!this.projects.find(p=> p.id === project.id)) { // Avoid duplicates if saveProject partially succeeded
+             this.projects.push(project);
+          }
           this.saveToStorage();
-          result = newProject;
+          result = project;
         }
       }
       
       // CRITICAL FIX: Verify project was actually saved in memory and storage
-      const savedProject = this.projects.find(p => p.id === result.id);
-      if (!savedProject) {
-        console.error(`ProjectService: Project ${result.id} not found in memory after save - forcing re-add`);
-        this.projects.push(result);
-        this.saveToStorage();
+      const finalSavedProject = this.projects.find(p => p.id === result.id);
+      if (!finalSavedProject) {
+        console.error(`ProjectService: Project ${result.id} not found in memory after save/update - forcing re-add`);
+        if(this.projects.findIndex(p => p.id === result.id) === -1) this.projects.push(result); // Add if not present
+        this.saveToStorage(); // Re-save
       }
       
       // Double-check localStorage save
       try {
-        const storedProjects = localStorage.getItem(this.STORAGE_KEY);
-        if (storedProjects) {
-          const parsedProjects = JSON.parse(storedProjects);
-          if (Array.isArray(parsedProjects)) {
-            const storedProject = parsedProjects.find(p => p.id === result.id);
-            if (!storedProject) {
-              console.error(`ProjectService: Project ${result.id} not found in localStorage - forcing save`);
-              localStorage.setItem(`individual_project_${result.id}`, JSON.stringify(result));
+        const storedProjectsRaw = localStorage.getItem(this.STORAGE_KEY);
+        if (storedProjectsRaw) {
+          const parsedStoredProjects = JSON.parse(storedProjectsRaw);
+          if (Array.isArray(parsedStoredProjects)) {
+            const storedProjectInstance = parsedStoredProjects.find(p => p.id === result.id);
+            if (!storedProjectInstance) {
+              console.error(`ProjectService: Project ${result.id} not found in localStorage - trying individual save`);
+              // This individual save is a last resort, main save should work.
+              // localStorage.setItem(`individual_project_${result.id}`, JSON.stringify(result)); 
             }
           }
+        } else {
+            console.error(`ProjectService: Main storage key ${this.STORAGE_KEY} not found after save attempt.`);
         }
       } catch (verifyError) {
         console.error('ProjectService: Error verifying project in localStorage:', verifyError);
@@ -765,7 +802,7 @@ class ProjectService {
       return result;
     } catch (error) {
       console.error('ProjectService: Error handling form submission:', error);
-      throw error;
+      throw error; // Re-throw to be caught by caller
     }
   }
 
@@ -776,16 +813,9 @@ class ProjectService {
       return;
     }
     console.log('ProjectService: Explicitly initializing...');
-    this.loadProjects(); // Call the refactored loadProjects
-    // Wait for initialization to complete
-    await new Promise<void>(resolve => { // Changed to Promise<void>
-        const checkInterval = setInterval(() => {
-            if (this.initialized) {
-                clearInterval(checkInterval);
-                resolve();
-            }
-        }, 50);
-    });
+    await this.loadProjects(); // Call the refactored loadProjects and wait for it
+    // No need for setInterval check, as loadProjects is awaited.
+    // this.initialized is set to true at the end of loadProjects.
     console.log('ProjectService: Initialization complete via initialize() method.');
   }
 
@@ -811,6 +841,7 @@ class ProjectService {
           console.error('ProjectService: Error parsing backup data:', parseError);
         }
       }
+      console.log('ProjectService: No valid backup data found or backup is empty.');
       return false;
     } catch (error) {
       console.error('ProjectService: Error during backup recovery attempt:', error);
@@ -820,8 +851,8 @@ class ProjectService {
   
   public async forceReloadProjects(): Promise<void> {
     console.log('ProjectService: Force reloading projects');
-    this.initialized = false;
-    await this.loadProjects();
+    this.initialized = false; // Mark as not initialized
+    await this.loadProjects(); // loadProjects will set initialized to true at the end
   }
 
   public getProjectsDirectFromStorage(): Project[] {

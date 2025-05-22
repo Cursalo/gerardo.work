@@ -3,7 +3,7 @@
   "name": "Matrix Agencia",
   "description": "Project details for Matrix Agencia.",
   "link": "/projects/Matrix Agencia/index.html",
-  "thumbnail": "/projects/Matrix Agencia/assets/images/thumbnail.jpg",
+  "thumbnail": "/projects/Matrix Agencia/thumbnail/thumbnail.png",
   "status": "completed",
   "type": "standard",
   "videoUrl": "/projects/Matrix Agencia/assets/videos/demo.mp4",
@@ -25,7 +25,7 @@
       "title": "Matrix Agencia Main Video",
       "description": "Main video content for Matrix Agencia.",
       "url": "/projects/Matrix Agencia/assets/videos/demo.mp4",
-      "thumbnail": "/projects/Matrix Agencia/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Matrix Agencia/thumbnail/thumbnail.png",
       "position": [
         0,
         2.5,
@@ -47,7 +47,7 @@
       "type": "image",
       "title": "About Matrix Agencia",
       "description": "Information and assets for the Matrix Agencia project.",
-      "thumbnail": "/projects/Matrix Agencia/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Matrix Agencia/thumbnail/thumbnail.png",
       "position": [
         -4,
         2,

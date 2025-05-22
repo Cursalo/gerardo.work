@@ -3,7 +3,7 @@
   "name": "Avatarmatic",
   "description": "Project details for Avatarmatic.",
   "link": "/projects/Avatarmatic/index.html",
-  "thumbnail": "/projects/Avatarmatic/assets/images/thumbnail.jpg",
+  "thumbnail": "/projects/Avatarmatic/thumbnail/thumbnail.png",
   "status": "completed",
   "type": "standard",
   "videoUrl": "/projects/Avatarmatic/assets/videos/demo.mp4",
@@ -25,7 +25,7 @@
       "title": "Avatarmatic Main Video",
       "description": "Main video content for Avatarmatic.",
       "url": "/projects/Avatarmatic/assets/videos/demo.mp4",
-      "thumbnail": "/projects/Avatarmatic/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Avatarmatic/thumbnail/thumbnail.png",
       "position": [
         0,
         2.5,
@@ -47,7 +47,7 @@
       "type": "image",
       "title": "About Avatarmatic",
       "description": "Information and assets for the Avatarmatic project.",
-      "thumbnail": "/projects/Avatarmatic/assets/images/thumbnail.jpg",
+      "thumbnail": "/projects/Avatarmatic/thumbnail/thumbnail.png",
       "position": [
         -4,
         2,
