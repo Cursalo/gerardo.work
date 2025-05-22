@@ -106,8 +106,8 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
       // Get the direction from the object to the camera
       const direction = camera.position.clone().sub(objectRef.current.position);
       
-      // Calculate the rotation to face the camera, but only on Y-axis (horizontal rotation)
-      const targetRotation = Math.atan2(direction.x, direction.z) + Math.PI;
+      // Calculate the rotation to make the object's local -X axis face the camera
+      const targetRotation = Math.atan2(-direction.z, direction.x) + Math.PI;
       
       // Apply the rotation to the Y axis only (keep X and Z rotations from the object's original rotation)
       objectRef.current.rotation.y = targetRotation;
