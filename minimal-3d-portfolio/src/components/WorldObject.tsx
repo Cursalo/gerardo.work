@@ -106,8 +106,29 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
     if (objectRef.current && shouldBillboard(object.type)) {
       // Only apply billboarding when pointer is locked (gameplay mode)
       if (document.pointerLockElement === gl.domElement) {
-        // Make the object look directly at the camera
-        objectRef.current.lookAt(camera.position);
+        const MIN_LOOKAT_DISTANCE = 1.5; // Minimum distance to update lookAt
+
+        // Get the object's world position
+        const objectWorldPosition = new THREE.Vector3();
+        objectRef.current.getWorldPosition(objectWorldPosition);
+
+        // Calculate distance between camera and object in world space
+        const dx = camera.position.x - objectWorldPosition.x;
+        const dz = camera.position.z - objectWorldPosition.z;
+        const distanceXZ = Math.sqrt(dx * dx + dz * dz);
+
+        // Only update orientation if the camera is far enough away
+        if (distanceXZ > MIN_LOOKAT_DISTANCE) {
+          // Create a target position at the same world y-height as the object
+          const targetPosition = new THREE.Vector3(
+            camera.position.x,
+            objectWorldPosition.y, // Use object's world Y
+            camera.position.z
+          );
+
+          // Make the object look at the camera (at same height level)
+          objectRef.current.lookAt(targetPosition);
+        }
       }
     }
   });
