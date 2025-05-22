@@ -1,0 +1,70 @@
+{
+  "id": 30,
+  "name": "Jerry's",
+  "description": "Project details for Jerry's.",
+  "link": "/projects/Jerry's/index.html",
+  "thumbnail": "/projects/Jerry's/thumbnail/thumbnail.png",
+  "status": "completed",
+  "type": "standard",
+  "videoUrl": "/projects/Jerry's/assets/videos/demo.mp4",
+  "worldSettings": {
+    "backgroundColor": "hsl(188, 92%, 60%)",
+    "floorColor": "#ffffff",
+    "skyColor": "hsl(248, 92%, 80%)",
+    "floorTexture": "",
+    "skyTexture": "",
+    "ambientLightColor": "#ffffff",
+    "ambientLightIntensity": 0.7,
+    "directionalLightColor": "hsl(158, 100%, 80%)",
+    "directionalLightIntensity": 1
+  },
+  "mediaObjects": [
+    {
+      "id": "video-player-30",
+      "type": "video",
+      "title": "Jerry's Main Video",
+      "description": "Main video content for Jerry's.",
+      "url": "/projects/Jerry's/assets/videos/demo.mp4",
+      "thumbnail": "/projects/Jerry's/thumbnail/thumbnail.png",
+      "position": [
+        0,
+        2.5,
+        -8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        4,
+        2.25,
+        1
+      ]
+    },
+    {
+      "id": "info-panel-30",
+      "type": "image",
+      "title": "About Jerry's",
+      "description": "Information and assets for the Jerry's project.",
+      "thumbnail": "/projects/Jerry's/thumbnail/thumbnail.png",
+      "position": [
+        -4,
+        2,
+        -7
+      ],
+      "rotation": [
+        0,
+        0.39269908169872414,
+        0
+      ],
+      "scale": [
+        2,
+        1.5,
+        0.1
+      ]
+    }
+  ],
+  "assetGallery": [],
+  "customLink": "jerrys"
+}

@@ -1,0 +1,410 @@
+import React, { useRef, useState, useEffect } from 'react';
+import * as THREE from 'three';
+import { useFrame, useThree } from '@react-three/fiber';
+import { Html } from '@react-three/drei';
+import { useAppContext } from '../hooks/useAppContext';
+
+interface WebLinkCardProps {
+  title: string;
+  description?: string;
+  url: string;
+  position: [number, number, number];
+  rotation?: [number, number, number];
+  scale?: number;
+  onClick?: () => void;
+}
+
+export const WebLinkCard: React.FC<WebLinkCardProps> = ({
+  title,
+  description,
+  url,
+  position,
+  rotation = [0, 0, 0],
+  scale = 1,
+  onClick,
+}) => {
+  const groupRef = useRef<THREE.Group>(null);
+  const meshRef = useRef<THREE.Mesh>(null);
+  const [hovered, setHovered] = useState(false);
+  const [isOverlapping, setIsOverlapping] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const { registerObject, unregisterObject, checkOverlap } = useAppContext();
+
+  // Add camera from useThree
+  const { camera } = useThree();
+
+  // Handle hover state
+  const updateHoverState = (state: boolean) => {
+    setHovered(state);
+  };
+
+  // Register this component's position and check for overlaps
+  useEffect(() => {
+    if (groupRef.current) {
+      const id = `weblink-${title}-${position.join(',')}`;
+      registerObject(id, groupRef);
+      
+      return () => {
+        unregisterObject(id);
+      };
+    }
+  }, [title, position, registerObject, unregisterObject]);
+
+  // Update useFrame with billboard behavior
+  useFrame((state) => {
+    if (groupRef.current && camera) {
+      // Update position with floating animation
+      groupRef.current.position.y = position[1] + Math.sin(state.clock.elapsedTime * 0.5 + position[0]) * 0.1;
+      groupRef.current.position.x = position[0];
+      groupRef.current.position.z = position[2];
+
+      // Create vectors for billboard calculation
+      const cardPosition = new THREE.Vector3(
+        groupRef.current.position.x,
+        groupRef.current.position.y,
+        groupRef.current.position.z
+      );
+      
+      // Get camera position and create direction vector
+      const cameraPosition = new THREE.Vector3(
+        camera.position.x,
+        camera.position.y,
+        camera.position.z
+      );
+      
+      // Calculate direction from card to camera
+      const direction = new THREE.Vector3().subVectors(cameraPosition, cardPosition).normalize();
+      
+      // Create rotation matrix to face camera
+      const matrix = new THREE.Matrix4();
+      matrix.lookAt(direction, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 1, 0));
+      
+      // Convert matrix to quaternion
+      const quaternion = new THREE.Quaternion();
+      quaternion.setFromRotationMatrix(matrix);
+      
+      // Apply smooth rotation
+      if (!hovered) {
+        groupRef.current.quaternion.slerp(quaternion, 0.1);
+      } else {
+        // Add slight wobble effect when hovered
+        const wobbleQuaternion = new THREE.Quaternion();
+        const wobbleAngle = Math.sin(state.clock.elapsedTime * 2) * 0.03;
+        wobbleQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), wobbleAngle);
+        quaternion.multiply(wobbleQuaternion);
+        groupRef.current.quaternion.slerp(quaternion, 0.1);
+      }
+
+      // Check for overlapping
+      const worldPosition = new THREE.Vector3();
+      groupRef.current.getWorldPosition(worldPosition);
+      
+      const isOverlappingNow = checkOverlap(worldPosition);
+      if (isOverlappingNow !== isOverlapping) {
+        setIsOverlapping(isOverlappingNow);
+      }
+    }
+  });
+
+  // Handle click event
+  const handleClick = () => {
+    if (onClick) {
+      onClick();
+    } else {
+      // Default action: Open URL in a new tab
+      window.open(url, '_blank');
+    }
+  };
+
+  // Handle iframe load events
+  const handleIframeLoad = () => {
+    console.log(`WebLinkCard: Iframe loaded for ${url}`);
+    setIsLoading(false);
+    setLoadError(false);
+  };
+
+  const handleIframeError = () => {
+    console.error(`WebLinkCard: Error loading iframe for ${url}`);
+    setIsLoading(false);
+    setLoadError(true);
+  };
+
+  // Get domain name from URL for display
+  const getDomainFromUrl = (urlString: string): string => {
+    try {
+      const url = new URL(urlString);
+      return url.hostname.replace('www.', '');
+    } catch (e) {
+      return urlString;
+    }
+  };
+
+  const domain = getDomainFromUrl(url);
+
+  return (
+    <group 
+      ref={groupRef}
+      position={[position[0], position[1], position[2]]}
+      rotation={rotation}
+      scale={scale}
+      onPointerOver={() => updateHoverState(true)}
+      onPointerOut={() => updateHoverState(false)}
+      onClick={handleClick}
+    >
+      {/* Web Link Card Base */}
+      <mesh 
+        ref={meshRef} 
+        castShadow 
+        receiveShadow
+      >
+        <boxGeometry args={[2.5, 1.8, 0.05]} />
+        <meshStandardMaterial 
+          color={hovered ? "#ffffff" : "#f0f0f0"}
+          emissive={hovered ? "#ffffff" : "#cccccc"}
+          emissiveIntensity={hovered ? 0.5 : 0.1}
+          metalness={0.2}
+          roughness={0.3}
+        />
+      </mesh>
+      
+      {/* Web Page Preview */}
+      <Html
+        transform
+        distanceFactor={8}
+        position={[0, 0, 0.06]}
+        style={{
+          width: '220px',
+          height: '150px',
+          pointerEvents: 'none',
+        }}
+      >
+        <div
+          style={{
+            width: '100%',
+            height: '100%',
+            backgroundColor: '#ffffff',
+            borderRadius: '8px',
+            overflow: 'hidden',
+            boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            position: 'relative',
+          }}
+        >
+          {isLoading && (
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                backgroundColor: '#f8f8f8',
+                zIndex: 10,
+              }}
+            >
+              <div
+                style={{
+                  width: '30px',
+                  height: '30px',
+                  border: '3px solid #eee',
+                  borderTop: '3px solid #3498db',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite',
+                  marginBottom: '10px',
+                }}
+              />
+              <style>
+                {`
+                  @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                  }
+                `}
+              </style>
+              <div style={{ fontSize: '12px', color: '#666' }}>Loading...</div>
+            </div>
+          )}
+          
+          {loadError ? (
+            <div
+              style={{
+                padding: '20px',
+                textAlign: 'center',
+                color: '#888',
+                fontSize: '12px',
+                fontFamily: 'Arial, sans-serif',
+              }}
+            >
+              <div style={{ marginBottom: '10px' }}>
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20Z" fill="#FF5722"/>
+                  <path d="M12 14C13.1046 14 14 13.1046 14 12C14 10.8954 13.1046 10 12 10C10.8954 10 10 10.8954 10 12C10 13.1046 10.8954 14 12 14Z" fill="#FF5722"/>
+                  <path d="M12 8V7" stroke="#FF5722" strokeWidth="2" strokeLinecap="round"/>
+                  <path d="M12 17V16" stroke="#FF5722" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              </div>
+              Unable to load preview
+              <div style={{ fontSize: '10px', marginTop: '5px' }}>Click to open website</div>
+            </div>
+          ) : (
+            <iframe
+              src={url}
+              style={{
+                width: '100%',
+                height: '100%',
+                border: 'none',
+                pointerEvents: 'none',
+                opacity: isLoading ? 0 : 1,
+                transition: 'opacity 0.3s ease',
+              }}
+              title={title}
+              onLoad={handleIframeLoad}
+              onError={handleIframeError}
+              sandbox="allow-same-origin"
+            />
+          )}
+          
+          {/* URL Bar Overlay */}
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '24px',
+              backgroundColor: 'rgba(245,245,245,0.9)',
+              borderBottom: '1px solid #ddd',
+              display: 'flex',
+              alignItems: 'center',
+              padding: '0 8px',
+              fontSize: '10px',
+              color: '#333',
+              fontFamily: 'Arial, sans-serif',
+              borderTopLeftRadius: '8px',
+              borderTopRightRadius: '8px',
+            }}
+          >
+            <div
+              style={{
+                display: 'inline-block',
+                maxWidth: '80%',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {domain}
+            </div>
+          </div>
+        </div>
+      </Html>
+      
+      {/* Title Overlay */}
+      <Html
+        transform
+        distanceFactor={8}
+        position={[0, -1.0, 0.05]}
+        style={{
+          width: '180px',
+          maxWidth: '90%',
+          textAlign: 'center',
+          pointerEvents: 'none',
+        }}
+      >
+        <div
+          style={{
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            color: '#ffffff',
+            padding: '3px 6px',
+            borderRadius: '4px',
+            fontSize: '10px',
+            fontFamily: 'Arial, sans-serif',
+            fontWeight: 'bold',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+            backdropFilter: 'blur(2px)',
+            opacity: 0.8,
+            transform: `scale(${hovered ? 1.1 : 1})`,
+            transition: 'all 0.2s ease'
+          }}
+        >
+          {title.replace(/\.[^/.]+$/, "")}
+        </div>
+      </Html>
+      
+      {/* Description Popup on Hover */}
+      {description && (
+        <Html
+          transform
+          distanceFactor={8}
+          position={[0, 1.0, 0.06]}
+          style={{
+            width: '180px',
+            maxWidth: '90%',
+            pointerEvents: 'none',
+            opacity: hovered ? 1 : 0,
+            transition: 'opacity 0.3s ease',
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: 'rgba(0,0,0,0.7)',
+              color: '#ffffff',
+              padding: '8px 12px',
+              borderRadius: '8px',
+              fontSize: '12px',
+              fontFamily: 'Arial, sans-serif',
+              boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
+              backdropFilter: 'blur(4px)',
+            }}
+          >
+            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{title}</div>
+            <div style={{ fontSize: '11px', lineHeight: 1.4 }}>{description}</div>
+          </div>
+        </Html>
+      )}
+      
+      {/* Click Indicator */}
+      <Html
+        transform
+        distanceFactor={8}
+        position={[0, 0, 0.07]}
+        style={{
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          pointerEvents: 'none',
+          opacity: hovered ? 1 : 0,
+          transition: 'opacity 0.3s ease',
+        }}
+      >
+        <div
+          style={{
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            color: '#ffffff',
+            padding: '6px 12px',
+            borderRadius: '20px',
+            fontSize: '11px',
+            fontFamily: 'Arial, sans-serif',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+            backdropFilter: 'blur(2px)',
+          }}
+        >
+          Click to open
+        </div>
+      </Html>
+    </group>
+  );
+}; 

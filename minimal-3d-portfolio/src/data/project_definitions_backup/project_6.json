@@ -1,0 +1,68 @@
+{
+  "id": 6,
+  "name": "Black Panther: Wakanda Forever",
+  "description": "Official trailer showcase for Black Panther: Wakanda Forever.",
+  "link": "https://www.youtube.com/watch?v=odM92ap8_c0",
+  "thumbnail": "https://img.youtube.com/vi/odM92ap8_c0/mqdefault.jpg",
+  "status": "completed",
+  "type": "video",
+  "videoUrl": "https://www.youtube.com/watch?v=odM92ap8_c0",
+  "worldSettings": {
+    "backgroundColor": "hsl(282, 68%, 40%)",
+    "floorColor": "hsl(282, 58%, 30%)",
+    "skyColor": "hsl(342, 68%, 60%)",
+    "floorTexture": "https://picsum.photos/seed/floor6/1024/1024",
+    "skyTexture": "https://picsum.photos/seed/sky6/2048/1024",
+    "ambientLightColor": "#ffffff",
+    "ambientLightIntensity": 0.8999999999999999,
+    "directionalLightColor": "hsl(252, 100%, 80%)",
+    "directionalLightIntensity": 0.8
+  },
+  "mediaObjects": [
+    {
+      "id": "video-player-6",
+      "type": "video",
+      "title": "Black Panther: Wakanda Forever",
+      "description": "Main video content.",
+      "url": "https://www.youtube.com/watch?v=odM92ap8_c0",
+      "thumbnail": "https://img.youtube.com/vi/odM92ap8_c0/hqdefault.jpg",
+      "position": [
+        0,
+        2.5,
+        -8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        4,
+        2.25,
+        1
+      ]
+    },
+    {
+      "id": "info-panel-6",
+      "type": "image",
+      "title": "About This Video",
+      "description": "This is the official trailer for Black Panther: Wakanda Forever. Enjoy the showcase!",
+      "thumbnail": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='hsl(282, 48%, 45%)' /%3E%3Ctext x='200' y='150' font-family='Arial' font-size='20' fill='white' text-anchor='middle' dominant-baseline='middle'%3EInfo for Black Panther: Wakanda Forever%3C/text%3E%3C/svg%3E",
+      "position": [
+        -4,
+        2,
+        -7
+      ],
+      "rotation": [
+        0,
+        0.39269908169872414,
+        0
+      ],
+      "scale": [
+        2,
+        1.5,
+        0.1
+      ]
+    }
+  ]
+}

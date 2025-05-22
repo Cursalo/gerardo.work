@@ -1,0 +1,70 @@
+{
+  "id": 28,
+  "name": "Burgavision",
+  "description": "Project details for Burgavision.",
+  "link": "/projects/Burgavision/index.html",
+  "thumbnail": "/projects/Burgavision/thumbnail/thumbnail.png",
+  "status": "completed",
+  "type": "standard",
+  "videoUrl": "/projects/Burgavision/assets/videos/demo.mp4",
+  "worldSettings": {
+    "backgroundColor": "hsl(188, 92%, 60%)",
+    "floorColor": "#ffffff",
+    "skyColor": "hsl(248, 92%, 80%)",
+    "floorTexture": "",
+    "skyTexture": "",
+    "ambientLightColor": "#ffffff",
+    "ambientLightIntensity": 0.7,
+    "directionalLightColor": "hsl(158, 100%, 80%)",
+    "directionalLightIntensity": 1
+  },
+  "mediaObjects": [
+    {
+      "id": "video-player-28",
+      "type": "video",
+      "title": "Burgavision Main Video",
+      "description": "Main video content for Burgavision.",
+      "url": "/projects/Burgavision/assets/videos/demo.mp4",
+      "thumbnail": "/projects/Burgavision/thumbnail/thumbnail.png",
+      "position": [
+        0,
+        2.5,
+        -8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        4,
+        2.25,
+        1
+      ]
+    },
+    {
+      "id": "info-panel-28",
+      "type": "image",
+      "title": "About Burgavision",
+      "description": "Information and assets for the Burgavision project.",
+      "thumbnail": "/projects/Burgavision/thumbnail/thumbnail.png",
+      "position": [
+        -4,
+        2,
+        -7
+      ],
+      "rotation": [
+        0,
+        0.39269908169872414,
+        0
+      ],
+      "scale": [
+        2,
+        1.5,
+        0.1
+      ]
+    }
+  ],
+  "assetGallery": [],
+  "customLink": "burgavision"
+}

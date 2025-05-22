@@ -1,0 +1,68 @@
+{
+  "id": 5,
+  "name": "Top Gun: Maverick",
+  "description": "Official trailer showcase for Top Gun: Maverick.",
+  "link": "https://www.youtube.com/watch?v=giXco2jaZ_4",
+  "thumbnail": "https://img.youtube.com/vi/giXco2jaZ_4/mqdefault.jpg",
+  "status": "completed",
+  "type": "video",
+  "videoUrl": "https://www.youtube.com/watch?v=giXco2jaZ_4",
+  "worldSettings": {
+    "backgroundColor": "hsl(235, 60%, 65%)",
+    "floorColor": "hsl(235, 50%, 55%)",
+    "skyColor": "hsl(295, 60%, 85%)",
+    "floorTexture": "https://picsum.photos/seed/floor5/1024/1024",
+    "skyTexture": "https://picsum.photos/seed/sky5/2048/1024",
+    "ambientLightColor": "#ffffff",
+    "ambientLightIntensity": 0.7999999999999999,
+    "directionalLightColor": "hsl(205, 100%, 80%)",
+    "directionalLightIntensity": 1.2000000000000002
+  },
+  "mediaObjects": [
+    {
+      "id": "video-player-5",
+      "type": "video",
+      "title": "Top Gun: Maverick",
+      "description": "Main video content.",
+      "url": "https://www.youtube.com/watch?v=giXco2jaZ_4",
+      "thumbnail": "https://img.youtube.com/vi/giXco2jaZ_4/hqdefault.jpg",
+      "position": [
+        0,
+        2.5,
+        -8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        4,
+        2.25,
+        1
+      ]
+    },
+    {
+      "id": "info-panel-5",
+      "type": "image",
+      "title": "About This Video",
+      "description": "This is the official trailer for Top Gun: Maverick. Enjoy the showcase!",
+      "thumbnail": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='hsl(235, 40%, 70%)' /%3E%3Ctext x='200' y='150' font-family='Arial' font-size='20' fill='white' text-anchor='middle' dominant-baseline='middle'%3EInfo for Top Gun: Maverick%3C/text%3E%3C/svg%3E",
+      "position": [
+        -4,
+        2,
+        -7
+      ],
+      "rotation": [
+        0,
+        0.39269908169872414,
+        0
+      ],
+      "scale": [
+        2,
+        1.5,
+        0.1
+      ]
+    }
+  ]
+}
