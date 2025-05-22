@@ -110,9 +110,6 @@ const FirstPersonCamera = ({
       camera.lookAt(defaultLookAt);
     }
     
-    // Update Euler angles from the camera's initial quaternion
-    euler.current.setFromQuaternion(camera.quaternion, 'YXZ');
-
     // Set the camera's up vector to ensure correct orientation
     camera.up.set(0, 1, 0);
     
