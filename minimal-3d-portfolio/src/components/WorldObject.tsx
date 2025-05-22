@@ -208,15 +208,27 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
       e.stopPropagation();
     }
     
+    // Add better debug information
+    console.log(`WorldObject handleClick triggered for object:`, {
+      id: object.id,
+      type: object.type,
+      projectId: object.projectId,
+      subWorldId: object.subWorldId
+    });
+    
     // Handle project navigation properly
     if (object.projectId !== undefined && object.type === 'project') {
       console.log(`Navigating to project world for project ID: ${object.projectId}`);
-      setCurrentWorldId(`project-world-${object.projectId}`);
+      // Generate subWorldId if it doesn't exist
+      const targetWorldId = object.subWorldId || `project-world-${object.projectId}`;
+      console.log(`Target world ID: ${targetWorldId}`);
+      setCurrentWorldId(targetWorldId);
       if(e) e.preventDefault();
       return;
     }
     
     if (object.type === 'button' && object.action === 'navigate') {
+      console.log(`Button clicked with destination: ${object.destination}, subWorldId: ${object.subWorldId}`);
       if (object.destination === 'hub' || object.destination === 'mainWorld') {
         setCurrentWorldId('mainWorld');
         if(e) e.preventDefault();
@@ -228,6 +240,7 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
       }
     }
     if (object.type === 'link') {
+      console.log(`Link clicked with subWorldId: ${object.subWorldId}, url: ${object.url}`);
       if (object.subWorldId) {
         setCurrentWorldId(object.subWorldId);
         if(e) e.preventDefault();
@@ -268,9 +281,10 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
         title: object.title,
         projectId: object.projectId,
         url: object.url,
-        subWorldId: object.subWorldId,
+        subWorldId: object.subWorldId || (object.projectId ? `project-world-${object.projectId}` : undefined),
         destination: object.destination,
-        interactionType: object.interactionType
+        interactionType: object.interactionType,
+        onClick: handleClick
       };
     }
   }, [object]);

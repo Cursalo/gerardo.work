@@ -2,10 +2,10 @@ import React, { createContext, useState, useContext, ReactNode, useCallback } fr
 import * as THREE from 'three';
 import { useWorld } from './WorldContext'; // Import useWorld to navigate
 
-// Extend userData to include necessary info for the button
+// Improved type definition for InteractionData
 export interface InteractionData {
   interactive?: boolean;
-  onClick?: () => void; // Keep original onClick if needed elsewhere
+  onClick?: Function; // Use Function type instead of specific signature to avoid TS errors
   type?: string; // e.g., 'project', 'link', 'video', 'button'
   projectId?: number;
   url?: string;
@@ -13,6 +13,7 @@ export interface InteractionData {
   subWorldId?: string;
   destination?: string; // e.g., 'hub'
   title?: string; // For button text fallback
+  name?: string; // For object identification
 }
 
 export type HoveredObject = (THREE.Object3D & { userData: InteractionData }) | null;
@@ -45,9 +46,20 @@ export const InteractionProvider: React.FC<{ children: ReactNode }> = ({ childre
     console.log('[InteractionContext] triggerInteraction called for:', hoveredObject.name, hoveredObject.userData);
     const data = hoveredObject.userData;
 
-    // Logic moved from InteractionButton/useEffect
+    // If we have an onClick handler directly in userData, use it as primary method
+    if (data.onClick && typeof data.onClick === 'function') {
+      console.log('[InteractionContext] Calling onClick from userData');
+      try {
+        data.onClick();
+      } catch (error) {
+        console.error('[InteractionContext] Error calling onClick from userData:', error);
+      }
+      return;
+    }
+
+    // Fallback behavior if no onClick handler
     if (data.projectId !== undefined) {
-      const subWorldId = `project-world-${data.projectId}`;
+      const subWorldId = data.subWorldId || `project-world-${data.projectId}`;
       console.log(`[InteractionContext] Navigating to project ${data.projectId} -> ${subWorldId}`);
       setCurrentWorldId(subWorldId);
     } else if (data.type === 'button' && data.action === 'navigate') {
@@ -68,34 +80,14 @@ export const InteractionProvider: React.FC<{ children: ReactNode }> = ({ childre
       if (data.action === 'externalLink' || data.url.includes('soundcloud.com')) {
         console.log(`[InteractionContext] Opening external link: ${data.url}`);
         window.open(data.url, '_blank', 'noopener,noreferrer');
-        // Call the object's onClick handler if available (for additional functionality)
-        if (typeof data.onClick === 'function') {
-          data.onClick();
-        }
       } else {
         // Standard URL opening
         window.open(data.url, '_blank', 'noopener,noreferrer');
       }
     } else if (data.type === 'video' || data.type === 'image' || data.type === 'pdf') {
       console.log(`[InteractionContext] Triggering view for ${data.type}`);
-      // Here you might want to call a function to open a modal or similar
-      // For now, just logging. If the original card click works, maybe it calls a function stored elsewhere?
-      // Consider if the original data.onClick should be called if available:
-      if (typeof data.onClick === 'function') {
-         console.log('[InteractionContext] Calling onClick from userData');
-         data.onClick();
-      } else {
-         console.warn('[InteractionContext] No specific action defined for media view besides logging/userData.onClick.');
-      }
     } else {
       console.log("[InteractionContext] Generic interaction triggered");
-      // Fallback: Check for and call original onClick? 
-      if (typeof data.onClick === 'function') {
-          console.log('[InteractionContext] Calling onClick from userData (fallback)');
-          data.onClick();
-      } else {
-         console.warn('[InteractionContext] No specific action defined for fallback besides logging/userData.onClick.');
-      }
     }
   }, [hoveredObject, setCurrentWorldId]);
 
