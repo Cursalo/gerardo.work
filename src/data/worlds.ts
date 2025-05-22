@@ -198,8 +198,8 @@ export const createMainWorld = (projects: Project[]): World => {
     ambientLightIntensity: 0.8,
     directionalLightColor: '#ffffff',
     directionalLightIntensity: 1.2,
-    cameraPosition: { x: 5, y: 5, z: 30 },
-    cameraTarget: { x: 0, y: 4, z: 0 },
+    cameraPosition: { x: 0, y: 2.5, z: 12 },
+    cameraTarget: { x: 0, y: 2, z: -4 },
     objects: projectObjects
   };
   
@@ -216,12 +216,12 @@ interface PositionWithId {
 function generateDeterministicPositions(projects: Project[]): PositionWithId[] {
   const result: PositionWithId[] = [];
   
-  // Use different formations but assign them deterministically
-  // Increased radii for better separation
-  const circleRadiusBase = 30; // Increased from 25
-  const spiralRadiusBase = 20; // Increased from 15
-  const gridSpacing = 8;      // Spacing for a grid formation
-  const numGridColumns = 5;   // Number of columns for grid
+  // NPC is at position [0, 0, -4]
+  // Use smaller radii to keep cards closer to NPC
+  const circleRadiusBase = 12; // Reduced from 30
+  const spiralRadiusBase = 8;  // Reduced from 20
+  const gridSpacing = 6;       // Reduced spacing for grid formation
+  const numGridColumns = 4;    // Number of columns for grid
 
   // Assign each project to a formation and position based on ID
   projects.forEach(project => {
@@ -229,29 +229,30 @@ function generateDeterministicPositions(projects: Project[]): PositionWithId[] {
     let position: [number, number, number];
     
     // Deterministic position assignment
-    // We'll use a larger multiplier for projectId to spread out angles/indices more
-    const projectIndexFactor = projectId * 2; // Use a factor to further differentiate
+    const projectIndexFactor = projectId * 1.5; // Smaller factor to keep cards closer
 
     if (projectId % 3 === 0) {
-      // Circle formation
-      const angle = (projectIndexFactor * 0.5) % (Math.PI * 2); // Spread out angles more
-      const radiusVariation = (projectId % 5) * 2; // Add some radius variation (0, 2, 4, 6, 8)
+      // Circle formation around NPC
+      const angle = (projectIndexFactor * 0.5) % (Math.PI * 2);
+      const radiusVariation = (projectId % 3) * 1.5; // Smaller variation (0, 1.5, 3)
       const currentRadius = circleRadiusBase + radiusVariation;
       const x = Math.cos(angle) * currentRadius;
-      const z = Math.sin(angle) * currentRadius;
-      const y = 2.0 + (projectIndexFactor * 0.15) % 1.5; // More Y variation, slightly higher base
+      // NPC is at z = -4, so center circle there
+      const z = -4 + Math.sin(angle) * currentRadius;
+      const y = 1.5 + (projectIndexFactor * 0.1) % 1.0; // Lower height, less variation
       position = [x, y, z];
     } else if (projectId % 3 === 1) {
-      // Spiral formation
+      // Spiral formation starting near NPC
       const progress = (projectIndexFactor * 0.07) % 1; 
-      const angle = progress * Math.PI * 8; // More turns or faster angle change
-      const radiusAtPoint = spiralRadiusBase * (1 - progress * 0.3) + (projectId % 4); // Spiral gets tighter, add variation
+      const angle = progress * Math.PI * 6; // Fewer turns
+      const radiusAtPoint = spiralRadiusBase * (1 - progress * 0.3) + (projectId % 3); 
       const x = Math.cos(angle) * radiusAtPoint;
-      const z = Math.sin(angle) * radiusAtPoint;
-      const y = 3.0 + progress * 8; // Higher and more vertical spread
+      // Center at NPC's z position
+      const z = -4 + Math.sin(angle) * radiusAtPoint;
+      const y = 2.0 + progress * 3; // Lower maximum height
       position = [x, y, z];
     } else {
-      // Grid formation
+      // Grid formation in front of NPC
       const gridIndex = projectIndexFactor % (numGridColumns * numGridColumns);
       const gridRow = Math.floor(gridIndex / numGridColumns);
       const gridCol = gridIndex % numGridColumns;
@@ -260,11 +261,12 @@ function generateDeterministicPositions(projects: Project[]): PositionWithId[] {
       const zOffset = (gridRow - Math.floor(numGridColumns / 2)) * gridSpacing;
       
       // Add some pseudo-random height variation but still deterministic
-      const yVariation = ((projectId * 17) % 10) * 0.2; // Between 0 and 1.8 in 0.2 increments
+      const yVariation = ((projectId * 17) % 10) * 0.15; // Smaller height variation
       
-      const x = xOffset + 15; // Offset the entire grid
-      const y = 2.0 + yVariation;
-      const z = zOffset - 25; // Offset the grid in Z direction too
+      // Center grid near NPC
+      const x = xOffset;
+      const y = 1.5 + yVariation;
+      const z = -4 + zOffset - 8; // Start grid in front of NPC
       
       position = [x, y, z];
     }
