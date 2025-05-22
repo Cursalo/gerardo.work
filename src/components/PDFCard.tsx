@@ -57,17 +57,14 @@ export const PDFCard: React.FC<PDFCardProps> = ({
 
   // Update useFrame with billboard behavior
   useFrame((state) => {
-    if (groupRef.current && threeCamera) {
-      // Keep the card at its intended position with slight floating animation
+    if (groupRef.current) {
+      // Set fixed base position
       groupRef.current.position.x = position[0];
       groupRef.current.position.z = position[2];
       
-      // Only apply gentle floating animation to Y position
-      const floatHeight = Math.sin(state.clock.elapsedTime * 0.5 + position[0]) * 0.2;
+      // Apply gentle floating animation only to Y-axis
+      const floatHeight = Math.sin(state.clock.elapsedTime * 0.5 + position[0]) * 0.1;
       groupRef.current.position.y = position[1] + floatHeight;
-      
-      // Enable matrixAutoUpdate for standard Three.js rotation handling
-      groupRef.current.matrixAutoUpdate = true;
     }
   });
 
