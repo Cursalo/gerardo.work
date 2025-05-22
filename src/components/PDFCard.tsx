@@ -55,21 +55,6 @@ export const PDFCard: React.FC<PDFCardProps> = ({
     }
   }, [title, position, registerObject, unregisterObject]);
 
-  // Update useFrame with billboard behavior
-  useFrame((state) => {
-    if (groupRef.current) {
-      // Maintain fixed position with small floating animation
-      const floatHeight = Math.sin(state.clock.elapsedTime * 0.5) * 0.05;
-      
-      // Set position directly without any additional calculations
-      groupRef.current.position.set(
-        position[0],
-        position[1] + floatHeight,
-        position[2]
-      );
-    }
-  });
-
   // Handle click event
   const handleClick = () => {
     if (onClick) {
@@ -121,6 +106,14 @@ export const PDFCard: React.FC<PDFCardProps> = ({
       groupRef.current.name = 'pdfCard';
     }
   }, []);
+
+  // Add useEffect to set initial position
+  useEffect(() => {
+    if (groupRef.current) {
+      // Set initial position directly
+      groupRef.current.position.set(position[0], position[1], position[2]);
+    }
+  }, [position]);
 
   return (
     <group 

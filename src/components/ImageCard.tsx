@@ -56,6 +56,13 @@ export const ImageCard: React.FC<ImageCardProps> = ({
     }
   }, []);
 
+  useEffect(() => {
+    if (groupRef.current) {
+      // Set initial position directly
+      groupRef.current.position.set(position[0], position[1], position[2]);
+    }
+  }, [position]);
+
   const updateHoverState = (isHovered: boolean) => {
     setHovered(isHovered);
     if (groupRef.current) {
@@ -63,20 +70,6 @@ export const ImageCard: React.FC<ImageCardProps> = ({
       groupRef.current.scale.set(targetScale, targetScale, targetScale);
     }
   };
-
-  useFrame((state) => {
-    if (groupRef.current) {
-      // Maintain fixed position with small floating animation
-      const floatHeight = Math.sin(state.clock.elapsedTime * 0.5) * 0.05;
-      
-      // Set position directly without any additional calculations
-      groupRef.current.position.set(
-        position[0],
-        position[1] + floatHeight,
-        position[2]
-      );
-    }
-  });
 
   const handleClick = () => {
     if (imageUrl) {

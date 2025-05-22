@@ -4,6 +4,7 @@ import * as THREE from 'three'
 
 /**
  * BillboardManager that handles card rotations while maintaining their positions
+ * Uses position caching to prevent flying cards on pointer lock
  */
 export default function BillboardManager() {
   const { camera, scene } = useThree()
@@ -11,6 +12,9 @@ export default function BillboardManager() {
   // Camera position vector (reused)
   const camPos = useRef(new THREE.Vector3())
   const targetPos = useRef(new THREE.Vector3())
+  
+  // Original positions cache to prevent flying cards
+  const originalPositions = useRef(new Map())
   
   // Target types that should billboard
   const targetTypes = [
@@ -36,8 +40,29 @@ export default function BillboardManager() {
           ))
         )) {
         
-        // Store original position
-        const originalY = obj.position.y
+        // Store original position on first encounter
+        const objId = obj.uuid
+        if (!originalPositions.current.has(objId)) {
+          originalPositions.current.set(objId, {
+            x: obj.position.x,
+            y: obj.position.y,
+            z: obj.position.z
+          })
+        }
+        
+        // Get stored original position
+        const origPos = originalPositions.current.get(objId)
+        
+        // Apply very subtle floating animation
+        const time = performance.now() * 0.001
+        const floatY = Math.sin(time * 0.5 + origPos.x * 0.5) * 0.05
+        
+        // Set position back to original with small float
+        obj.position.set(
+          origPos.x,
+          origPos.y + floatY,
+          origPos.z
+        )
         
         // Calculate target position at same height as object
         targetPos.current.set(
@@ -48,9 +73,6 @@ export default function BillboardManager() {
         
         // Make object look at camera position (only horizontally)
         obj.lookAt(targetPos.current)
-        
-        // Reset Y position to maintain original height
-        obj.position.y = originalY
         
         // Lock rotation to only Y-axis
         obj.rotation.x = 0

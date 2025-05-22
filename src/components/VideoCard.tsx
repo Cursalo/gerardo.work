@@ -135,20 +135,6 @@ export const VideoCard: React.FC<VideoCardProps> = ({
            (url.startsWith('blob:') || url.startsWith('data:video/'));
   };
 
-  useFrame((state) => {
-    if (groupRef.current) {
-      // Maintain fixed position with small floating animation
-      const floatHeight = Math.sin(state.clock.elapsedTime * 0.5) * 0.05;
-      
-      // Set position directly without any additional calculations
-      groupRef.current.position.set(
-        position[0],
-        position[1] + floatHeight,
-        position[2]
-      );
-    }
-  });
-
   // Handle click interaction - REMOVED - Parent WorldObject handles clicks
   const handleClick = () => {
     // Construct the project world ID
@@ -179,6 +165,14 @@ export const VideoCard: React.FC<VideoCardProps> = ({
   // Calculate frame dimensions
   const frameWidth = width * 1.1;
   const frameHeight = height * 1.2;
+
+  // Add useEffect to set initial position
+  useEffect(() => {
+    if (groupRef.current) {
+      // Set initial position directly
+      groupRef.current.position.set(position[0], position[1], position[2]);
+    }
+  }, [position]);
 
   return (
     <group 
