@@ -7,6 +7,7 @@
   "status": "completed",
   "type": "standard",
   "videoUrl": "/projects/Burgertify/assets/videos/Burgertify .MP4",
+  "customLink": "burgertify",
   "worldSettings": {
     "backgroundColor": "hsl(188, 92%, 60%)",
     "floorColor": "#ffffff",

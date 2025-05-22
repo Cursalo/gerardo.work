@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/project/:customLink", "destination": "/index.html" },
+    { "source": "/:customLink", "destination": "/index.html" }
+  ]
+} 
