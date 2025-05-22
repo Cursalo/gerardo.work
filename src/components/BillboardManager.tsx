@@ -5,6 +5,7 @@ import * as THREE from 'three'
 /**
  * Enhanced BillboardManager for perfect horizontal-only billboard effect
  * Uses a flat approach with direct matrix manipulation to eliminate all tilting
+ * Maintains original object positions to prevent flying cards
  */
 export default function BillboardManager() {
   const { camera, scene } = useThree()
@@ -47,6 +48,12 @@ export default function BillboardManager() {
             obj.name.toLowerCase().includes('media')
           ))
         )) {
+        // Skip if object doesn't use position from useFrame
+        if (obj.userData.skipBillboardPositioning) return;
+        
+        // IMPORTANT: Only modify the rotation, not the position
+        // We'll preserve the object's original position
+        
         // Get object's world position
         obj.getWorldPosition(objPos.current)
         
@@ -57,24 +64,30 @@ export default function BillboardManager() {
         // Calculate rotation around Y axis only (yaw)
         const yRotation = Math.atan2(dx, dz)
         
-        // Create rotation around Y axis only
-        tempQuaternion.current.setFromAxisAngle(yAxis.current, yRotation)
-        
-        // Apply Y-axis rotation directly, preserving object's local scale
-        const objScale = new THREE.Vector3()
-        obj.getWorldScale(objScale)
-        
-        // Build a matrix with position, Y-rotation only, and original scale
-        tempMatrix.current.compose(
-          objPos.current, 
-          tempQuaternion.current,
-          objScale
-        )
-        
-        // Apply the matrix directly to the object's world transform
-        obj.matrixAutoUpdate = false
-        obj.matrix.copy(tempMatrix.current)
-        obj.matrixWorldNeedsUpdate = true
+        // Apply rotation directly to object without affecting position
+        if (obj.matrixAutoUpdate) {
+          // For objects using standard Three.js positioning
+          obj.rotation.y = yRotation;
+        } else {
+          // For objects with custom matrix handling, more careful approach needed
+          // Get the object's current scale
+          const objScale = new THREE.Vector3();
+          obj.getWorldScale(objScale);
+          
+          // Create rotation around Y axis only
+          tempQuaternion.current.setFromAxisAngle(yAxis.current, yRotation);
+          
+          // Create a new matrix preserving original position and scale
+          tempMatrix.current.compose(
+            objPos.current,
+            tempQuaternion.current,
+            objScale
+          );
+          
+          // Apply the matrix while preserving position
+          obj.matrix.copy(tempMatrix.current);
+          obj.matrixWorldNeedsUpdate = true;
+        }
       }
     })
   })
