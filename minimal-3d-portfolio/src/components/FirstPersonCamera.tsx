@@ -102,6 +102,9 @@ const FirstPersonCamera = ({
     currentPosition.current.y = height;
     camera.position.copy(currentPosition.current);
 
+    // Set the camera's up vector BEFORE lookAt to ensure correct orientation frame
+    camera.up.set(0, 1, 0);
+
     if (target) {
       camera.lookAt(target);
     } else {
@@ -110,10 +113,10 @@ const FirstPersonCamera = ({
       camera.lookAt(defaultLookAt);
     }
     
-    // Set the camera's up vector to ensure correct orientation
-    camera.up.set(0, 1, 0);
+    // Update Euler angles from the camera's initial quaternion to sync mouse controls
+    euler.current.setFromQuaternion(camera.quaternion, 'YXZ');
     
-    // Update projection matrix to apply changes
+    // Update projection matrix to apply changes (camera.up is already set)
     camera.updateProjectionMatrix();
     
   }, [camera, height, target]);
