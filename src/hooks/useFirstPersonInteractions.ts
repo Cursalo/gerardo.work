@@ -12,7 +12,7 @@ const HOVER_END_EVENT = new Event('crosshair:hover:end');
 const CLICK_EVENT = new Event('crosshair:click');
 
 // Increase the interaction distance to make project cards more visible on mobile
-const MOBILE_INTERACTION_DISTANCE = 30; // Increased from 15 to be more forgiving
+const MOBILE_INTERACTION_DISTANCE = 50; // Increased from 30 to ensure all cards are reachable
 
 // --- DEBUG --- Add a counter for setHoveredObject calls
 let setHoveredObjectCallCount = 0;

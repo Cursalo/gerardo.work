@@ -50,13 +50,14 @@ const SceneContent = ({ worldId }: SceneContentProps) => {
   const { isMobile } = useMobileDetection();
   const { camera } = useThree();
   
-  // Get filtered objects based on distance - now memoized with better dependencies
+  // FORCE ALL OBJECTS TO BE VISIBLE - NO LAZY LOADING FOR MOBILE POLISH
   const visibleObjects = useMemo(() => {
     if (!currentWorld?.objects || currentWorld.objects.length === 0) return [];
     
-    // Return all objects directly
+    // Always return ALL objects regardless of distance or device type
+    // This ensures all cards load in both main world and subworlds on mobile
     return currentWorld.objects;
-  }, [currentWorld?.objects]); // Simplified dependencies, camera.position and isMobile no longer needed here
+  }, [currentWorld?.objects]); // No camera.position or distance filtering
   
   // Register FP interaction hook
   useFirstPersonInteractions();
@@ -139,7 +140,7 @@ const SceneContent = ({ worldId }: SceneContentProps) => {
         deceleration={0.2}
       />
       
-      {/* World Objects - only render those that are visible based on distance */}
+      {/* World Objects - ALL objects are always rendered (no lazy loading for mobile polish) */}
       {visibleObjects.map(object => (
         <WorldObject 
           key={object.id}
@@ -328,9 +329,9 @@ const Scene = ({ worldId }: SceneProps) => {
           >
             <VisibilityContext.Provider value={visibilityContextValue}>
               <Canvas
-                shadows
-                dpr={[1, 1.5]}
-                performance={{ min: 0.5 }}
+                shadows={!isTouchDevice} // Disable shadows completely on mobile
+                dpr={isTouchDevice ? [1, 1] : [1, 1.5]} // Force lower DPR on mobile
+                performance={{ min: isTouchDevice ? 0.3 : 0.5 }} // Lower performance threshold on mobile
                 eventPrefix="client"
                 camera={{
                   fov: 70,
@@ -340,14 +341,14 @@ const Scene = ({ worldId }: SceneProps) => {
                   up: [0, 1, 0]
                 }}
                 gl={{
-                  antialias: true,
+                  antialias: !isTouchDevice, // Disable antialiasing on mobile
                   alpha: false,
                   stencil: false,
                   depth: true,
-                  powerPreference: 'default',
+                  powerPreference: isTouchDevice ? 'default' : 'high-performance', // Conservative power mode on mobile
                   failIfMajorPerformanceCaveat: false,
                   preserveDrawingBuffer: true,
-                  logarithmicDepthBuffer: true
+                  logarithmicDepthBuffer: isTouchDevice // Enable log depth buffer on mobile to prevent z-fighting
                 }}
                 raycaster={{
                   far: 100

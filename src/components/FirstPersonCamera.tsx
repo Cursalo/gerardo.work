@@ -454,8 +454,23 @@ const FirstPersonCamera = ({
     // Scale velocity by delta time to ensure consistent speed regardless of frame rate
     scaledVelocityVec.copy(velocity.current).multiplyScalar(delta * 60);
     
-    // Update position
-    currentPosition.current.add(scaledVelocityVec);
+    // Calculate new position
+    const newPosition = currentPosition.current.clone().add(scaledVelocityVec);
+    
+    // DOME BOUNDARY CONSTRAINTS
+    // The sphere dome has radius 100, so we need to keep the player inside
+    const DOME_RADIUS = 95; // Slightly smaller than the actual dome (100) to provide buffer
+    const distanceFromCenter = Math.sqrt(newPosition.x * newPosition.x + newPosition.z * newPosition.z);
+    
+    if (distanceFromCenter > DOME_RADIUS) {
+      // If the new position would take us outside the dome, clamp it to the boundary
+      const clampFactor = DOME_RADIUS / distanceFromCenter;
+      newPosition.x *= clampFactor;
+      newPosition.z *= clampFactor;
+    }
+    
+    // Update position with clamped values
+    currentPosition.current.copy(newPosition);
     
     // Keep the camera at fixed height
     currentPosition.current.y = height;

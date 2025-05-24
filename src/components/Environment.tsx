@@ -3,12 +3,14 @@ import { useThree } from '@react-three/fiber';
 import { Grid, Environment as DreiEnvironment, useTexture, Sphere } from '@react-three/drei';
 import * as THREE from 'three';
 import { useWorld } from '../context/WorldContext';
+import useMobileDetection from '../hooks/useMobileDetection';
 
 const TRANSPARENT_PLACEHOLDER_IMG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
 
 const Environment = () => {
   const { scene } = useThree();
   const { currentWorld } = useWorld();
+  const { isMobile } = useMobileDetection();
   
   // Default settings in case the world doesn't specify them
   const worldBackgroundColor = currentWorld?.backgroundColor || '#000000'; // Use backgroundColor for scene background
@@ -50,32 +52,34 @@ const Environment = () => {
       {/* Ambient light for overall scene illumination */}
       <ambientLight intensity={ambientLightIntensity} color={ambientLightColor} />
       
-      {/* Primary directional light with enhanced shadow casting */}
+      {/* Primary directional light with mobile-optimized shadows */}
       <directionalLight 
         position={[15, 25, 15]} 
         intensity={directionalLightIntensity} 
-        castShadow 
-        shadow-mapSize={[1024, 1024]}
+        castShadow={!isMobile} // Disable shadows completely on mobile
+        shadow-mapSize={isMobile ? [256, 256] : [1024, 1024]} // Reduce shadow map size on mobile
         shadow-bias={-0.0001}
-        shadow-radius={1.5}
+        shadow-radius={isMobile ? 0.5 : 1.5} // Reduce shadow radius on mobile
         color={directionalLightColor}
       >
         <orthographicCamera attach="shadow-camera" args={[-30, 30, 30, -30, 0.1, 100]} />
       </directionalLight>
       
-      {/* Secondary fill light */}
-      <directionalLight
-        position={[-10, 15, -10]}
-        intensity={0.4 * directionalLightIntensity}
-        color={directionalLightColor}
-      />
+      {/* Secondary fill light - disable on mobile to improve performance */}
+      {!isMobile && (
+        <directionalLight
+          position={[-10, 15, -10]}
+          intensity={0.4 * directionalLightIntensity}
+          color={directionalLightColor}
+        />
+      )}
       
       {/* Environment light for reflections with better quality */}
       {/* Removing HDRI environment as it may tint the scene */}
       {/* <DreiEnvironment files="/hdri/studio_small_03_1k.hdr" resolution={512} /> */}
       
-      {/* Skydome */}
-      <Sphere args={[100, 64, 32]} scale={[-1, 1, 1]} /* Radius, segments, segments; scale inverted for inside view */ >
+      {/* Skydome - reduced geometry complexity on mobile */}
+      <Sphere args={[100, isMobile ? 32 : 64, isMobile ? 16 : 32]} scale={[-1, 1, 1]} /* Radius, segments, segments; scale inverted for inside view */ >
         <meshBasicMaterial 
           color="#ffffff" 
           side={THREE.BackSide} 
@@ -84,46 +88,56 @@ const Environment = () => {
         />
       </Sphere>
       
-      {/* Infinite grid for the ground - colors based on world settings */}
+      {/* Infinite grid for the ground - simplified for mobile to reduce weird lines */}
       <Grid
         position={[0, -0.01, 0]}
         infiniteGrid
-        cellSize={2}
-        sectionSize={5}
-        cellThickness={0.5}
-        sectionThickness={1}
+        cellSize={isMobile ? 4 : 2} // Larger cells on mobile
+        sectionSize={isMobile ? 10 : 5} // Larger sections on mobile
+        cellThickness={isMobile ? 0.3 : 0.5} // Thinner lines on mobile
+        sectionThickness={isMobile ? 0.6 : 1} // Thinner lines on mobile
         cellColor="#888888"
         sectionColor="#555555"
-        fadeDistance={25}
-        fadeStrength={1.5}
+        fadeDistance={isMobile ? 15 : 25} // Shorter fade distance on mobile
+        fadeStrength={isMobile ? 2 : 1.5} // Stronger fade on mobile
       />
       
-      {/* Ground plane for shadows - increased opacity for more distinct shadows */}
+      {/* Ground plane for shadows - simplified for mobile */}
       <mesh 
         rotation={[-Math.PI / 2, 0, 0]} 
         position={[0, -0.02, 0]} 
-        receiveShadow
+        receiveShadow={!isMobile} // Disable shadow receiving on mobile
       >
         <planeGeometry args={[200, 200]} />
-        {finalFloorTexture ? (
-          <meshStandardMaterial 
-            map={finalFloorTexture} 
+        {isMobile ? (
+          // Simple material for mobile - no complex materials that cause weird lines
+          <meshBasicMaterial 
+            color="#f0f0f0" 
             transparent 
-            opacity={0.9}
-            roughness={0.8}
-            metalness={0.2}
+            opacity={0.3}
           />
         ) : (
-          isDarkFloor ? (
+          // Complex material for desktop
+          finalFloorTexture ? (
             <meshStandardMaterial 
-              color="#222222" 
+              map={finalFloorTexture} 
               transparent 
-              opacity={0.7}
+              opacity={0.9}
               roughness={0.8}
               metalness={0.2}
             />
           ) : (
-            <shadowMaterial transparent opacity={isDarkFloor ? 0.4 : 0.2} />
+            isDarkFloor ? (
+              <meshStandardMaterial 
+                color="#222222" 
+                transparent 
+                opacity={0.7}
+                roughness={0.8}
+                metalness={0.2}
+              />
+            ) : (
+              <shadowMaterial transparent opacity={isDarkFloor ? 0.4 : 0.2} />
+            )
           )
         )}
       </mesh>
