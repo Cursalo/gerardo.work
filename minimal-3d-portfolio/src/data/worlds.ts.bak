@@ -1,0 +1,839 @@
+import { Project } from '../services/projectService';
+import { projects } from './projects';
+
+export interface WorldObject {
+  id: string;
+  type: 'video' | 'image' | 'pdf' | 'project' | 'link' | 'button';
+  title: string;
+  description?: string;
+  position?: [number, number, number];
+  rotation?: [number, number, number];
+  scale?: [number, number, number];
+  url?: string;
+  thumbnail?: string;
+  projectId?: number;
+  action?: 'navigate' | 'link';
+  destination?: string;
+  subWorldId?: string;
+}
+
+export interface World {
+  id: string;
+  name: string;
+  description?: string;
+  backgroundColor?: string;
+  cameraPosition?: { x: number; y: number; z: number };
+  cameraTarget?: { x: number; y: number; z: number };
+  // Environment customization properties
+  floorColor?: string;
+  floorTexture?: string;  
+  skyColor?: string;
+  skyTexture?: string;
+  ambientLightColor?: string;
+  ambientLightIntensity?: number;
+  directionalLightColor?: string;
+  directionalLightIntensity?: number;
+  objects: WorldObject[];
+}
+
+// Function to generate positions for objects in the main world
+const generatePositions = (count: number): [number, number, number][] => {
+  const positions: [number, number, number][] = [];
+  
+  // Different types of formations
+  // Formation 1: A large circular arrangement
+  const circleCount = Math.floor(count * 0.6); // 60% in a circle
+  const circleRadius = 25; // Radius for circular arrangement
+  for (let i = 0; i < circleCount; i++) {
+    const angle = (i / circleCount) * Math.PI * 2;
+    const x = Math.cos(angle) * circleRadius;
+    const z = Math.sin(angle) * circleRadius;
+    // Raised height for proper shadow casting
+    const y = 2.0 + Math.random() * 0.5; 
+    positions.push([x, y, z]);
+  }
+  
+  // Formation 2: A spiral going upward (but much lower)
+  const spiralCount = Math.floor(count * 0.25); // 25% in a spiral
+  const spiralRadius = 15; 
+  const spiralHeight = 5; // Reduced height significantly
+  for (let i = 0; i < spiralCount; i++) {
+    const progress = i / spiralCount;
+    const angle = progress * Math.PI * 6; // 3 full turns
+    const radiusAtPoint = spiralRadius * (1 - progress * 0.5); // Spiral gets tighter
+    const x = Math.cos(angle) * radiusAtPoint;
+    const z = Math.sin(angle) * radiusAtPoint;
+    // Higher minimum height for spiral projects
+    const y = 2.5 + progress * spiralHeight;
+    positions.push([x, y, z]);
+  }
+  
+  // Formation 3: Random clusters (at lower heights)
+  const remainingCount = count - positions.length;
+  for (let i = 0; i < remainingCount; i++) {
+    // Create small clusters in random locations (closer to center)
+    const clusterCenterX = (Math.random() - 0.5) * 50;
+    const clusterCenterZ = (Math.random() - 0.5) * 50;
+    // Higher cluster heights
+    const clusterCenterY = 2.2 + Math.random() * 1.5;
+    
+    // Position within cluster (tighter clusters)
+    const offsetX = (Math.random() - 0.5) * 8;
+    const offsetZ = (Math.random() - 0.5) * 8;
+    // Lower vertical variation
+    const offsetY = (Math.random() - 0.5) * 1;
+    
+    positions.push([
+      clusterCenterX + offsetX, 
+      clusterCenterY + offsetY, 
+      clusterCenterZ + offsetZ
+    ]);
+  }
+  
+  // Add a few projects at a medium distance from the starting position
+  // Avoiding the area directly in front of the camera
+  const nearbyCount = 5;
+  for (let i = 0; i < nearbyCount; i++) {
+    const angle = (i / nearbyCount) * Math.PI * 2;
+    const radius = 20 + Math.random() * 10; // Medium radius between 20-30 units
+    const x = Math.cos(angle) * radius;
+    const z = Math.sin(angle) * radius;
+    // Keep higher for proper shadow
+    const y = 2.5 + Math.random() * 0.5;
+    
+    // Replace some of the existing positions with these medium distance ones
+    if (positions.length > i) {
+      positions[i] = [x, y, z];
+    } else {
+      positions.push([x, y, z]);
+    }
+  }
+  
+  return positions;
+};
+
+// Create the main world with projects as entry points to subworlds
+export const createMainWorld = (projects: Project[]): World => {
+  console.log('Creating main world with projects:', projects);
+  
+  // Set up some default projects if none provided
+  const projectsToUse = projects.length > 0 ? projects : [
+    {
+      id: 1,
+      name: 'Demo Project 1',
+      description: 'This is a sample project for the portfolio',
+      thumbnail: 'https://picsum.photos/seed/project1/400/300',
+      status: 'completed',
+      link: '#'
+    },
+    {
+      id: 2,
+      name: 'Demo Project 2',
+      description: 'Another sample project for the portfolio',
+      thumbnail: 'https://picsum.photos/seed/project2/400/300',
+      status: 'completed',
+      link: '#'
+    }
+  ];
+  
+  console.log(`Creating main world with ${projectsToUse.length} projects`);
+  
+  // Generate positions for the objects
+  const positions = generatePositions(projectsToUse.length);
+  
+  // Create project objects with detailed logging
+  const projectObjects: WorldObject[] = projectsToUse.map((project, index) => {
+    const position = positions[index] || [0, 2, 0];
+    console.log(`Creating project object for ${project.name} (ID: ${project.id}) at position:`, position);
+    
+    return {
+      id: `project-${project.id}`,
+      type: 'project' as const,
+      title: project.name,
+      description: project.description,
+      thumbnail: project.thumbnail,
+      position: position,
+      projectId: project.id,
+      // Always provide a subWorldId and do NOT include URL for external links
+      subWorldId: `project-world-${project.id}`
+    };
+  });
+  
+  const mainWorld: World = {
+    id: 'mainWorld',
+    name: 'Portfolio Main World',
+    description: 'Explore my portfolio projects in 3D space',
+    backgroundColor: '#ffffff', // White background
+    floorColor: '#ffffff',      // White floor
+    skyColor: '#ffffff',        // White sky
+    ambientLightColor: '#ffffff',
+    ambientLightIntensity: 0.8,
+    directionalLightColor: '#ffffff',
+    directionalLightIntensity: 1.2,
+    cameraPosition: { x: 0, y: 5, z: 30 }, // Start further back to see more cards
+    objects: projectObjects
+  };
+  
+  console.log('Created main world with objects:', mainWorld.objects);
+  return mainWorld;
+};
+
+// Create a subworld for a specific project
+export const createProjectWorld = (project: Project): World => {
+  console.log('Creating project world for project:', project);
+  
+  // Mock data URLs for different media types
+  const mockImages = [
+    'https://picsum.photos/seed/img1/800/600',
+    'https://picsum.photos/seed/img2/800/600',
+    'https://picsum.photos/seed/img3/800/600',
+    'https://picsum.photos/seed/img4/800/600',
+    'https://picsum.photos/seed/img5/800/600'
+  ];
+  
+  const mockPDFs = [
+    'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    'https://www.africau.edu/images/default/sample.pdf'
+  ];
+  
+  const mockVideos = [
+    'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
+    'https://www.youtube.com/watch?v=ZSt9tm3RoUU'
+  ];
+  
+  // Create a circular arrangement for the media
+  const mediaCount = 6;
+  const mediaPositions: [number, number, number][] = [];
+  const radius = 8;
+  
+  for (let i = 0; i < mediaCount; i++) {
+    const angle = (i / mediaCount) * Math.PI * 2;
+    const x = Math.cos(angle) * radius;
+    const z = Math.sin(angle) * radius;
+    mediaPositions.push([x, 2, z]);
+  }
+  
+  // Create media objects with mock data
+  const mediaObjects: WorldObject[] = [
+    // Image 1
+    {
+      id: `image-1-${project.id}`,
+      type: 'image',
+      title: `${project.name} - Image 1`,
+      description: 'Project screenshot or artwork',
+      url: mockImages[0],
+      position: mediaPositions[0]
+    },
+    // Image 2
+    {
+      id: `image-2-${project.id}`,
+      type: 'image',
+      title: `${project.name} - Image 2`,
+      description: 'Additional project visualization',
+      url: mockImages[1],
+      position: mediaPositions[1]
+    },
+    // PDF
+    {
+      id: `pdf-1-${project.id}`,
+      type: 'pdf',
+      title: `${project.name} - Documentation`,
+      description: 'Project documentation or whitepaper',
+      url: mockPDFs[0],
+      position: mediaPositions[2]
+    },
+    // Video
+    {
+      id: `video-1-${project.id}`,
+      type: 'video',
+      title: `${project.name} - Demo Video`,
+      description: 'Project demonstration or tutorial',
+      url: project.videoUrl || mockVideos[0],
+      position: mediaPositions[3]
+    },
+    // Back button
+    {
+      id: `back-button-${project.id}`,
+      type: 'button',
+      title: 'Back to Hub',
+      position: [-8, 2, 0],
+      action: 'navigate',
+      destination: 'hub'
+    },
+    // Project card
+    {
+      id: `project-card-${project.id}`,
+      type: 'project',
+      title: project.name,
+      description: project.description,
+      thumbnail: project.thumbnail,
+      projectId: project.id,
+      position: [0, 4, 0]
+    }
+  ];
+  
+  // Use project's custom world settings if available
+  const worldSettings = project.worldSettings || {
+    backgroundColor: '#000000',
+    floorColor: '#151515',
+    skyColor: '#000000',
+    ambientLightColor: '#ffffff',
+    ambientLightIntensity: 0.8,
+    directionalLightColor: '#ffffff',
+    directionalLightIntensity: 1.2
+  };
+  
+  // Create the world with the project's settings
+  return {
+    id: `project-world-${project.id}`,
+    name: project.name,
+    description: project.description,
+    backgroundColor: worldSettings.backgroundColor,
+    floorColor: worldSettings.floorColor,
+    skyColor: worldSettings.skyColor,
+    ambientLightColor: worldSettings.ambientLightColor,
+    ambientLightIntensity: worldSettings.ambientLightIntensity,
+    directionalLightColor: worldSettings.directionalLightColor,
+    directionalLightIntensity: worldSettings.directionalLightIntensity,
+    objects: mediaObjects
+  };
+};
+
+// Static instance for singleton pattern
+let worldServiceInstance: WorldService | null = null;
+
+export const getWorldServiceInstance = (): WorldService => {
+  if (!worldServiceInstance) {
+    console.log("Creating new WorldService singleton instance");
+    worldServiceInstance = new WorldService();
+  }
+  return worldServiceInstance;
+};
+
+export class WorldService {
+  private worlds: Map<string, World> = new Map();
+  private loaded: boolean = false;
+  private STORAGE_KEY = 'portfolio_worlds';
+
+  constructor() {
+    console.log('WorldService constructor called');
+    this.loadWorlds();
+  }
+
+  // Improved reloadWorlds with better error handling
+  public reloadWorlds(): void {
+    console.log('Reloading all worlds...');
+    
+    try {
+      // Clear memory cache
+      this.worlds.clear();
+      
+      // Reset loaded flag
+      this.loaded = false;
+      
+      // Reload from storage
+      this.loadWorlds();
+      
+      console.log(`Reloaded ${this.worlds.size} worlds successfully`);
+    } catch (error) {
+      console.error('Error reloading worlds:', error);
+      
+      // Attempt recovery by forcing a direct load from localStorage
+      try {
+        this.worlds.clear();
+        this.loaded = false;
+        
+        const worldsStr = localStorage.getItem(this.STORAGE_KEY);
+        if (worldsStr) {
+          const worlds = JSON.parse(worldsStr);
+          if (Array.isArray(worlds)) {
+            worlds.forEach(world => {
+              if (world && world.id) {
+                const normalizedId = this.normalizeWorldId(world.id);
+                this.worlds.set(normalizedId, {...world, id: normalizedId});
+              }
+            });
+            console.log(`Recovery reload successful: loaded ${this.worlds.size} worlds`);
+          }
+        }
+        
+        this.loaded = true;
+      } catch (recoveryError) {
+        console.error('Recovery reload failed:', recoveryError);
+        this.loaded = true; // Mark as loaded to prevent infinite loops
+      }
+    }
+  }
+
+  // Improved loadWorlds with better error handling
+  private loadWorlds(): void {
+    if (this.loaded) {
+      console.log('Worlds already loaded, skipping load');
+      return;
+    }
+    
+    console.log('Loading worlds from localStorage...');
+    
+    try {
+      // Clear existing worlds first
+      this.worlds.clear();
+      
+      // Get worlds from localStorage
+      const worldsStr = localStorage.getItem(this.STORAGE_KEY);
+      
+      if (worldsStr) {
+        try {
+          const worlds = JSON.parse(worldsStr);
+          
+          if (Array.isArray(worlds)) {
+            // Add each world to the map
+            worlds.forEach(world => {
+              if (world && world.id) {
+                // Normalize the ID
+                const normalizedId = this.normalizeWorldId(world.id);
+                
+                // Create a deep copy to avoid reference issues
+                const worldCopy = JSON.parse(JSON.stringify(world));
+                
+                // Ensure the ID is normalized
+                worldCopy.id = normalizedId;
+                
+                // Add to map
+                this.worlds.set(normalizedId, worldCopy);
+              }
+            });
+            
+            console.log(`Loaded ${worlds.length} worlds from localStorage`);
+          } else {
+            console.error('Invalid worlds data in localStorage - not an array');
+          }
+        } catch (parseError) {
+          console.error('Error parsing worlds from localStorage:', parseError);
+        }
+      } else {
+        console.log('No worlds found in localStorage');
+      }
+      
+      // Mark as loaded
+      this.loaded = true;
+    } catch (error) {
+      console.error('Error loading worlds from localStorage:', error);
+      
+      // Mark as loaded anyway to prevent infinite loops
+      this.loaded = true;
+    }
+  }
+
+  // Helper to normalize world IDs consistently
+  public normalizeWorldId(worldId: string): string {
+    if (!worldId) return '';
+    
+    // Already in the standard format: project-world-X
+    if (worldId.startsWith('project-world-')) {
+      return worldId;
+    }
+    
+    // Convert from world_X format
+    const worldMatch = worldId.match(/^world_(\d+)$/);
+    if (worldMatch && worldMatch[1]) {
+      const normalizedId = `project-world-${worldMatch[1]}`;
+      console.log(`Normalized ${worldId} to ${normalizedId}`);
+      return normalizedId;
+    }
+    
+    // If no recognized pattern, return original
+    return worldId;
+  }
+
+  // Improved updateWorld for better handling of world data
+  public updateWorld(world: World): boolean {
+    console.log(`Updating world: ${world.id}`);
+    
+    if (!world || !world.id) {
+      console.error('Invalid world data provided to updateWorld');
+      return false;
+    }
+    
+    try {
+      // Normalize the world ID
+      const normalizedId = this.normalizeWorldId(world.id);
+      
+      // Ensure world object has the normalized ID
+      world.id = normalizedId;
+      
+      // Create a deep copy of the world to avoid reference issues
+      const worldCopy = JSON.parse(JSON.stringify(world));
+      
+      // Set in memory first
+      this.worlds.set(normalizedId, worldCopy);
+      
+      // Then persist to localStorage
+      const result = this.saveWorldToLocalStorage(worldCopy);
+      
+      // Force reload to ensure consistency
+      this.loadWorlds();
+      
+      return result;
+    } catch (error) {
+      console.error(`Error updating world ${world.id}:`, error);
+      
+      // Attempt direct localStorage save as a fallback
+      try {
+        const worldsStr = localStorage.getItem(this.STORAGE_KEY);
+        let worlds = [];
+        
+        if (worldsStr) {
+          worlds = JSON.parse(worldsStr);
+          if (!Array.isArray(worlds)) {
+            worlds = [];
+          }
+        }
+        
+        // Remove any existing world with the same ID
+        const normalizedId = this.normalizeWorldId(world.id);
+        worlds = worlds.filter((w: any) => 
+          this.normalizeWorldId(w.id) !== normalizedId
+        );
+        
+        // Add the updated world
+        worlds.push({...world});
+        
+        // Save back to localStorage
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(worlds));
+        console.log(`World ${world.id} saved directly to localStorage as fallback`);
+        
+        // Update memory cache
+        this.worlds.set(normalizedId, {...world});
+        
+        return true;
+      } catch (fallbackError) {
+        console.error(`Fallback save failed for world ${world.id}:`, fallbackError);
+        return false;
+      }
+    }
+  }
+  
+  // Helper method to save a specific world to localStorage
+  private saveWorldToLocalStorage(world: World): boolean {
+    try {
+      // Get current worlds array
+      const worldsStr = localStorage.getItem(this.STORAGE_KEY);
+      let worlds: World[] = [];
+      
+      if (worldsStr) {
+        try {
+          worlds = JSON.parse(worldsStr);
+          
+          if (!Array.isArray(worlds)) {
+            console.error('Invalid worlds data in localStorage - not an array');
+            worlds = [];
+          }
+        } catch (parseError) {
+          console.error('Error parsing worlds from localStorage:', parseError);
+          worlds = [];
+        }
+      }
+      
+      // Remove any existing world with same ID (normalized or not)
+      const normalizedId = this.normalizeWorldId(world.id);
+      worlds = worlds.filter(w => 
+        this.normalizeWorldId(w.id) !== normalizedId
+      );
+      
+      // Add updated world
+      worlds.push({...world});
+      
+      // Save back to localStorage
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(worlds));
+      
+      console.log(`World ${world.id} saved successfully to localStorage`);
+      return true;
+    } catch (error) {
+      console.error(`Error saving world to localStorage:`, error);
+      return false;
+    }
+  }
+  
+  // Improved getWorld method for consistent world retrieval
+  public getWorld(worldId: string): World | null {
+    if (!worldId) {
+      console.error('Invalid world ID provided to getWorld');
+      return null;
+    }
+    
+    // Normalize the requested world ID
+    const normalizedId = this.normalizeWorldId(worldId);
+    console.log(`Looking up world with ID: ${worldId} (normalized: ${normalizedId})`);
+    
+    // Ensure worlds are loaded
+    if (!this.loaded) {
+      this.loadWorlds();
+    }
+    
+    // First try with normalized ID
+    if (this.worlds.has(normalizedId)) {
+      console.log(`Found world with normalized ID: ${normalizedId}`);
+      return this.worlds.get(normalizedId) || null;
+    }
+    
+    // Then try with original ID as fallback
+    if (this.worlds.has(worldId)) {
+      console.log(`Found world with original ID: ${worldId}`);
+      return this.worlds.get(worldId) || null;
+    }
+    
+    // If world not found, try to create a dynamic world for project
+    if (normalizedId.startsWith('project-world-')) {
+      // Extract project ID from normalized ID
+      const projectIdStr = normalizedId.replace('project-world-', '');
+      const projectId = parseInt(projectIdStr, 10);
+      
+      if (isNaN(projectId)) {
+        console.error(`Invalid project ID: ${projectIdStr}`);
+        return null;
+      }
+      
+      console.log(`World not found. Creating dynamic world for project ID: ${projectId}`);
+      
+      // Find the project by ID
+      const project = projects.find((p: Project) => p.id === projectId);
+      
+      if (project) {
+        console.log(`Found project for ID ${projectId}:`, project);
+        // Create a proper project world
+        const projectWorld = createProjectWorld(project);
+        
+        // Update the world in storage
+        this.updateWorld(projectWorld);
+        
+        return projectWorld;
+      } else {
+        console.warn(`Project not found for ID: ${projectId}`);
+        
+        // Create a fallback project
+        const fallbackProject: Project = {
+          id: projectId,
+          name: `Project ${projectId}`,
+          description: 'Project details not available',
+          thumbnail: 'https://placehold.co/600x400/cccccc/333333?text=Project+Not+Available',
+          status: 'completed',
+          type: 'standard',
+          link: '#'
+        };
+        
+        // Create a world for the fallback project
+        const fallbackWorld = createProjectWorld(fallbackProject);
+        
+        // Update the world in storage
+        this.updateWorld(fallbackWorld);
+        
+        return fallbackWorld;
+      }
+    }
+    
+    console.warn(`World not found: ${worldId}`);
+    return null;
+  }
+  
+  // Verifies that a world exists and has proper data
+  public verifyWorld(worldId: string): {exists: boolean; valid: boolean; world?: World} {
+    if (!worldId) {
+      return {exists: false, valid: false};
+    }
+    
+    const normalizedId = this.normalizeWorldId(worldId);
+    console.log(`Verifying world: ${worldId} (normalized: ${normalizedId})`);
+    
+    // Try to get the world
+    const world = this.getWorld(worldId);
+    
+    if (!world) {
+      console.warn(`Verification failed: World ${worldId} not found`);
+      return {exists: false, valid: false};
+    }
+    
+    // Check essential properties
+    const hasEssentialProps = 
+      world.id && 
+      world.backgroundColor && 
+      world.floorColor && 
+      typeof world.ambientLightIntensity === 'number';
+    
+    if (!hasEssentialProps) {
+      console.warn(`Verification failed: World ${worldId} is missing essential properties`);
+      return {exists: true, valid: false, world};
+    }
+    
+    console.log(`Verification passed: World ${worldId} exists and is valid`);
+    return {exists: true, valid: true, world};
+  }
+  
+  // Clear all worlds from memory and reload from storage
+  public clearAllWorlds(): void {
+    console.log('Clearing all worlds from memory...');
+    
+    try {
+      // Clear memory cache
+      this.worlds.clear();
+      
+      // Reset loaded flag
+      this.loaded = false;
+      
+      // Reload from localStorage
+      this.loadWorlds();
+      
+      console.log('Worlds cleared from memory and reloaded from storage');
+    } catch (error) {
+      console.error('Error clearing worlds:', error);
+      
+      // Attempt to recover
+      try {
+        // Just clear memory without reloading
+        this.worlds.clear();
+        this.loaded = false;
+        console.log('Worlds cleared from memory (recovery mode)');
+      } catch (recoveryError) {
+        console.error('Failed to clear worlds even in recovery mode:', recoveryError);
+      }
+    }
+
+  // Improved getAllWorlds with better error handling
+  public getAllWorlds(): World[] {
+    try {
+      // Force reload to ensure we have the latest data
+      if (!this.loaded) {
+        this.loadWorlds();
+      }
+      
+      // Create deep copies to prevent accidental mutations
+      const worlds = Array.from(this.worlds.values()).map(world => 
+        JSON.parse(JSON.stringify(world))
+      );
+      
+      console.log(`Retrieved ${worlds.length} worlds`);
+      return worlds;
+    } catch (error) {
+      console.error('Error retrieving all worlds:', error);
+      
+      // Attempt direct localStorage retrieval as fallback
+      try {
+        const worldsStr = localStorage.getItem(this.STORAGE_KEY);
+        if (worldsStr) {
+          const parsedWorlds = JSON.parse(worldsStr);
+          if (Array.isArray(parsedWorlds)) {
+            console.log(`Fallback: Retrieved ${parsedWorlds.length} worlds directly from localStorage`);
+            return parsedWorlds;
+          }
+        }
+      } catch (fallbackError) {
+        console.error('Fallback retrieval failed:', fallbackError);
+      }
+      
+      // Return empty array as last resort
+      return [];
+    }
+  }
+  
+  // Remove a world by ID
+  public removeWorld(worldId: string): boolean {
+    if (!worldId) {
+      console.error('Invalid world ID provided to removeWorld');
+      return false;
+    }
+    
+    const normalizedId = this.normalizeWorldId(worldId);
+    console.log(`Removing world: ${worldId} (normalized: ${normalizedId})`);
+    
+    try {
+      // First remove from memory
+      let result = this.worlds.delete(normalizedId);
+      
+      // If not found with normalized ID, try original
+      if (!result && normalizedId !== worldId) {
+        result = this.worlds.delete(worldId);
+      }
+      
+      // If found and removed from memory, also remove from localStorage
+      if (result) {
+        try {
+          const worldsStr = localStorage.getItem(this.STORAGE_KEY);
+          
+          if (worldsStr) {
+            try {
+              let worlds = JSON.parse(worldsStr);
+              
+              if (Array.isArray(worlds)) {
+                // Filter out the world with either normalized or original ID
+                worlds = worlds.filter(w => 
+                  this.normalizeWorldId(w.id) !== normalizedId && w.id !== worldId
+                );
+                
+                // Save back to localStorage
+                localStorage.setItem(this.STORAGE_KEY, JSON.stringify(worlds));
+                console.log(`World ${worldId} removed from localStorage`);
+              }
+            } catch (parseError) {
+              console.error('Error parsing worlds during removal:', parseError);
+            }
+          }
+        } catch (storageError) {
+          console.error('Error updating localStorage during world removal:', storageError);
+        }
+      }
+      
+      return result;
+    } catch (error) {
+      console.error(`Error removing world ${worldId}:`, error);
+      return false;
+    }
+  }
+  
+  // Save all worlds to storage - used for bulk operations
+  public saveAllWorlds(): boolean {
+    try {
+      console.log('Saving all worlds to localStorage...');
+      
+      // Convert worlds Map to array
+      const worldsArray = Array.from(this.worlds.values());
+      
+      // Save to localStorage
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(worldsArray));
+      
+      console.log(`Successfully saved ${worldsArray.length} worlds to localStorage`);
+      return true;
+    } catch (error) {
+      console.error('Error saving all worlds to localStorage:', error);
+      return false;
+    }
+  }
+
+  // Improved getWorldById with better error handling and validation
+  public getWorldById(id: string): World | undefined {
+    if (!id) {
+      console.warn('getWorldById called with empty id');
+      return undefined;
+    }
+
+    try {
+      // Ensure worlds are loaded
+      if (!this.loaded) {
+        this.loadWorlds();
+      }
+
+      const normalizedId = this.normalizeWorldId(id);
+      const world = this.worlds.get(normalizedId);
+      
+      if (!world) {
+        console.warn(`World with id "${normalizedId}" not found`);
+        return undefined;
+      }
+      
+      // Return a deep copy to prevent accidental mutations
+      return JSON.parse(JSON.stringify(world));
+    } catch (error) {
+      console.error(`Error retrieving world with id "${id}":`, error);
+      return undefined;
+    }
+  }
+} 

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Particles.js Test</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #000;
+    }
+    #particles-js {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+    }
+    .controls {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 20px;
+      border-radius: 10px;
+      color: #333;
+      font-family: Arial, sans-serif;
+    }
+    button {
+      margin: 5px;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="particles-js"></div>
+  
+  <div class="controls">
+    <h2>Particles.js Test</h2>
+    <button onclick="applyPreset('stars')">Stars</button>
+    <button onclick="applyPreset('snow')">Snow</button>
+    <button onclick="applyPreset('bubbles')">Bubbles</button>
+    <button onclick="applyPreset('network')">Network</button>
+    <button onclick="applyPreset('fireflies')">Fireflies</button>
+    <button onclick="clearParticles()">Clear</button>
+  </div>
+
+  <script src="/js/particles.min.js"></script>
+  <script>
+    // Define particle configurations for different sky effects
+    const skyParticlePresets = {
+      stars: {
+        particles: {
+          number: { value: 100, density: { enable: true, value_area: 800 } },
+          color: { value: "#ffffff" },
+          shape: { type: "circle" },
+          opacity: { value: 0.7, random: true },
+          size: { value: 2, random: true },
+          line_linked: { enable: false },
+          move: {
+            enable: true,
+            speed: 0.2,
+            direction: "none",
+            random: true,
+            straight: false,
+            out_mode: "out"
+          }
+        },
+        interactivity: { detect_on: "canvas", events: { resize: true } }
+      },
+      snow: {
+        particles: {
+          number: { value: 80, density: { enable: true, value_area: 800 } },
+          color: { value: "#ffffff" },
+          shape: { type: "circle" },
+          opacity: { value: 0.8, random: false },
+          size: { value: 3, random: true },
+          line_linked: { enable: false },
+          move: {
+            enable: true,
+            speed: 1,
+            direction: "bottom",
+            random: true,
+            straight: false,
+            out_mode: "out"
+          }
+        },
+        interactivity: { detect_on: "canvas", events: { resize: true } }
+      },
+      bubbles: {
+        particles: {
+          number: { value: 30, density: { enable: true, value_area: 800 } },
+          color: { value: "#4dffa9" },
+          shape: { type: "circle" },
+          opacity: { value: 0.6, random: true },
+          size: { value: 5, random: true },
+          line_linked: { enable: false },
+          move: {
+            enable: true,
+            speed: 1,
+            direction: "top",
+            random: true,
+            straight: false,
+            out_mode: "out"
+          }
+        },
+        interactivity: { detect_on: "canvas", events: { resize: true } }
+      },
+      network: {
+        particles: {
+          number: { value: 80, density: { enable: true, value_area: 800 } },
+          color: { value: "#4dffa9" },
+          shape: { type: "circle" },
+          opacity: { value: 0.5, random: false },
+          size: { value: 3, random: true },
+          line_linked: {
+            enable: true,
+            distance: 150,
+            color: "#4dffa9",
+            opacity: 0.4,
+            width: 1
+          },
+          move: {
+            enable: true,
+            speed: 1,
+            direction: "none",
+            random: false,
+            straight: false,
+            out_mode: "out"
+          }
+        },
+        interactivity: {
+          detect_on: "canvas",
+          events: {
+            onhover: { enable: true, mode: "grab" },
+            resize: true
+          },
+          modes: {
+            grab: { distance: 140, line_linked: { opacity: 1 } }
+          }
+        }
+      },
+      fireflies: {
+        particles: {
+          number: { value: 50, density: { enable: true, value_area: 800 } },
+          color: { value: "#ffaa00" },
+          shape: { type: "circle" },
+          opacity: { 
+            value: 0.8, 
+            random: true,
+            anim: { enable: true, speed: 1, opacity_min: 0.1, sync: false }
+          },
+          size: { 
+            value: 3, 
+            random: true,
+            anim: { enable: true, speed: 1, size_min: 0.1, sync: false }
+          },
+          line_linked: { enable: false },
+          move: {
+            enable: true,
+            speed: 1,
+            direction: "none",
+            random: true,
+            straight: false,
+            out_mode: "out"
+          }
+        },
+        interactivity: { detect_on: "canvas", events: { resize: true } }
+      }
+    };
+
+    // Function to apply a preset
+    function applyPreset(presetName) {
+      console.log(`Applying preset: ${presetName}`);
+      
+      // Clean up existing particles
+      clearParticles();
+      
+      // Initialize with new config
+      console.log('Config:', skyParticlePresets[presetName]);
+      window.particlesJS('particles-js', skyParticlePresets[presetName]);
+      console.log('Particles initialized');
+    }
+
+    // Function to clear particles
+    function clearParticles() {
+      console.log('Clearing particles');
+      if (window.pJSDom && window.pJSDom.length > 0) {
+        window.pJSDom.forEach(instance => {
+          if (instance && instance.pJS && instance.pJS.fn && instance.pJS.fn.vendors && instance.pJS.fn.vendors.destroypJS) {
+            instance.pJS.fn.vendors.destroypJS();
+            console.log('Destroyed an instance');
+          }
+        });
+        window.pJSDom = [];
+        console.log('Cleared pJSDom array');
+      }
+    }
+
+    // Initialize with stars preset
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        console.log('Initial particles setup');
+        applyPreset('stars');
+      }, 500);
+    });
+  </script>
+</body>
+</html> 
