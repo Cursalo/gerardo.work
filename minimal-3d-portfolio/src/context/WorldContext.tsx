@@ -205,9 +205,18 @@ export const WorldProvider = ({
       setIsLoading(true);
       
       try {
+        console.log('WorldProvider: Starting setupWorlds...');
+        
+        // Force reload to ensure fresh data
+        await projectDataService.forceReload();
+        console.log('WorldProvider: Force reload completed');
+        
         // Load projects from project.json files instead of localStorage
         await projectDataService.initialize();
         const loadedProjects = await projectDataService.getAllProjects();
+        
+        console.log('WorldProvider: ProjectDataService loaded projects:', loadedProjects.length);
+        console.log('WorldProvider: First few projects:', loadedProjects.slice(0, 3).map(p => ({ id: p.id, name: p.name })));
         
         // CRITICAL FIX: Deduplicate projects by ID to prevent React key errors
         const uniqueProjectsMap = new Map();
@@ -262,9 +271,13 @@ export const WorldProvider = ({
         const validProjects = projectsToUse;
         
         console.log(`WorldProvider: Using ${validProjects.length} valid projects after deduplication`);
+        console.log('WorldProvider: Valid projects IDs:', validProjects.map(p => p.id).sort((a, b) => a - b));
         
         // Create or update a fresh main world with the latest projects
         const newMainWorld = createMainWorld(validProjects);
+        
+        console.log('WorldProvider: Created main world with objects:', newMainWorld.objects.length);
+        console.log('WorldProvider: Main world objects preview:', newMainWorld.objects.slice(0, 3).map(obj => ({ id: obj.id, type: obj.type, title: obj.title })));
         
         // Save the main world to the service
         worldService.updateWorld(newMainWorld);
@@ -284,9 +297,11 @@ export const WorldProvider = ({
         }
 
         if (worldToDisplay) {
+          console.log('WorldProvider: Setting current world to:', worldToDisplay.id, 'with', worldToDisplay.objects.length, 'objects');
           setCurrentWorld(worldToDisplay);
         } else {
           // Fallback to main world if specific world still not found
+          console.log('WorldProvider: Fallback - setting current world to main world');
           setCurrentWorld(newMainWorld);
           if (currentWorldId !== 'mainWorld') {
             setCurrentWorldIdState('mainWorld');
@@ -306,6 +321,7 @@ export const WorldProvider = ({
         setWorlds([fallbackMainWorld]);
       } finally {
         setIsLoading(false);
+        console.log('WorldProvider: setupWorlds completed');
       }
     };
 

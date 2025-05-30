@@ -155,10 +155,8 @@ const SceneContent = ({ worldId }: SceneContentProps) => {
     return <Loading3D />;
   }
   
-  // CRITICAL FIX: Disable Scene logging completely to stop console spam
-  // if (process.env.NODE_ENV === 'development' && Math.random() < 0.01) {
-  //   console.log("SceneContent rendering world:", currentWorld.id, "with visible objects:", visibleObjects.length, "of", currentWorld.objects.length);
-  // }
+  console.log("SceneContent rendering world:", currentWorld.id, "with total objects:", currentWorld.objects.length, "visible objects:", visibleObjects.length);
+  console.log("SceneContent visible objects preview:", visibleObjects.slice(0, 3).map(obj => ({ id: obj.id, type: obj.type, title: obj.title })));
   
   return (
     <>
