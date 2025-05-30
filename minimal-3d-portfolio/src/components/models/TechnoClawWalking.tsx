@@ -132,7 +132,7 @@ export const TechnoClawWalking = forwardRef<THREE.Group, TechnoClawModelProps>((
   }, [activeAnimationName]);
   
   // Load the GLB file directly
-  const { nodes, materials, animations } = useGLTF(currentPath) as GLTFResultWalking;
+  const { nodes, materials, animations } = useGLTF(currentPath) as unknown as GLTFResultWalking;
   
   // Enhanced click handler with debugging
   const handleClick = (event: THREE.Intersection | any) => {

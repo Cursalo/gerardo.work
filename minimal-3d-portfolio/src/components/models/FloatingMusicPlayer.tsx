@@ -103,6 +103,9 @@ export function FloatingMusicPlayer({
   scale = 1 
 }: FloatingMusicPlayerProps) {
   const {
+    audioListener,
+    isMusicPlayerOpen,
+    toggleMusicPlayer,
     playlist,
     currentSong,
     setCurrentSong,
@@ -111,7 +114,6 @@ export function FloatingMusicPlayer({
     playNextSong,
     playPrevSong,
     audioRef,
-    handleUserInteraction, // This was removed from context in prior steps, ensure it's present if used
     hasUserInteracted // Same as above
   } = useAudio();
   const { isMobile, isTouchDevice } = useMobileDetection(); // This hook is present
@@ -197,10 +199,6 @@ export function FloatingMusicPlayer({
   };
   
   const handlePlayClick = () => {
-    // handleUserInteraction might not be available if removed from context
-    if (typeof handleUserInteraction === 'function') {
-        handleUserInteraction(); 
-    }
     setIsPlaying(!isPlaying);
   };
 
