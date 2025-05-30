@@ -10,6 +10,7 @@ export interface Project {
   type: 'standard' | 'video';
   videoUrl?: string;
   customLink?: string;
+  projectPath?: string; // Added path to project subworld folder in public
   mediaObjects?: WorldObject[]; // Added mediaObjects to match projectService.ts
   worldSettings?: {
     backgroundColor: string;
@@ -57,7 +58,8 @@ export const projects: Project[] = [
     thumbnail: `https://img.youtube.com/vi/${videoUrl.split('v=')[1]}/mqdefault.jpg`,
     status: 'completed',
     type: 'video',
-    videoUrl
+    videoUrl,
+    projectPath: `/projects/project-${i + 1}/` // Added placeholder path
   })),
   // Standard projects - using SVG data URLs which are guaranteed to work
   ...Array.from({ length: 22 }, (_, i) => {
@@ -73,7 +75,8 @@ export const projects: Project[] = [
       link: `https://example.com/project-${i + sampleVideos.length + 1}`,
       thumbnail: `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200' viewBox='0 0 300 200'%3E%3Crect width='300' height='200' fill='hsl(${hue}, ${saturation}%25, ${lightness}%25)' /%3E%3Ctext x='150' y='100' font-family='Arial' font-size='24' fill='white' text-anchor='middle' dominant-baseline='middle'%3EProject ${i + sampleVideos.length + 1}%3C/text%3E%3C/svg%3E`,
       status: (i % 5 === 0 ? 'in-progress' : 'completed') as 'completed' | 'in-progress',
-      type: 'standard' as 'standard' | 'video'
+      type: 'standard' as 'standard' | 'video',
+      projectPath: `/projects/project-${i + sampleVideos.length + 1}/` // Added placeholder path
     };
   })
 ]; 
