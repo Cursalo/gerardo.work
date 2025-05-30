@@ -1,0 +1,70 @@
+{
+  "id": 25,
+  "name": "Power Up Pizza",
+  "description": "Project details for Power Up Pizza.",
+  "link": "/projects/Power Up Pizza/index.html",
+  "thumbnail": "/projects/Power Up Pizza/thumbnail/thumbnail.png",
+  "status": "completed",
+  "type": "standard",
+  "videoUrl": "/projects/Power Up Pizza/assets/videos/demo.mp4",
+  "worldSettings": {
+    "backgroundColor": "hsl(188, 92%, 60%)",
+    "floorColor": "#ffffff",
+    "skyColor": "hsl(248, 92%, 80%)",
+    "floorTexture": "",
+    "skyTexture": "",
+    "ambientLightColor": "#ffffff",
+    "ambientLightIntensity": 0.7,
+    "directionalLightColor": "hsl(158, 100%, 80%)",
+    "directionalLightIntensity": 1
+  },
+  "mediaObjects": [
+    {
+      "id": "video-player-25",
+      "type": "video",
+      "title": "Power Up Pizza Main Video",
+      "description": "Main video content for Power Up Pizza.",
+      "url": "/projects/Power Up Pizza/assets/videos/demo.mp4",
+      "thumbnail": "/projects/Power Up Pizza/thumbnail/thumbnail.png",
+      "position": [
+        0,
+        2.5,
+        -8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        4,
+        2.25,
+        1
+      ]
+    },
+    {
+      "id": "info-panel-25",
+      "type": "image",
+      "title": "About Power Up Pizza",
+      "description": "Information and assets for the Power Up Pizza project.",
+      "thumbnail": "/projects/Power Up Pizza/thumbnail/thumbnail.png",
+      "position": [
+        -4,
+        2,
+        -7
+      ],
+      "rotation": [
+        0,
+        0.39269908169872414,
+        0
+      ],
+      "scale": [
+        2,
+        1.5,
+        0.1
+      ]
+    }
+  ],
+  "assetGallery": [],
+  "customLink": "power-up-pizza"
+}

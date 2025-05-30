@@ -1,0 +1,70 @@
+{
+  "id": 22,
+  "name": "PitchDeckGenie",
+  "description": "Project details for PitchDeckGenie.",
+  "link": "/projects/PitchDeckGenie/index.html",
+  "thumbnail": "/projects/PitchDeckGenie/thumbnail/thumbnail.png",
+  "status": "completed",
+  "type": "standard",
+  "videoUrl": "/projects/PitchDeckGenie/assets/videos/demo.mp4",
+  "worldSettings": {
+    "backgroundColor": "hsl(188, 92%, 60%)",
+    "floorColor": "#ffffff",
+    "skyColor": "hsl(248, 92%, 80%)",
+    "floorTexture": "",
+    "skyTexture": "",
+    "ambientLightColor": "#ffffff",
+    "ambientLightIntensity": 0.7,
+    "directionalLightColor": "hsl(158, 100%, 80%)",
+    "directionalLightIntensity": 1
+  },
+  "mediaObjects": [
+    {
+      "id": "video-player-22",
+      "type": "video",
+      "title": "PitchDeckGenie Main Video",
+      "description": "Main video content for PitchDeckGenie.",
+      "url": "/projects/PitchDeckGenie/assets/videos/demo.mp4",
+      "thumbnail": "/projects/PitchDeckGenie/thumbnail/thumbnail.png",
+      "position": [
+        0,
+        2.5,
+        -8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        4,
+        2.25,
+        1
+      ]
+    },
+    {
+      "id": "info-panel-22",
+      "type": "image",
+      "title": "About PitchDeckGenie",
+      "description": "Information and assets for the PitchDeckGenie project.",
+      "thumbnail": "/projects/PitchDeckGenie/thumbnail/thumbnail.png",
+      "position": [
+        -4,
+        2,
+        -7
+      ],
+      "rotation": [
+        0,
+        0.39269908169872414,
+        0
+      ],
+      "scale": [
+        2,
+        1.5,
+        0.1
+      ]
+    }
+  ],
+  "assetGallery": [],
+  "customLink": "pitchdeckgenie"
+}

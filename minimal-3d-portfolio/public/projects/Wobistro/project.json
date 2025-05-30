@@ -1,0 +1,70 @@
+{
+  "id": 10,
+  "name": "Wobistro",
+  "description": "Project details for Wobistro.",
+  "link": "/projects/Wobistro/index.html",
+  "thumbnail": "/projects/Wobistro/thumbnail/thumbnail.png",
+  "status": "completed",
+  "type": "standard",
+  "videoUrl": "/projects/Wobistro/assets/videos/demo.mp4",
+  "worldSettings": {
+    "backgroundColor": "hsl(188, 92%, 60%)",
+    "floorColor": "#ffffff",
+    "skyColor": "hsl(248, 92%, 80%)",
+    "floorTexture": "",
+    "skyTexture": "",
+    "ambientLightColor": "#ffffff",
+    "ambientLightIntensity": 0.7,
+    "directionalLightColor": "hsl(158, 100%, 80%)",
+    "directionalLightIntensity": 1
+  },
+  "mediaObjects": [
+    {
+      "id": "video-player-10",
+      "type": "video",
+      "title": "Wobistro Main Video",
+      "description": "Main video content for Wobistro.",
+      "url": "/projects/Wobistro/assets/videos/demo.mp4",
+      "thumbnail": "/projects/Wobistro/thumbnail/thumbnail.png",
+      "position": [
+        0,
+        2.5,
+        -8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        4,
+        2.25,
+        1
+      ]
+    },
+    {
+      "id": "info-panel-10",
+      "type": "image",
+      "title": "About Wobistro",
+      "description": "Information and assets for the Wobistro project.",
+      "thumbnail": "/projects/Wobistro/thumbnail/thumbnail.png",
+      "position": [
+        -4,
+        2,
+        -7
+      ],
+      "rotation": [
+        0,
+        0.39269908169872414,
+        0
+      ],
+      "scale": [
+        2,
+        1.5,
+        0.1
+      ]
+    }
+  ],
+  "assetGallery": [],
+  "customLink": "wobistro"
+}

@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { World, WorldService, getWorldServiceInstance, createMainWorld, createProjectWorld } from '../data/worlds';
 import { Project, projectService } from '../services/projectService';
+import { projectDataService, ProjectData } from '../services/projectDataService';
 import useMobileDetection from '../hooks/useMobileDetection';
 
 // Define consistent storage key
@@ -25,13 +26,11 @@ const WorldContext = createContext<WorldContextType | undefined>(undefined);
 interface WorldProviderProps {
   children: ReactNode;
   initialWorldId?: string;
-  initialProjects?: Project[];
 }
 
 export const WorldProvider = ({
   children,
-  initialWorldId = 'mainWorld',
-  initialProjects = []
+  initialWorldId = 'mainWorld'
 }: WorldProviderProps) => {
   const { isTouchDevice } = useMobileDetection();
   
@@ -203,154 +202,115 @@ export const WorldProvider = ({
   // Single useEffect to handle initialization and world changes
   useEffect(() => {
     const setupWorlds = async () => {
-      console.log('WorldProvider: Setting up worlds', { refreshTrigger, currentWorldId });
       setIsLoading(true);
       
       try {
-        // CRITICAL FIX: Force projectService to reload projects from localStorage first
-        console.log('WorldProvider: Forcing projectService to reload projects.');
-        await projectService.forceReloadProjects(); // Ensure freshest projects
-        console.log('WorldProvider: projectService reload complete.');
-
-        // CRITICAL FIX: Always reload projects and recreate/update mainWorld on refreshTrigger change
-        console.log('WorldProvider: Reloading all projects and mainWorld due to refresh trigger or ID change.');
+        // Load projects from project.json files instead of localStorage
+        await projectDataService.initialize();
+        const loadedProjects = await projectDataService.getAllProjects();
         
-        // CRITICAL FIX: Verify project data is consistent
-        const loadedProjects = await projectService.getProjects();
-        
-        // CRITICAL FIX: Also get direct from localStorage to verify consistency
-        const directProjects = projectService.getProjectsDirectFromStorage();
-        
-        // Check if in-memory projects match localStorage
-        if (JSON.stringify(loadedProjects) !== JSON.stringify(directProjects)) {
-          console.warn('WorldProvider: In-memory projects don\'t match localStorage');
-          
-          // Determine which set to use - prefer the one with more projects
-          const projectsToUse = directProjects.length >= loadedProjects.length ? 
-            directProjects : loadedProjects;
-          
-          console.log(`WorldProvider: Using set with ${projectsToUse.length} projects`);
-          
-          // Sort for consistency
-          const sortedProjects = [...projectsToUse].sort((a, b) => a.id - b.id);
-          
-          // Save directly to localStorage
-          projectService.saveProjectsDirectToStorage(sortedProjects);
-          
-          // Also update in-memory state
-          for (let i = 0; i < sortedProjects.length; i++) {
-            await projectService.saveProject(sortedProjects[i]);
-          }
-          
-          // Force reload
-          await projectService.forceReloadProjects();
-          
-          console.log('WorldProvider: Projects synchronized between memory and localStorage');
-        } else {
-          // Verify by sorting and comparing - if inconsistent order, save back to localStorage
-          const sortedProjects = [...loadedProjects].sort((a, b) => a.id - b.id);
-          if (JSON.stringify(sortedProjects) !== JSON.stringify(loadedProjects)) {
-            console.warn('WorldProvider: Project order is inconsistent, sorting and saving');
-            
-            // Replace with sorted version and save
-            for (let i = 0; i < sortedProjects.length; i++) {
-              await projectService.saveProject(sortedProjects[i]);
+        // CRITICAL FIX: Deduplicate projects by ID to prevent React key errors
+        const uniqueProjectsMap = new Map();
+        loadedProjects.forEach((projectData: ProjectData) => {
+          if (projectData && projectData.id) {
+            // Only keep the first occurrence of each ID
+            if (!uniqueProjectsMap.has(projectData.id)) {
+              uniqueProjectsMap.set(projectData.id, projectData);
+            } else {
+              console.warn(`WorldProvider: Skipping duplicate project with ID ${projectData.id}: ${projectData.name}`);
             }
-            
-            // Force reload again to ensure consistent data
-            await projectService.forceReloadProjects();
           }
+        });
+        
+        const deduplicatedProjects = Array.from(uniqueProjectsMap.values());
+        console.log(`WorldProvider: Deduplicated ${loadedProjects.length} projects down to ${deduplicatedProjects.length} unique projects`);
+        
+        // Additional safety check: verify no duplicate IDs remain
+        const finalIds = deduplicatedProjects.map(p => p.id);
+        const uniqueIds = [...new Set(finalIds)];
+        if (finalIds.length !== uniqueIds.length) {
+          console.error('WorldProvider: CRITICAL ERROR - Duplicates still exist after deduplication!');
+          console.error('Final IDs:', finalIds);
+          console.error('Unique IDs:', uniqueIds);
+        } else {
+          console.log('WorldProvider: ✅ Deduplication successful - all project IDs are unique');
         }
         
-        console.log('WorldProvider: Loaded projects from projectService:', loadedProjects);
+        // Convert ProjectData to Project format for compatibility
+        const projectsToUse: Project[] = deduplicatedProjects
+          .filter((projectData: ProjectData) => projectData && projectData.id) // Filter out invalid projects
+          .map((projectData: ProjectData) => ({
+            id: projectData.id,
+            name: projectData.name,
+            description: projectData.description,
+            link: projectData.link,
+            thumbnail: projectData.thumbnail,
+            status: projectData.status as 'completed' | 'in-progress',
+            type: projectData.type as 'standard' | 'video',
+            videoUrl: projectData.videoUrl,
+            customLink: projectData.customLink,
+            mediaObjects: projectData.mediaObjects?.map(mediaObj => ({
+              ...mediaObj,
+              type: mediaObj.type as 'video' | 'image' | 'pdf' | 'project' | 'link' | 'button'
+            })),
+            worldSettings: projectData.worldSettings,
+            // Preserve assetGallery for project world creation
+            ...(projectData.assetGallery && { assetGallery: projectData.assetGallery })
+          }));
         
-        // Use loaded projects if available, otherwise fall back to initialProjects (should be rare now)
-        const projectsToUse = loadedProjects.length > 0 ? loadedProjects : initialProjects;
-        console.log('WorldProvider: Using projects for main world:', projectsToUse);
+        // Remove the arbitrary ID filter - use all valid projects
+        const validProjects = projectsToUse;
+        
+        console.log(`WorldProvider: Using ${validProjects.length} valid projects after deduplication`);
         
         // Create or update a fresh main world with the latest projects
-        console.log('WorldProvider: Creating/Updating fresh main world with projects:', projectsToUse);
-        const mainWorld = createMainWorld(projectsToUse); // This function should handle creating project cards correctly
-        console.log('WorldProvider: Main world created/updated:', mainWorld);
+        const newMainWorld = createMainWorld(validProjects);
         
-        // Save the main world to the service (this updates it in memory and localStorage via worldService.updateWorld)
-        worldService.updateWorld(mainWorld);
-        console.log('WorldProvider: Main world saved to service');
+        // Save the main world to the service
+        worldService.updateWorld(newMainWorld);
         
-        // CRITICAL FIX: ensure worlds are saved properly
-        worldService.saveAllWorlds();
-        console.log('WorldProvider: Forced save of all worlds');
-
-        // Update the local worlds state to include the new mainWorld and any other existing worlds
-        // This ensures that the list of worlds available in the context is up-to-date.
-        const allCurrentWorldsFromService = worldService.getAllWorlds();
-        setWorlds(allCurrentWorldsFromService);
-        console.log('WorldProvider: All worlds from service set locally:', allCurrentWorldsFromService);
-
-        // Determine the world to display
+        // Determine which world to display
         let worldToDisplay = null;
         if (currentWorldId === 'mainWorld') {
-          worldToDisplay = mainWorld; 
+          worldToDisplay = newMainWorld; 
         } else {
           worldToDisplay = worldService.getWorld(currentWorldId);
           if (!worldToDisplay) {
-            console.warn(`WorldProvider: Requested world ${currentWorldId} not found after refresh, attempting to create project world.`);
-            if (currentWorldId.startsWith('project-world-')) {
-              const projectIdMatch = currentWorldId.match(/project-world-(\d+)/);
-              if (projectIdMatch && projectIdMatch[1]) {
-                const projectId = parseInt(projectIdMatch[1], 10);
-                const project = projectsToUse.find(p => p.id === projectId);
-                if (project) {
-                  console.log(`WorldProvider: Creating world for project ${projectId}:`, project);
-                  // createProjectWorld is expected to be synchronous and return a World object
-                  const projectWorldInstance = createProjectWorld(project, isTouchDevice);
-                  worldService.updateWorld(projectWorldInstance); // Save to service
-                  worldToDisplay = projectWorldInstance;
-                  // Update the local worlds list again if a new world was created
-                  setWorlds(worldService.getAllWorlds());
-                  console.log(`WorldProvider: Project world ${currentWorldId} created and set.`);
-                } else {
-                  console.error(`WorldProvider: Project with ID ${projectId} not found for world ${currentWorldId}`);
-                }
-              } else {
-                console.error(`WorldProvider: Could not parse project ID from ${currentWorldId}`);
-              }
+            worldToDisplay = newMainWorld;
+            if (currentWorldId !== 'mainWorld') {
+              setCurrentWorldIdState('mainWorld');
             }
           }
         }
 
         if (worldToDisplay) {
           setCurrentWorld(worldToDisplay);
-          console.log(`WorldProvider: Current world set to:`, worldToDisplay.id, worldToDisplay.name);
         } else {
           // Fallback to main world if specific world still not found
-          console.warn(`WorldProvider: World ${currentWorldId} still not resolved, falling back to mainWorld.`);
-          setCurrentWorld(mainWorld);
+          setCurrentWorld(newMainWorld);
           if (currentWorldId !== 'mainWorld') {
-            setCurrentWorldIdState('mainWorld'); // Correct the ID state if we fell back
+            setCurrentWorldIdState('mainWorld');
           }
-          console.log(`WorldProvider: Fallback Current world set to:`, mainWorld.id, mainWorld.name);
         }
-        
-        // The following block is no longer needed as target_world_id is cleared upon read:
-        // const targetWorldIdFromStorage = localStorage.getItem('target_world_id');
-        // if (targetWorldIdFromStorage) {
-        //   localStorage.removeItem('target_world_id');
-        //   localStorage.removeItem('target_project_id');
-        //   console.log('WorldProvider: Cleared target_world_id from localStorage.');
-        // }
 
+        // Update the local worlds state
+        const allCurrentWorldsFromService = worldService.getAllWorlds();
+        setWorlds(allCurrentWorldsFromService);
+        
       } catch (error) {
-        console.error('WorldProvider: Error in world setup:', error);
-        setIsLoading(false); // Ensure loading is false on error
+        console.error('WorldProvider: Error setting up worlds:', error);
+        
+        // Create a minimal fallback main world
+        const fallbackMainWorld = createMainWorld([]);
+        setCurrentWorld(fallbackMainWorld);
+        setWorlds([fallbackMainWorld]);
       } finally {
         setIsLoading(false);
-        console.log('WorldProvider: Setup complete, isLoading set to false');
       }
     };
 
     setupWorlds();
-  }, [currentWorldId, refreshTrigger, worldService, initialProjects, isTouchDevice]); // Added worldService and initialProjects to dependency array for robustness
+  }, [currentWorldId, refreshTrigger, worldService, isTouchDevice]);
 
   const getCameraTarget = (): [number, number, number] => {
     if (currentWorld?.cameraTarget) {
@@ -361,12 +321,9 @@ export const WorldProvider = ({
   };
 
   const setCurrentWorldId = (id: string) => {
-    console.log(`Setting current world ID to: ${id}`);
-    
     // Check if this is a project world
     if (id.startsWith('project-world-')) {
       const projectId = parseInt(id.replace('project-world-', ''), 10);
-      console.log(`Navigating to project world for project ID: ${projectId}`);
       
       // Ensure the project world exists
       ensureProjectWorldExists(projectId, id);
@@ -377,37 +334,49 @@ export const WorldProvider = ({
   
   // Utility function to ensure a project world exists
   const ensureProjectWorldExists = async (projectId: number, worldId: string) => {
-    console.log(`Ensuring project world exists for project ID: ${projectId}, world ID: ${worldId}`);
-    
     // Check if the world already exists
     const worldExists = worldService.getWorld(worldId);
     
     if (worldExists) {
-      console.log(`Project world ${worldId} already exists`);
       return;
     }
     
-    console.log(`Project world ${worldId} does not exist, creating it`);
-    
     // Get the project data
     try {
-      // First try to get it from the projectService
-      const project = await projectService.getProjectById(projectId);
+      // Use projectDataService to get full ProjectData with assetGallery
+      const projectData = await projectDataService.getProjectById(projectId);
       
-      if (project) {
-        console.log(`Creating project world for project:`, project);
+      if (projectData) {
+        // Convert ProjectData to Project format with assetGallery preserved
+        const project: Project = {
+          id: projectData.id,
+          name: projectData.name,
+          description: projectData.description,
+          link: projectData.link,
+          thumbnail: projectData.thumbnail,
+          status: projectData.status as 'completed' | 'in-progress',
+          type: projectData.type as 'standard' | 'video',
+          videoUrl: projectData.videoUrl,
+          customLink: projectData.customLink,
+          mediaObjects: projectData.mediaObjects?.map(mediaObj => ({
+            ...mediaObj,
+            type: mediaObj.type as 'video' | 'image' | 'pdf' | 'project' | 'link' | 'button'
+          })),
+          worldSettings: projectData.worldSettings,
+          // Preserve assetGallery for project world creation
+          ...(projectData.assetGallery && { assetGallery: projectData.assetGallery })
+        };
         
         // Create the project world
         const projectWorld = createProjectWorld(project, isTouchDevice);
         
         // Save the world
         worldService.updateWorld(projectWorld);
-        console.log(`Created and saved project world: ${projectWorld.id}`);
         
         // Force a refresh to make sure the world is loaded properly
         refreshWorlds();
       } else {
-        console.error(`Could not find project with ID: ${projectId}`);
+        console.warn(`Could not find project with ID: ${projectId}`);
       }
     } catch (error) {
       console.error(`Error creating project world:`, error);

@@ -12,7 +12,6 @@ import ProjectSubworld from './pages/ProjectSubworld.tsx'
 import Debug from './pages/Debug.tsx'
 import './index.css'
 import { WorldProvider } from './context/WorldContext.tsx'
-import { projects } from './data/projects.ts';
 import ErrorBoundary from './components/ErrorBoundary.tsx';
 
 // Define routes
@@ -43,6 +42,16 @@ const router = createBrowserRouter([
     errorElement: <ErrorBoundary><NotFound /></ErrorBoundary>,
   },
   {
+    path: "/projects/:projectName/index.html",
+    element: <ProjectSubworld />,
+    errorElement: <ErrorBoundary><NotFound /></ErrorBoundary>,
+  },
+  {
+    path: "/projects/:projectName",
+    element: <ProjectSubworld />,
+    errorElement: <ErrorBoundary><NotFound /></ErrorBoundary>,
+  },
+  {
     path: "*",
     element: <NotFound />,
   },
@@ -52,7 +61,7 @@ const router = createBrowserRouter([
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <WorldProvider initialProjects={projects}>
+      <WorldProvider>
         <RouterProvider router={router} />
       </WorldProvider>
     </ErrorBoundary>

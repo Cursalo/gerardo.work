@@ -1,6 +1,4 @@
 import { Project } from '../services/projectService';
-import { projects } from './projects';
-import { projects as projectsFromFile } from './projects';
 
 export interface WorldObject {
   id: string;
@@ -286,11 +284,50 @@ export const createProjectWorld = (project: Project, isTouchDevice: boolean): Wo
   if (project.mediaObjects && project.mediaObjects.length > 0) {
     console.log('Using mediaObjects from project data:', project.mediaObjects);
     project.mediaObjects.forEach(obj => worldObjects.push(obj));
-  } else {
+  }
+
+  // Add assetGallery items if available (similar to ProjectSubworld component)
+  if ((project as any).assetGallery && (project as any).assetGallery.length > 0) {
+    const assetGallery = (project as any).assetGallery;
+    console.log(`Adding ${assetGallery.length} assetGallery items to project world`);
+    
+    const galleryObjects = assetGallery.map((asset: any, index: number) => {
+      // Generate grid positions for asset gallery items
+      const gridSize = Math.ceil(Math.sqrt(assetGallery.length));
+      const row = Math.floor(index / gridSize);
+      const col = index % gridSize;
+      const spacing = 3;
+      const offsetX = (gridSize - 1) * spacing / 2;
+      const offsetZ = (gridSize - 1) * spacing / 2;
+      
+      const position: [number, number, number] = [
+        col * spacing - offsetX + 5, // Offset to the right of main media
+        2, 
+        row * spacing - offsetZ
+      ];
+      
+      return {
+        id: `asset-${index}`,
+        type: asset.type,
+        title: asset.name,
+        description: `Asset from ${project.name}`,
+        url: asset.url,
+        thumbnail: asset.url, // Use the asset URL as thumbnail for images
+        position,
+        rotation: [0, 0, 0] as [number, number, number],
+        scale: [1.5, 1.5, 0.1] as [number, number, number]
+      };
+    });
+    
+    worldObjects.push(...galleryObjects);
+  }
+
+  // If no media objects at all, generate mock data
+  if (worldObjects.length === 0) {
     // CRITICAL FIX: Ensure consistently generated mock data
     // This is important because if mediaObjects isn't present, we need to generate
     // IDENTICAL mock data for both mobile and desktop views
-    console.warn(`Project ${project.id} has no mediaObjects, generating deterministic mock data`);
+    console.warn(`Project ${project.id} has no mediaObjects or assetGallery, generating deterministic mock data`);
     
     // Use project ID as a seed for consistent positioning across all devices
     const seed = project.id || 1;
@@ -789,30 +826,24 @@ export class WorldService {
       
       console.warn(`World ${normalizedId} not found in cache. Attempting to create a transient instance for project ID: ${projectId}.`);
       
-      // Find the project by ID using the static import.
-      // This is a fallback and might use stale data if projectService is not synced.
+      // Since we no longer have static project imports, we'll create a minimal placeholder
       // The caller (e.g., handleSaveProject) MUST update this world with fresh project data.
-      const projectData = projectsFromFile.find((p: Project) => p.id === projectId);
+      console.warn(`Project data for ID ${projectId} not available. Creating minimal placeholder for ${normalizedId}.`);
       
-      if (projectData) {
-        console.log(`Found project data (potentially stale) for ID ${projectId} in static import: ${projectData.name}. Creating transient world.`);
-        // Create a proper project world using this potentially stale projectData.
-        // DO NOT save it here using this.updateWorld(). The caller is responsible for saving the finalized version.
-        const transientProjectWorld = createProjectWorld(projectData, false);
-        return transientProjectWorld; // This world instance might have stale names/details.
-      } else {
-        console.warn(`Project data for ID ${projectId} not found even in static import. Returning minimal placeholder for ${normalizedId}.`);
-        // Create a minimal fallback placeholder if project data isn't available even from static import
-        return {
-          id: normalizedId,
-          name: `Placeholder for ${normalizedId}`,
-          description: 'Needs update from fresh project data.',
-          objects: [], 
-          backgroundColor: '#000000', floorColor: '#222222', skyColor: '#111111',
-          ambientLightColor: '#ffffff', ambientLightIntensity: 0.5,
-          directionalLightColor: '#ffffff', directionalLightIntensity: 0.8,
-        };
-      }
+      // Create a minimal fallback placeholder
+      return {
+        id: normalizedId,
+        name: `Project ${projectId}`,
+        description: 'Loading project data...',
+        objects: [], 
+        backgroundColor: '#000000', 
+        floorColor: '#222222', 
+        skyColor: '#111111',
+        ambientLightColor: '#ffffff', 
+        ambientLightIntensity: 0.5,
+        directionalLightColor: '#ffffff', 
+        directionalLightIntensity: 0.8,
+      };
     }
     
     console.warn(`World not found after all checks: ${worldId} (normalized: ${normalizedId})`);

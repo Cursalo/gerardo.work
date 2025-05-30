@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useThree } from '@react-three/fiber';
 import { Text, Html, Instance, Instances } from '@react-three/drei';
 import { WorldObject as WorldObjectType } from '../data/worlds';
-import { Project, projects as projectData } from '../data/projects';
+import { Project } from '../services/projectService';
+import { projectDataService } from '../services/projectDataService';
 import { useWorld } from '../context/WorldContext';
 import ProjectWindow from './ProjectWindow';
 import { VideoCard } from './VideoCard';
@@ -89,108 +90,112 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
   const [hovered, setHovered] = useState(false);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [projectDetail, setProjectDetail] = useState<Project | null>(null);
-  const [detailLevel, setDetailLevel] = useState<'high' | 'medium' | 'low'>('low');
+  const [isLoadingProject, setIsLoadingProject] = useState(false);
   const { camera } = useThree();
   const objectRef = useRef<THREE.Group | null>(null);
   const { isMobile } = useMobileDetection();
   
-  // Only log in development environment
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`Rendering WorldObject:`, object.type, object.id);
-  }
+  // CRITICAL FIX: Disable frequent logging completely to stop console spam
+  // if (process.env.NODE_ENV === 'development' && Math.random() < 0.001) {
+  //   console.log(`Rendering WorldObject:`, object.type, object.id);
+  // }
   
   const position = object.position || [0, 0, 0];
   const rotation = object.rotation || [0, 0, 0];
   const scale = object.scale || [1, 1, 1];
   
-  // Calculate distance to camera for LOD
-  useEffect(() => {
-    if (!objectRef.current || !camera) return;
+  // CRITICAL FIX: Simplify LOD system - remove interval-based updates
+  // Instead, use a much simpler distance-based approach that doesn't update constantly
+  const detailLevel = useMemo(() => {
+    if (!camera) return 'low';
     
-    const updateDetailLevel = () => {
-      const distance = camera.position.distanceTo(objectRef.current!.position);
-      
-      // Adjust thresholds based on device
-      const highThreshold = isMobile ? DETAIL_LEVELS.HIGH * 0.7 : DETAIL_LEVELS.HIGH;
-      const mediumThreshold = isMobile ? DETAIL_LEVELS.MEDIUM * 0.7 : DETAIL_LEVELS.MEDIUM;
-      
-      if (distance < highThreshold) {
-        setDetailLevel('high');
-      } else if (distance < mediumThreshold) {
-        setDetailLevel('medium');
-      } else {
-        setDetailLevel('low');
-      }
-    };
+    const objectPosition = new THREE.Vector3(...position);
+    const distance = camera.position.distanceTo(objectPosition);
     
-    // Initial update
-    updateDetailLevel();
+    // Adjust thresholds based on device
+    const highThreshold = isMobile ? DETAIL_LEVELS.HIGH * 0.7 : DETAIL_LEVELS.HIGH;
+    const mediumThreshold = isMobile ? DETAIL_LEVELS.MEDIUM * 0.7 : DETAIL_LEVELS.MEDIUM;
     
-    // Setup interval for updates but not too frequently
-    const intervalId = setInterval(updateDetailLevel, isMobile ? 1000 : 500);
-    
-    return () => clearInterval(intervalId);
-  }, [camera, isMobile]);
+    if (distance < highThreshold) {
+      return 'high';
+    } else if (distance < mediumThreshold) {
+      return 'medium';
+    } else {
+      return 'low';
+    }
+  }, [camera.position.x, camera.position.y, camera.position.z, position, isMobile]); // Only update when camera or position actually changes
 
   // Load project details if this is a project object
   useEffect(() => {
-    if (object.type === 'project' && object.projectId !== undefined) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`Loading project details for ID: ${object.projectId}, Detail Level: ${detailLevel}`);
-      }
+    // Early returns to prevent unnecessary processing
+    if (object.type !== 'project' || object.projectId === undefined) return;
+    if (isLoadingProject) return; // Prevent multiple concurrent loads
+    if (projectDetail && projectDetail.id === object.projectId) return; // Already loaded
+    
+    const projectId = object.projectId; // Type guard - we know it's defined at this point
+    
+    const loadProjectData = async () => {
+      setIsLoadingProject(true);
       
-      // First try to get from localStorage to ensure we have the latest data
-      const projectsFromStorage = localStorage.getItem('portfolio_projects');
-      if (projectsFromStorage) {
-        try {
-          const parsedProjects = JSON.parse(projectsFromStorage);
-          if (Array.isArray(parsedProjects)) {
-            const foundProject = parsedProjects.find(p => p.id === object.projectId);
-            if (foundProject) {
-              if (process.env.NODE_ENV === 'development') {
-                console.log(`Found project in localStorage: ${foundProject.name}`);
+      try {
+        // First try localStorage for immediate response
+        const projectsFromStorage = localStorage.getItem('portfolio_projects');
+        if (projectsFromStorage) {
+          try {
+            const parsedProjects = JSON.parse(projectsFromStorage);
+            if (Array.isArray(parsedProjects)) {
+              const foundProject = parsedProjects.find(p => p.id === projectId);
+              if (foundProject) {
+                setProjectDetail(foundProject);
+                setIsLoadingProject(false);
+                return;
               }
-              setProjectDetail(foundProject);
-              return;
             }
+          } catch (error) {
+            console.error('Error parsing projects from localStorage:', error);
           }
-        } catch (error) {
-          console.error('Error parsing projects from localStorage:', error);
         }
-      }
-      
-      // Only load from service if we need high or medium detail
-      projectService.getProjectById(object.projectId).then(project => {
+        
+        // Try projectService
+        const project = await projectService.getProjectById(projectId);
         if (project) {
-          if (process.env.NODE_ENV === 'development') {
-            console.log(`Found project from service: ${project.name}`);
-          }
           setProjectDetail(project);
         } else {
-          // Fallback to static data if projectService fails
-          const staticProject = projectData.find(p => p.id === object.projectId);
+          // Fallback to projectDataService
+          const allProjects = await projectDataService.getAllProjects();
+          const staticProject = allProjects.find((p: any) => p.id === projectId);
           if (staticProject) {
-            if (process.env.NODE_ENV === 'development') {
-              console.log(`Found project in static data: ${staticProject.name}`);
-            }
-            setProjectDetail(staticProject);
+            // Convert ProjectData to Project format
+            const convertedProject: Project = {
+              id: staticProject.id,
+              name: staticProject.name,
+              description: staticProject.description,
+              link: staticProject.link,
+              thumbnail: staticProject.thumbnail,
+              status: staticProject.status as 'completed' | 'in-progress',
+              type: staticProject.type as 'standard' | 'video',
+              videoUrl: staticProject.videoUrl,
+              customLink: staticProject.customLink,
+              worldSettings: staticProject.worldSettings,
+              mediaObjects: staticProject.mediaObjects?.map(mediaObj => ({
+                ...mediaObj,
+                type: mediaObj.type as 'video' | 'image' | 'pdf' | 'project' | 'link' | 'button'
+              }))
+            };
+            setProjectDetail(convertedProject);
           } else {
-            console.warn(`Project with ID ${object.projectId} not found in any source`);
+            console.warn(`Project with ID ${projectId} not found in any source`);
           }
         }
-      }).catch(error => {
-        console.error(`Error getting project ${object.projectId} from service:`, error);
-        // Try static data as fallback
-        const staticProject = projectData.find(p => p.id === object.projectId);
-        if (staticProject) {
-          if (process.env.NODE_ENV === 'development') {
-            console.log(`Fallback to static data for project: ${staticProject.name}`);
-          }
-          setProjectDetail(staticProject);
-        }
-      });
-    }
-  }, [object.type, object.projectId, detailLevel, projectDetail]);
+      } catch (error) {
+        console.error(`Error loading project ${projectId}:`, error);
+      } finally {
+        setIsLoadingProject(false);
+      }
+    };
+    
+    loadProjectData();
+  }, [object.type, object.projectId]); // REMOVED projectDetail and detailLevel from dependencies
   
   // useEffect to resolve fileUrl for non-project types if still needed
   useEffect(() => {
@@ -206,9 +211,6 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
   const handleClick = (e?: any) => {
     if (e) {
       e.stopPropagation();
-    }
-    if (object.projectId !== undefined && object.type === 'project') {
-      return;
     }
     if (object.type === 'button' && object.action === 'navigate') {
       if (object.destination === 'hub' || object.destination === 'mainWorld') {
@@ -469,6 +471,17 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
         </Html>
       )}
     </group>
+  );
+}, (prevProps, nextProps) => {
+  // Custom comparison function for React.memo
+  // Only re-render if the object actually changed
+  return (
+    prevProps.object.id === nextProps.object.id &&
+    prevProps.object.type === nextProps.object.type &&
+    prevProps.object.projectId === nextProps.object.projectId &&
+    JSON.stringify(prevProps.object.position) === JSON.stringify(nextProps.object.position) &&
+    JSON.stringify(prevProps.object.rotation) === JSON.stringify(nextProps.object.rotation) &&
+    JSON.stringify(prevProps.object.scale) === JSON.stringify(nextProps.object.scale)
   );
 });
 

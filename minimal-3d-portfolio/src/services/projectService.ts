@@ -30,10 +30,13 @@ class ProjectService {
   private initialized = false;
 
   constructor() {
-    this.loadProjects();
+    this.loadProjects().catch(error => {
+      console.error('ProjectService: Error during initial project loading:', error);
+      this.initialized = true; // Set to true even on error to prevent hanging
+    });
   }
 
-  private loadProjects(): void {
+  private async loadProjects(): Promise<void> {
     console.log('ProjectService: Attempting to load projects from primary storage.');
     this.initialized = false; // Reset initialized state for a fresh load sequence
     try {
@@ -76,23 +79,16 @@ class ProjectService {
       } else {
         console.log('ProjectService: No projects found in primary storage. Attempting recovery from backup.');
         if (!this.tryRecoverFromBackup()) {
-          console.log('ProjectService: Backup recovery failed or no backup. Loading from static data as last resort.');
-          // If backup also fails, then load static (should only happen on first ever run or total data loss)
-          import('../data/projects').then(({ projects: staticProjects }) => {
-            this.projects = staticProjects.map(p => ({ ...p, mediaObjects: Array.isArray(p.mediaObjects) ? p.mediaObjects : [] }));
-            console.log(`ProjectService: Loaded ${this.projects.length} projects from static data.`);
-            this.saveToStorage(); // Save static data to establish primary storage
-          }).catch(error => {
-            console.error('ProjectService: Error loading static projects:', error);
-            this.projects = []; // Ensure projects is an empty array on failure
-          });
+          console.log('ProjectService: Backup recovery failed or no backup. Using ProjectDataService instead.');
+          // Static data fallback removed - using ProjectDataService instead
+          this.projects = [];
         }
       }
     } catch (error) {
       console.error('ProjectService: General error during project loading:', error, '. Attempting recovery from backup.');
       this.projects = []; // Start fresh before recovery
       if (!this.tryRecoverFromBackup()) { // Try backup
-          console.log('ProjectService: Backup recovery failed or no backup. No projects loaded.');
+          console.log('ProjectService: Backup recovery failed or no backup. Using ProjectDataService instead.');
       }
     } finally {
       this.initialized = true;
@@ -154,19 +150,9 @@ class ProjectService {
     // If projects array is empty AND primary storage key doesn't exist,
     // it implies first-time load or complete data loss, so try loading static.
     if (this.projects.length === 0 && localStorage.getItem(this.STORAGE_KEY) === null) {
-      console.log('ProjectService: getProjects - No projects in memory and no primary storage key found. Attempting to load from static data as a one-time setup.');
-      try {
-        const { projects: staticProjects } = await import('../data/projects');
-        this.projects = staticProjects.map(p => ({
-            ...p,
-            mediaObjects: Array.isArray(p.mediaObjects) ? p.mediaObjects : []
-        }));
-        console.log(`ProjectService: getProjects - Loaded ${this.projects.length} projects from static data.`);
-        this.saveToStorage(); // Save static data to establish primary storage
-      } catch (error) {
-        console.error('ProjectService: getProjects - Error loading static projects:', error);
-        this.projects = []; // Ensure projects is an empty array on failure
-      }
+      console.log('ProjectService: getProjects - No projects in memory and no primary storage key found. Using ProjectDataService instead.');
+      // Static data fallback removed - using ProjectDataService instead
+      this.projects = [];
     }
     
     console.log(`ProjectService: getProjects - Returning ${this.projects.length} projects from memory.`);
@@ -442,16 +428,7 @@ class ProjectService {
       return;
     }
     console.log('ProjectService: Explicitly initializing...');
-    this.loadProjects(); // Call the refactored loadProjects
-    // Wait for initialization to complete
-    await new Promise<void>(resolve => { // Changed to Promise<void>
-        const checkInterval = setInterval(() => {
-            if (this.initialized) {
-                clearInterval(checkInterval);
-                resolve();
-            }
-        }, 50);
-    });
+    await this.loadProjects(); // Call the refactored loadProjects with await
     console.log('ProjectService: Initialization complete via initialize() method.');
   }
 
@@ -483,7 +460,7 @@ class ProjectService {
 
   public async forceReloadProjects(): Promise<void> {
     console.log('ProjectService: forceReloadProjects called. Reloading projects.');
-    this.loadProjects(); // This will reset `initialized` and reload.
+    await this.loadProjects(); // This will reset `initialized` and reload.
     // getProjects will internally wait for `initialized` to be true.
     await this.getProjects(); // Ensures reload is complete and projects are available.
     console.log('ProjectService: forceReloadProjects completed and projects are re-initialized.');

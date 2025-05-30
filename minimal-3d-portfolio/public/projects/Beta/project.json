@@ -1,0 +1,70 @@
+{
+  "id": 32,
+  "name": "Beta",
+  "description": "Project details for Beta.",
+  "link": "/projects/Beta/index.html",
+  "thumbnail": "/projects/Beta/thumbnail/thumbnail.png",
+  "status": "completed",
+  "type": "standard",
+  "videoUrl": "/projects/Beta/assets/videos/demo.mp4",
+  "worldSettings": {
+    "backgroundColor": "hsl(188, 92%, 60%)",
+    "floorColor": "#ffffff",
+    "skyColor": "hsl(248, 92%, 80%)",
+    "floorTexture": "",
+    "skyTexture": "",
+    "ambientLightColor": "#ffffff",
+    "ambientLightIntensity": 0.7,
+    "directionalLightColor": "hsl(158, 100%, 80%)",
+    "directionalLightIntensity": 1
+  },
+  "mediaObjects": [
+    {
+      "id": "video-player-32",
+      "type": "video",
+      "title": "Beta Main Video",
+      "description": "Main video content for Beta.",
+      "url": "/projects/Beta/assets/videos/demo.mp4",
+      "thumbnail": "/projects/Beta/thumbnail/thumbnail.png",
+      "position": [
+        0,
+        2.5,
+        -8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        4,
+        2.25,
+        1
+      ]
+    },
+    {
+      "id": "info-panel-32",
+      "type": "image",
+      "title": "About Beta",
+      "description": "Information and assets for the Beta project.",
+      "thumbnail": "/projects/Beta/thumbnail/thumbnail.png",
+      "position": [
+        -4,
+        2,
+        -7
+      ],
+      "rotation": [
+        0,
+        0.39269908169872414,
+        0
+      ],
+      "scale": [
+        2,
+        1.5,
+        0.1
+      ]
+    }
+  ],
+  "assetGallery": [],
+  "customLink": "beta"
+}

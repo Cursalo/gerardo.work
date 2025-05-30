@@ -1,6 +1,6 @@
-import React, { Suspense, createContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { Canvas, useThree } from '@react-three/fiber';
-import { Vector3 } from 'three';
+import React, { Suspense, createContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { Canvas, useThree, useFrame } from '@react-three/fiber';
+import { Vector3, Camera } from 'three';
 import Environment from './Environment';
 import FirstPersonCamera from './FirstPersonCamera';
 import NPCCharacter from './NPCCharacter'; 
@@ -41,8 +41,31 @@ const Loading3D = () => {
   );
 };
 
+// CRITICAL FIX: Throttle camera position updates to prevent infinite re-renders
+// Camera position changes every frame, but we don't need to recalculate visible objects that often
+const useThrottledCameraPosition = (camera: Camera, interval: number = 200) => {
+  const [throttledPosition, setThrottledPosition] = useState(camera.position.clone());
+  const lastUpdateTime = useRef(0);
+
+  useFrame(() => {
+    const now = Date.now();
+    if (now - lastUpdateTime.current > interval) {
+      // Only update if camera has moved significantly (avoid micro-movements)
+      const distance = throttledPosition.distanceTo(camera.position);
+      if (distance > 0.5) { // Only update if moved more than 0.5 units
+        setThrottledPosition(camera.position.clone());
+        lastUpdateTime.current = now;
+      }
+    }
+  });
+
+  return throttledPosition;
+};
+
 // Determine which objects to render based on camera position and performance requirements
-const useObjectFiltering = (objects: any[], cameraPosition: Vector3, isMobile: boolean) => {
+const useObjectFiltering = (objects: any[], camera: Camera, isMobile: boolean) => {
+  const throttledCameraPosition = useThrottledCameraPosition(camera, 200); // Update every 200ms max
+  
   return useMemo(() => {
     if (!objects || objects.length === 0) return [];
     
@@ -64,10 +87,10 @@ const useObjectFiltering = (objects: any[], cameraPosition: Vector3, isMobile: b
         object.position.z || 0
       );
       
-      const distance = cameraPosition.distanceTo(objPos);
+      const distance = throttledCameraPosition.distanceTo(objPos);
       return distance < maxRenderDistance;
     });
-  }, [objects, cameraPosition, isMobile]);
+  }, [objects, throttledCameraPosition, isMobile]); // Now depends on throttled position instead of exact position
 };
 
 interface SceneContentProps {
@@ -83,7 +106,7 @@ const SceneContent = ({ worldId }: SceneContentProps) => {
   // Get filtered objects based on distance
   const visibleObjects = useObjectFiltering(
     currentWorld?.objects || [],
-    camera.position as Vector3,
+    camera,
     isMobile
   );
   
@@ -132,7 +155,10 @@ const SceneContent = ({ worldId }: SceneContentProps) => {
     return <Loading3D />;
   }
   
-  console.log("SceneContent rendering world:", currentWorld.id, "with visible objects:", visibleObjects.length, "of", currentWorld.objects.length);
+  // CRITICAL FIX: Disable Scene logging completely to stop console spam
+  // if (process.env.NODE_ENV === 'development' && Math.random() < 0.01) {
+  //   console.log("SceneContent rendering world:", currentWorld.id, "with visible objects:", visibleObjects.length, "of", currentWorld.objects.length);
+  // }
   
   return (
     <>

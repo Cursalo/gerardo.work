@@ -1,0 +1,70 @@
+{
+  "id": 17,
+  "name": "AIClases.com",
+  "description": "Project details for AIClases.com.",
+  "link": "/projects/AIClases.com/index.html",
+  "thumbnail": "/projects/AIClases.com/thumbnail/thumbnail.png",
+  "status": "completed",
+  "type": "standard",
+  "videoUrl": "/projects/AIClases.com/assets/videos/demo.mp4",
+  "worldSettings": {
+    "backgroundColor": "hsl(188, 92%, 60%)",
+    "floorColor": "#ffffff",
+    "skyColor": "hsl(248, 92%, 80%)",
+    "floorTexture": "",
+    "skyTexture": "",
+    "ambientLightColor": "#ffffff",
+    "ambientLightIntensity": 0.7,
+    "directionalLightColor": "hsl(158, 100%, 80%)",
+    "directionalLightIntensity": 1
+  },
+  "mediaObjects": [
+    {
+      "id": "video-player-17",
+      "type": "video",
+      "title": "AIClases.com Main Video",
+      "description": "Main video content for AIClases.com.",
+      "url": "/projects/AIClases.com/assets/videos/demo.mp4",
+      "thumbnail": "/projects/AIClases.com/thumbnail/thumbnail.png",
+      "position": [
+        0,
+        2.5,
+        -8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        4,
+        2.25,
+        1
+      ]
+    },
+    {
+      "id": "info-panel-17",
+      "type": "image",
+      "title": "About AIClases.com",
+      "description": "Information and assets for the AIClases.com project.",
+      "thumbnail": "/projects/AIClases.com/thumbnail/thumbnail.png",
+      "position": [
+        -4,
+        2,
+        -7
+      ],
+      "rotation": [
+        0,
+        0.39269908169872414,
+        0
+      ],
+      "scale": [
+        2,
+        1.5,
+        0.1
+      ]
+    }
+  ],
+  "assetGallery": [],
+  "customLink": "aiclasescom"
+}

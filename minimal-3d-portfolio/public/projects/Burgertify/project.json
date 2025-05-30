@@ -1,0 +1,466 @@
+{
+  "id": 1,
+  "name": "Burgertify",
+  "description": "Project details for Burgertify.",
+  "link": "/projects/Burgertify/index.html",
+  "thumbnail": "/projects/Burgertify/thumbnail/thumbnail.png",
+  "status": "completed",
+  "type": "standard",
+  "videoUrl": "/projects/Burgertify/assets/videos/Burgertify .MP4",
+  "customLink": "burgertify",
+  "worldSettings": {
+    "backgroundColor": "hsl(188, 92%, 60%)",
+    "floorColor": "#ffffff",
+    "skyColor": "hsl(248, 92%, 80%)",
+    "floorTexture": "",
+    "skyTexture": "",
+    "ambientLightColor": "#ffffff",
+    "ambientLightIntensity": 0.7,
+    "directionalLightColor": "hsl(158, 100%, 80%)",
+    "directionalLightIntensity": 1
+  },
+  "mediaObjects": [
+    {
+      "id": "video-player-4",
+      "type": "video",
+      "title": "Burgertify Main Video",
+      "description": "Main video content for Burgertify.",
+      "url": "/projects/Burgertify/assets/videos/Burgertify .MP4",
+      "thumbnail": "/projects/Burgertify/thumbnail/thumbnail.png",
+      "position": [
+        0,
+        2.5,
+        -8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        4,
+        2.25,
+        1
+      ]
+    },
+    {
+      "id": "info-panel-4",
+      "type": "image",
+      "title": "About Burgertify",
+      "description": "Information and assets for the Burgertify project.",
+      "thumbnail": "/projects/Burgertify/thumbnail/thumbnail.png",
+      "position": [
+        -4,
+        2,
+        -7
+      ],
+      "rotation": [
+        0,
+        0.39269908169872414,
+        0
+      ],
+      "scale": [
+        2,
+        1.5,
+        0.1
+      ]
+    },
+    {
+      "id": "project-website-4",
+      "type": "html",
+      "title": "Project Website",
+      "description": "Full project details and documentation for Burgertify.",
+      "url": "/projects/Burgertify/index.html",
+      "thumbnail": "/projects/Burgertify/assets/images/Burgertify Logo.png",
+      "position": [
+        4,
+        2,
+        -7
+      ],
+      "rotation": [
+        0,
+        -0.39269908169872414,
+        0
+      ],
+      "scale": [
+        2,
+        1.5,
+        0.1
+      ]
+    }
+  ],
+  "assetGallery": [
+    {
+      "name": "Arcades.JPG",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Arcades.JPG"
+    },
+    {
+      "name": "Arcades2.jpg",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Arcades2.jpg"
+    },
+    {
+      "name": "Arcades3.jpg",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Arcades3.jpg"
+    },
+    {
+      "name": "B.jpg",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/B.jpg"
+    },
+    {
+      "name": "Belgrano Architecture.JPG",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Belgrano Architecture.JPG"
+    },
+    {
+      "name": "Belgrano.JPG",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Belgrano.JPG"
+    },
+    {
+      "name": "Birthday.JPG",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Birthday.JPG"
+    },
+    {
+      "name": "Bread.JPG",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Bread.JPG"
+    },
+    {
+      "name": "Building Belgrano.JPG",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Building Belgrano.JPG"
+    },
+    {
+      "name": "Building Recoleta.JPG",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Building Recoleta.JPG"
+    },
+    {
+      "name": "Built Mario.JPG",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Built Mario.JPG"
+    },
+    {
+      "name": "Burgers.jpg",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Burgers.jpg"
+    },
+    {
+      "name": "Burgertify Club Card 1.JPG",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Burgertify Club Card 1.JPG"
+    },
+    {
+      "name": "Burgertify Club Card 2.JPG",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Burgertify Club Card 2.JPG"
+    },
+    {
+      "name": "Burgertify Front.JPG",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Burgertify Front.JPG"
+    },
+    {
+      "name": "Burgertify Logo.png",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Burgertify Logo.png"
+    },
+    {
+      "name": "Construction Belgrano2.JPG",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Construction Belgrano2.JPG"
+    },
+    {
+      "name": "Costa Rica Mural.JPG",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Costa Rica Mural.JPG"
+    },
+    {
+      "name": "Donkey Donut.jpg",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Donkey Donut.jpg"
+    },
+    {
+      "name": "Friends.JPG",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Friends.JPG"
+    },
+    {
+      "name": "Frogger.jpg",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Frogger.jpg"
+    },
+    {
+      "name": "Front.JPG",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Front.JPG"
+    },
+    {
+      "name": "Honduras 2nd Floor.JPG",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Honduras 2nd Floor.JPG"
+    },
+    {
+      "name": "Honduras Patio.jpg",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Honduras Patio.jpg"
+    },
+    {
+      "name": "Honduras Shades.jpg",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Honduras Shades.jpg"
+    },
+    {
+      "name": "HondurasDay.HEIC",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/HondurasDay.HEIC"
+    },
+    {
+      "name": "Ice Climber.jpg",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Ice Climber.jpg"
+    },
+    {
+      "name": "Lamps.JPG",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Lamps.JPG"
+    },
+    {
+      "name": "Lamps2.JPG",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Lamps2.JPG"
+    },
+    {
+      "name": "Mario.JPEG",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Mario.JPEG"
+    },
+    {
+      "name": "NES Alpha.JPG",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/NES Alpha.JPG"
+    },
+    {
+      "name": "Pac-Man.JPG",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Pac-Man.JPG"
+    },
+    {
+      "name": "Patio 3.jpg",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Patio 3.jpg"
+    },
+    {
+      "name": "Patio Tournament.JPG",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Patio Tournament.JPG"
+    },
+    {
+      "name": "Patio by night.JPG",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Patio by night.JPG"
+    },
+    {
+      "name": "Patio.JPG",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Patio.JPG"
+    },
+    {
+      "name": "Patio.heic",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Patio.heic"
+    },
+    {
+      "name": "Patio2.JPG",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Patio2.JPG"
+    },
+    {
+      "name": "Patio3.JPG",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Patio3.JPG"
+    },
+    {
+      "name": "People.JPG",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/People.JPG"
+    },
+    {
+      "name": "Promo.JPG",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Promo.JPG"
+    },
+    {
+      "name": "TV.JPG",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/TV.JPG"
+    },
+    {
+      "name": "Tanooki Combo.jpg",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Tanooki Combo.jpg"
+    },
+    {
+      "name": "Tanooki.JPG",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Tanooki.JPG"
+    },
+    {
+      "name": "Team.JPG",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Team.JPG"
+    },
+    {
+      "name": "The Chainsmokers .JPG",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/The Chainsmokers .JPG"
+    },
+    {
+      "name": "Tournament Patio.JPG",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Tournament Patio.JPG"
+    },
+    {
+      "name": "Tournament.JPG",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Tournament.JPG"
+    },
+    {
+      "name": "Tunnel.jpg",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Tunnel.jpg"
+    },
+    {
+      "name": "Website.JPG",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Website.JPG"
+    },
+    {
+      "name": "Wonder Boy.jpg",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Wonder Boy.jpg"
+    },
+    {
+      "name": "Burgertify Main Video",
+      "type": "video",
+      "category": "videos",
+      "url": "/projects/Burgertify/assets/videos/Burgertify .MP4"
+    },
+    {
+      "name": "Lamp Building",
+      "type": "video",
+      "category": "videos",
+      "url": "/projects/Burgertify/assets/videos/Lamp Building.MP4"
+    },
+    {
+      "name": "Lamp Building 2",
+      "type": "video",
+      "category": "videos",
+      "url": "/projects/Burgertify/assets/videos/Lamp Building 2.MP4"
+    },
+    {
+      "name": "Lamp Building 3",
+      "type": "video",
+      "category": "videos",
+      "url": "/projects/Burgertify/assets/videos/Lamp Building 3.MP4"
+    },
+    {
+      "name": "Animation",
+      "type": "video",
+      "category": "videos",
+      "url": "/projects/Burgertify/assets/videos/Animation.MP4"
+    },
+    {
+      "name": "Burgertify - Brandbook.pdf",
+      "type": "document",
+      "category": "documents",
+      "url": "/projects/Burgertify/assets/documents/Burgertify - Brandbook.pdf"
+    },
+    {
+      "name": "Burgertify Bag.pdf",
+      "type": "document",
+      "category": "documents",
+      "url": "/projects/Burgertify/assets/documents/Burgertify Bag.pdf"
+    },
+    {
+      "name": "Reciclaje Burgertify.pdf",
+      "type": "document",
+      "category": "documents",
+      "url": "/projects/Burgertify/assets/documents/Reciclaje Burgertify.pdf"
+    },
+    {
+      "name": "Burgertify Club App",
+      "type": "other",
+      "category": "preview",
+      "url": "/projects/Burgertify/assets/preview/Burgertify Club App"
+    },
+    {
+      "name": "Installing Belgrano Lamps",
+      "type": "other",
+      "category": "preview",
+      "url": "/projects/Burgertify/assets/preview/Installing Belgrano Lamps"
+    },
+    {
+      "name": "Lamp Making",
+      "type": "other",
+      "category": "preview",
+      "url": "/projects/Burgertify/assets/preview/Lamp Making"
+    }
+  ]
+}

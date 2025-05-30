@@ -1,0 +1,70 @@
+{
+  "id": 14,
+  "name": "Talevista",
+  "description": "Project details for Talevista.",
+  "link": "/projects/Talevista/index.html",
+  "thumbnail": "/projects/Talevista/thumbnail/thumbnail.png",
+  "status": "completed",
+  "type": "standard",
+  "videoUrl": "/projects/Talevista/assets/videos/demo.mp4",
+  "worldSettings": {
+    "backgroundColor": "hsl(188, 92%, 60%)",
+    "floorColor": "#ffffff",
+    "skyColor": "hsl(248, 92%, 80%)",
+    "floorTexture": "",
+    "skyTexture": "",
+    "ambientLightColor": "#ffffff",
+    "ambientLightIntensity": 0.7,
+    "directionalLightColor": "hsl(158, 100%, 80%)",
+    "directionalLightIntensity": 1
+  },
+  "mediaObjects": [
+    {
+      "id": "video-player-14",
+      "type": "video",
+      "title": "Talevista Main Video",
+      "description": "Main video content for Talevista.",
+      "url": "/projects/Talevista/assets/videos/demo.mp4",
+      "thumbnail": "/projects/Talevista/thumbnail/thumbnail.png",
+      "position": [
+        0,
+        2.5,
+        -8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        4,
+        2.25,
+        1
+      ]
+    },
+    {
+      "id": "info-panel-14",
+      "type": "image",
+      "title": "About Talevista",
+      "description": "Information and assets for the Talevista project.",
+      "thumbnail": "/projects/Talevista/thumbnail/thumbnail.png",
+      "position": [
+        -4,
+        2,
+        -7
+      ],
+      "rotation": [
+        0,
+        0.39269908169872414,
+        0
+      ],
+      "scale": [
+        2,
+        1.5,
+        0.1
+      ]
+    }
+  ],
+  "assetGallery": [],
+  "customLink": "talevista"
+}

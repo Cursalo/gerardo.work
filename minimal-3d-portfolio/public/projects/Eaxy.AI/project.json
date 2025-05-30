@@ -1,0 +1,70 @@
+{
+  "id": 12,
+  "name": "EaxiAI",
+  "description": "Project details for EaxiAI.",
+  "link": "/projects/EaxiAI/index.html",
+  "thumbnail": "/projects/EaxiAI/thumbnail/thumbnail.png",
+  "status": "completed",
+  "type": "standard",
+  "videoUrl": "/projects/EaxiAI/assets/videos/demo.mp4",
+  "customLink": "eaxiai",
+  "worldSettings": {
+    "backgroundColor": "hsl(188, 92%, 60%)",
+    "floorColor": "#ffffff",
+    "skyColor": "hsl(248, 92%, 80%)",
+    "floorTexture": "",
+    "skyTexture": "",
+    "ambientLightColor": "#ffffff",
+    "ambientLightIntensity": 0.7,
+    "directionalLightColor": "hsl(158, 100%, 80%)",
+    "directionalLightIntensity": 1
+  },
+  "mediaObjects": [
+    {
+      "id": "video-player-12",
+      "type": "video",
+      "title": "EaxiAI Main Video",
+      "description": "Main video content for EaxiAI.",
+      "url": "/projects/EaxiAI/assets/videos/demo.mp4",
+      "thumbnail": "/projects/EaxiAI/thumbnail/thumbnail.png",
+      "position": [
+        0,
+        2.5,
+        -8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        4,
+        2.25,
+        1
+      ]
+    },
+    {
+      "id": "info-panel-12",
+      "type": "image",
+      "title": "About EaxiAI",
+      "description": "Information and assets for the EaxiAI project.",
+      "thumbnail": "/projects/EaxiAI/thumbnail/thumbnail.png",
+      "position": [
+        -4,
+        2,
+        -7
+      ],
+      "rotation": [
+        0,
+        0.39269908169872414,
+        0
+      ],
+      "scale": [
+        2,
+        1.5,
+        0.1
+      ]
+    }
+  ],
+  "assetGallery": []
+}

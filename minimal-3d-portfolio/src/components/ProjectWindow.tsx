@@ -2,11 +2,11 @@ import React, { useState, useRef, useContext, useEffect, useCallback } from 'rea
 import { useFrame, useThree } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { Mesh, Group, Vector3 } from 'three';
-import { Project } from '../data/projects';
+import { Project } from '../services/projectService';
 import { VisibilityContext } from './Scene';
 import R3FErrorBoundary from './R3FErrorBoundary';
 import useMobileDetection from '../hooks/useMobileDetection';
-import { useNavigate } from 'react-router-dom';
+import { useWorld } from '../context/WorldContext';
 
 interface ProjectWindowProps {
   project: Project;
@@ -37,8 +37,8 @@ const ProjectWindow = React.memo(({ project, position }: ProjectWindowProps) => 
   // Get visibility tools from context
   const { registerPosition, unregisterPosition, checkOverlap } = useContext(VisibilityContext);
 
-  // Get navigate function from react-router-dom
-  const navigate = useNavigate();
+  // Get world context for navigation
+  const { setCurrentWorldId } = useWorld();
 
   // Generate a stable ID for this card
   const idRef = useRef<number>(project.id);
@@ -124,25 +124,18 @@ const ProjectWindow = React.memo(({ project, position }: ProjectWindowProps) => 
     
     setClicked(true);
     
-    console.log("ProjectWindow clicked - navigating to subworld");
+    console.log("ProjectWindow clicked - navigating to project subworld");
     
-    // Navigate to the project subworld route
-    if (project.projectPath) { // Only navigate if a projectPath exists
-        navigate(`/project/${project.id}`);
-        console.log(`Navigating to /project/${project.id}`);
-    } else if (project.link) { // Fallback to original link if no projectPath
-        window.open(project.link, '_blank');
-        console.log(`No projectPath for ${project.id}, opening link: ${project.link}`);
-    } else if (project.videoUrl) { // Handle video type if no projectPath
-         window.open(project.videoUrl, '_blank');
-         console.log(`No projectPath for ${project.id}, opening video: ${project.videoUrl}`);
-    }
+    // Navigate to the project world using the proper world ID format
+    const projectWorldId = `project-world-${project.id}`;
+    console.log(`Navigating to project world: ${projectWorldId}`);
+    setCurrentWorldId(projectWorldId);
     
     // Reset after a brief delay
     setTimeout(() => setClicked(false), 300);
     
     return false;
-  }, [project.id, project.projectPath, project.link, project.videoUrl, navigate]);
+  }, [project.id, setCurrentWorldId]);
 
   // 16:9 aspect ratio dimensions, lighter default size
   const width = 320;
@@ -180,11 +173,8 @@ const ProjectWindow = React.memo(({ project, position }: ProjectWindowProps) => 
         console.error('Error resolving thumbnail URL:', error);
       }
     }
-    // Try to use a lighter version if available (e.g., .thumb or .webp)
-    if (project.thumbnail.endsWith('.jpg') || project.thumbnail.endsWith('.jpeg') || project.thumbnail.endsWith('.png')) {
-      const thumb = project.thumbnail.replace(/\.(jpg|jpeg|png)$/i, '.webp');
-      return thumb;
-    }
+    // CRITICAL FIX: Don't try to convert to .webp, just use the original thumbnail
+    // The original logic was trying to load non-existent .webp files
     return project.thumbnail;
   }, [project.thumbnail, imageError]);
 

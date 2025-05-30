@@ -57,14 +57,21 @@ export const AudioProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         setHasUserInteracted(true);
         // Now that user has interacted, if Voyage is the current song and not playing, play it.
         if (currentSong && currentSong.id === "voyage" && !isPlaying && audioRef.current) {
-            // Ensure src is set before playing, especially if it wasn't set due to no-autoplay
-            if (audioRef.current.src !== currentSong.audioSrc) {
-                audioRef.current.src = currentSong.audioSrc;
+            // CRITICAL FIX: Add proper state checks to prevent play/pause conflicts
+            if (audioRef.current.paused && audioRef.current.readyState >= 3) { // HAVE_FUTURE_DATA
+              // Ensure src is set before playing
+              if (audioRef.current.src !== currentSong.audioSrc) {
+                  audioRef.current.src = currentSong.audioSrc;
+              }
+              
+              audioRef.current.play().then(() => {
+                  console.log("User interacted, now playing Voyage song");
+                  setIsPlaying(true);
+              }).catch(e => {
+                  console.warn("Could not auto-play Voyage after interaction (this is normal):", e.message);
+                  // Don't set as error, just log as warning
+              });
             }
-            audioRef.current.play().then(() => {
-                console.log("User interacted, now playing Voyage song");
-                setIsPlaying(true);
-            }).catch(e => console.error("Error auto-playing Voyage after interaction:", e));
         }
       };
       const events = ['click', 'touchstart', 'keydown', 'scroll'];

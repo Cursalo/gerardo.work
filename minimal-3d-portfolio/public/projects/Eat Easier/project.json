@@ -1,0 +1,70 @@
+{
+  "id": 4,
+  "name": "Eat Easier",
+  "description": "Project details for Eat Easier.",
+  "link": "/projects/Eat Easier/index.html",
+  "thumbnail": "/projects/Eat Easier/thumbnail/thumbnail.png",
+  "status": "completed",
+  "type": "standard",
+  "videoUrl": "/projects/Eat Easier/assets/videos/demo.mp4",
+  "worldSettings": {
+    "backgroundColor": "hsl(188, 92%, 60%)",
+    "floorColor": "#ffffff",
+    "skyColor": "hsl(248, 92%, 80%)",
+    "floorTexture": "",
+    "skyTexture": "",
+    "ambientLightColor": "#ffffff",
+    "ambientLightIntensity": 0.7,
+    "directionalLightColor": "hsl(158, 100%, 80%)",
+    "directionalLightIntensity": 1
+  },
+  "mediaObjects": [
+    {
+      "id": "video-player-4",
+      "type": "video",
+      "title": "Eat Easier Main Video",
+      "description": "Main video content for Eat Easier.",
+      "url": "/projects/Eat Easier/assets/videos/demo.mp4",
+      "thumbnail": "/projects/Eat Easier/thumbnail/thumbnail.png",
+      "position": [
+        0,
+        2.5,
+        -8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        4,
+        2.25,
+        1
+      ]
+    },
+    {
+      "id": "info-panel-4",
+      "type": "image",
+      "title": "About Eat Easier",
+      "description": "Information and assets for the Eat Easier project.",
+      "thumbnail": "/projects/Eat Easier/thumbnail/thumbnail.png",
+      "position": [
+        -4,
+        2,
+        -7
+      ],
+      "rotation": [
+        0,
+        0.39269908169872414,
+        0
+      ],
+      "scale": [
+        2,
+        1.5,
+        0.1
+      ]
+    }
+  ],
+  "assetGallery": [],
+  "customLink": "eat-easier"
+}

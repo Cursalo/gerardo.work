@@ -1,0 +1,70 @@
+{
+  "id": 24,
+  "name": "PostRaptor",
+  "description": "Project details for PostRaptor.",
+  "link": "/projects/PostRaptor/index.html",
+  "thumbnail": "/projects/PostRaptor/thumbnail/thumbnail.png",
+  "status": "completed",
+  "type": "standard",
+  "videoUrl": "/projects/PostRaptor/assets/videos/demo.mp4",
+  "worldSettings": {
+    "backgroundColor": "hsl(188, 92%, 60%)",
+    "floorColor": "#ffffff",
+    "skyColor": "hsl(248, 92%, 80%)",
+    "floorTexture": "",
+    "skyTexture": "",
+    "ambientLightColor": "#ffffff",
+    "ambientLightIntensity": 0.7,
+    "directionalLightColor": "hsl(158, 100%, 80%)",
+    "directionalLightIntensity": 1
+  },
+  "mediaObjects": [
+    {
+      "id": "video-player-24",
+      "type": "video",
+      "title": "PostRaptor Main Video",
+      "description": "Main video content for PostRaptor.",
+      "url": "/projects/PostRaptor/assets/videos/demo.mp4",
+      "thumbnail": "/projects/PostRaptor/thumbnail/thumbnail.png",
+      "position": [
+        0,
+        2.5,
+        -8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        4,
+        2.25,
+        1
+      ]
+    },
+    {
+      "id": "info-panel-24",
+      "type": "image",
+      "title": "About PostRaptor",
+      "description": "Information and assets for the PostRaptor project.",
+      "thumbnail": "/projects/PostRaptor/thumbnail/thumbnail.png",
+      "position": [
+        -4,
+        2,
+        -7
+      ],
+      "rotation": [
+        0,
+        0.39269908169872414,
+        0
+      ],
+      "scale": [
+        2,
+        1.5,
+        0.1
+      ]
+    }
+  ],
+  "assetGallery": [],
+  "customLink": "postraptor"
+}
