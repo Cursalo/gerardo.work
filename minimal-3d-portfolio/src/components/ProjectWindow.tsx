@@ -6,6 +6,7 @@ import { Project } from '../data/projects';
 import { VisibilityContext } from './Scene';
 import R3FErrorBoundary from './R3FErrorBoundary';
 import useMobileDetection from '../hooks/useMobileDetection';
+import { useNavigate } from 'react-router-dom';
 
 interface ProjectWindowProps {
   project: Project;
@@ -35,6 +36,9 @@ const ProjectWindow = React.memo(({ project, position }: ProjectWindowProps) => 
   
   // Get visibility tools from context
   const { registerPosition, unregisterPosition, checkOverlap } = useContext(VisibilityContext);
+
+  // Get navigate function from react-router-dom
+  const navigate = useNavigate();
 
   // Generate a stable ID for this card
   const idRef = useRef<number>(project.id);
@@ -116,60 +120,29 @@ const ProjectWindow = React.memo(({ project, position }: ProjectWindowProps) => 
   const handleClick = useCallback((e: any) => {
     if (e) {
       e.stopPropagation();
-      e.preventDefault();
     }
     
     setClicked(true);
     
     console.log("ProjectWindow clicked - navigating to subworld");
     
-    // Forcing navigation to the subworld
-    const subWorldId = `project-world-${project.id}`;
-    console.log(`ProjectWindow forcing navigation to: ${subWorldId}`);
-    
-    // FIXED: Use a more reliable pattern for navigation events
-    try {
-      // Create and dispatch the event in a try/catch block
-      const event = new CustomEvent("navigate-to-subworld", { 
-        detail: { subWorldId }
-      });
-      
-      // Add a proper event listener first to ensure the event is caught
-      const handleNavigate = () => {
-        console.log(`Navigation event received for ${subWorldId}`);
-        // Attempt to navigate programmatically as well (backup)
-        if (window.location.pathname !== `/world/${subWorldId}`) {
-          setTimeout(() => {
-            // Use history API to avoid triggering another navigation event
-            window.history.pushState({}, '', `/world/${subWorldId}`);
-            
-            // FIXED: Don't set in localStorage during normal navigation
-            // This prevents random project navigation on startup
-            // Instead, only set this if explicitly needed for deep linking
-            if (window.location.search.includes('store_navigation=true')) {
-              localStorage.setItem('target_world_id', subWorldId);
-              console.log('Storing navigation target in localStorage (for deep linking only)');
-            }
-          }, 100);
-        }
-      };
-      
-      // Use once:true to automatically clean up the listener
-      window.addEventListener("navigate-to-subworld", handleNavigate, { once: true });
-      
-      // Dispatch the event
-      window.dispatchEvent(event);
-    } catch (error) {
-      console.error("Error during navigation event:", error);
-      // Fallback - try direct navigation but don't store in localStorage
-      window.location.href = `/world/${subWorldId}`;
+    // Navigate to the project subworld route
+    if (project.projectPath) { // Only navigate if a projectPath exists
+        navigate(`/project/${project.id}`);
+        console.log(`Navigating to /project/${project.id}`);
+    } else if (project.link) { // Fallback to original link if no projectPath
+        window.open(project.link, '_blank');
+        console.log(`No projectPath for ${project.id}, opening link: ${project.link}`);
+    } else if (project.videoUrl) { // Handle video type if no projectPath
+         window.open(project.videoUrl, '_blank');
+         console.log(`No projectPath for ${project.id}, opening video: ${project.videoUrl}`);
     }
     
     // Reset after a brief delay
     setTimeout(() => setClicked(false), 300);
     
     return false;
-  }, [project.id]);
+  }, [project.id, project.projectPath, project.link, project.videoUrl, navigate]);
 
   // 16:9 aspect ratio dimensions, lighter default size
   const width = 320;

@@ -8,7 +8,7 @@ import App from './App.tsx'
 import Admin from './pages/Admin.tsx'
 import NotFound from './pages/NotFound.tsx'
 import WorldViewer from './pages/WorldViewer.tsx'
-import ProjectWorldViewer from './pages/ProjectWorldViewer.tsx'
+import ProjectSubworld from './pages/ProjectSubworld.tsx'
 import Debug from './pages/Debug.tsx'
 import './index.css'
 import { WorldProvider } from './context/WorldContext.tsx'
@@ -38,8 +38,8 @@ const router = createBrowserRouter([
     errorElement: <ErrorBoundary><NotFound /></ErrorBoundary>,
   },
   {
-    path: "/project/:customLink",
-    element: <ProjectWorldViewer />,
+    path: "/project/:projectId",
+    element: <ProjectSubworld />,
     errorElement: <ErrorBoundary><NotFound /></ErrorBoundary>,
   },
   {
