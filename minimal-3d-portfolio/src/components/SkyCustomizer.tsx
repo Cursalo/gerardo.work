@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { useSky } from '../context/SkyContext';
-import { skyParticlePresets } from './SkyParticles';
-import { SkyPresetType } from '../context/SkyContext';
+// import { useSky } from '../context/SkyContext';
+// import { skyParticlePresets } from './SkyParticles';
+// import { SkyPresetType } from '../context/SkyContext';
+
+// STUBS for missing modules
+const useSky = () => ({
+  currentSkyPreset: 'custom',
+  setCurrentSkyPreset: () => {},
+  setCustomConfig: () => {},
+});
+const skyParticlePresets = {};
 
 // Styling
 const styles = {
@@ -124,7 +132,7 @@ interface CustomSettings {
 }
 
 const SkyCustomizer: React.FC<SkyCustomizerProps> = ({ onClose }) => {
-  const { currentSkyPreset, setCurrentSkyPreset, setCustomConfig } = useSky();
+  // const { currentSkyPreset, setCurrentSkyPreset, setCustomConfig } = useSky();
   
   // State for customized settings
   const [customSettings, setCustomSettings] = useState<CustomSettings>({
@@ -143,23 +151,23 @@ const SkyCustomizer: React.FC<SkyCustomizerProps> = ({ onClose }) => {
 
   // Initialize with current preset settings if available
   useEffect(() => {
-    if (currentSkyPreset && currentSkyPreset !== 'custom') {
-      const presetConfig = skyParticlePresets[currentSkyPreset as keyof typeof skyParticlePresets];
-      setCustomSettings({
-        particles: {
-          number: { value: presetConfig.particles.number.value },
-          color: { value: presetConfig.particles.color.value },
-          shape: { type: presetConfig.particles.shape.type },
-          opacity: { value: presetConfig.particles.opacity.value },
-          size: { value: presetConfig.particles.size.value },
-          move: {
-            speed: presetConfig.particles.move.speed,
-            direction: presetConfig.particles.move.direction
-          }
-        }
-      });
-    }
-  }, [currentSkyPreset]);
+    // if (currentSkyPreset && currentSkyPreset !== 'custom') {
+    //   const presetConfig = skyParticlePresets[currentSkyPreset as keyof typeof skyParticlePresets];
+    //   setCustomSettings({
+    //     particles: {
+    //       number: { value: presetConfig.particles.number.value },
+    //       color: { value: presetConfig.particles.color.value },
+    //       shape: { type: presetConfig.particles.shape.type },
+    //       opacity: { value: presetConfig.particles.opacity.value },
+    //       size: { value: presetConfig.particles.size.value },
+    //       move: {
+    //         speed: presetConfig.particles.move.speed,
+    //         direction: presetConfig.particles.move.direction
+    //       }
+    //     }
+    //   });
+    // }
+  }, []);
 
   // Handle input changes
   const handleChange = (path: string, value: any) => {
@@ -221,10 +229,10 @@ const SkyCustomizer: React.FC<SkyCustomizerProps> = ({ onClose }) => {
     localStorage.setItem('portfolio_custom_sky_config', JSON.stringify(fullConfig));
     
     // Set custom config in context
-    setCustomConfig(fullConfig);
+    // setCustomConfig(fullConfig);
     
     // Apply custom config by setting a special preset name
-    setCurrentSkyPreset('custom');
+    // setCurrentSkyPreset('custom');
     
     // Close the customizer
     onClose();
@@ -232,22 +240,22 @@ const SkyCustomizer: React.FC<SkyCustomizerProps> = ({ onClose }) => {
 
   // Reset to selected preset
   const resetToPreset = () => {
-    if (currentSkyPreset && currentSkyPreset !== 'custom') {
-      const presetConfig = skyParticlePresets[currentSkyPreset as keyof typeof skyParticlePresets];
-      setCustomSettings({
-        particles: {
-          number: { value: presetConfig.particles.number.value },
-          color: { value: presetConfig.particles.color.value },
-          shape: { type: presetConfig.particles.shape.type },
-          opacity: { value: presetConfig.particles.opacity.value },
-          size: { value: presetConfig.particles.size.value },
-          move: {
-            speed: presetConfig.particles.move.speed,
-            direction: presetConfig.particles.move.direction
-          }
-        }
-      });
-    }
+    // if (currentSkyPreset && currentSkyPreset !== 'custom') {
+    //   const presetConfig = skyParticlePresets[currentSkyPreset as keyof typeof skyParticlePresets];
+    //   setCustomSettings({
+    //     particles: {
+    //       number: { value: presetConfig.particles.number.value },
+    //       color: { value: presetConfig.particles.color.value },
+    //       shape: { type: presetConfig.particles.shape.type },
+    //       opacity: { value: presetConfig.particles.opacity.value },
+    //       size: { value: presetConfig.particles.size.value },
+    //       move: {
+    //         speed: presetConfig.particles.move.speed,
+    //         direction: presetConfig.particles.move.direction
+    //       }
+    //     }
+    //   });
+    // }
   };
 
   return (
