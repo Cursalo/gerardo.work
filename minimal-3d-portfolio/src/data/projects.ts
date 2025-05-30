@@ -78,5 +78,17 @@ export const projects: Project[] = [
       type: 'standard' as 'standard' | 'video',
       projectPath: `/projects/project-${i + sampleVideos.length + 1}/` // Added placeholder path
     };
-  })
+  }),
+  // Add Burgertify project
+  {
+    id: sampleVideos.length + 22 + 1, // Ensures a unique ID after existing projects
+    name: "Burgertify",
+    description: "A delicious project about burgers and more.",
+    link: "https://example.com/burgertify", // Replace with actual link if available
+    // Assuming a thumbnail might exist or use a placeholder
+    thumbnail: "/projects/Burgertify/thumbnail/Burgertify_thumbnail.webp", // Placeholder or actual path relative to public
+    status: 'completed',
+    type: 'standard',
+    projectPath: "/projects/Burgertify/"
+  }
 ]; 
