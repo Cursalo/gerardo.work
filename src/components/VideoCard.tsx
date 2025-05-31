@@ -136,9 +136,48 @@ export const VideoCard: React.FC<VideoCardProps> = ({
 
   // Check if URL is a direct video file
   const isDirectVideo = (url: string) => {
-    const videoExtensions = ['.mp4', '.webm', '.mov', '.ogg', '.avi'];
-    return videoExtensions.some(ext => url.toLowerCase().endsWith(ext)) || 
+    const videoExtensions = ['.mp4', '.webm', '.mov', '.ogg', '.avi', '.MP4', '.WEBM', '.MOV'];
+    return videoExtensions.some(ext => url.toLowerCase().endsWith(ext.toLowerCase())) || 
            (url.startsWith('blob:') || url.startsWith('data:video/'));
+  };
+
+  // Enhanced URL resolution for mobile compatibility
+  const getResolvedVideoUrl = (url: string) => {
+    if (!url) return '';
+    
+    // If it's already a full URL, return as-is
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    
+    // If it's a relative URL from public directory, ensure it starts with /
+    if (url.startsWith('/projects/') || url.startsWith('/assets/')) {
+      return url;
+    }
+    
+    // If it's just a path without leading /, add it
+    if (!url.startsWith('/') && !url.includes('://')) {
+      return `/${url}`;
+    }
+    
+    return url;
+  };
+
+  // Get the properly resolved video URL
+  const resolvedVideoUrl = getResolvedVideoUrl(videoUrl);
+
+  // Handle video loading errors
+  const [videoError, setVideoError] = useState(false);
+  const [videoLoaded, setVideoLoaded] = useState(false);
+  
+  const handleVideoError = () => {
+    console.warn(`Failed to load video: ${resolvedVideoUrl}`);
+    setVideoError(true);
+  };
+  
+  const handleVideoLoad = () => {
+    setVideoLoaded(true);
+    setVideoError(false);
   };
 
   useFrame((state) => {
@@ -289,15 +328,41 @@ export const VideoCard: React.FC<VideoCardProps> = ({
             {title}
           </div>
           
-          {isDirectVideo(videoUrl) ? (
+          {videoError ? (
+            // Error state - show thumbnail or fallback
+            <div
+              style={{
+                width: `${width}px`,
+                height: `${height}px`,
+                backgroundColor: '#f0f0f0',
+                borderRadius: '12px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '2px dashed #ccc',
+                color: '#666'
+              }}
+            >
+              <div style={{ fontSize: '14px', textAlign: 'center', padding: '10px' }}>
+                <div>⚠️ Video unavailable</div>
+                <div style={{ fontSize: '12px', marginTop: '5px' }}>
+                  {title}
+                </div>
+              </div>
+            </div>
+          ) : isDirectVideo(resolvedVideoUrl) ? (
             <video
-              src={videoUrl}
+              src={resolvedVideoUrl}
               width={width}
               height={height}
               autoPlay
               muted
               loop
               playsInline
+              onError={handleVideoError}
+              onLoadedData={handleVideoLoad}
+              crossOrigin="anonymous"
               style={{ 
                 border: 'none',
                 borderRadius: '12px',
@@ -306,13 +371,14 @@ export const VideoCard: React.FC<VideoCardProps> = ({
                 boxShadow: hovered ? '0 0 20px rgba(255,255,255,0.5)' : '0 5px 15px rgba(0,0,0,0.1)',
                 transition: 'all 0.3s ease',
                 pointerEvents: 'auto',
-                objectFit: 'cover'
+                objectFit: 'cover',
+                backgroundColor: '#f0f0f0'
               }}
             />
           ) : (
             <iframe
               ref={videoRef}
-              src={getVideoEmbedUrl(videoUrl)}
+              src={getVideoEmbedUrl(resolvedVideoUrl)}
               width={width}
               height={height}
               style={{ 

@@ -35,21 +35,48 @@ const DETAIL_LEVELS = {
   LOW: 50      // Low detail below this distance
 };
 
-// Helper function to resolve file URLs (can remain as is if still needed for non-project types)
+// Helper function to resolve file URLs - Enhanced for mobile compatibility
 const resolveFileUrl = (url: string): string => {
-  if (!url.startsWith('file://')) return url;
-  const filename = url.replace('file://', '');
-  try {
-    const storedFilesStr = localStorage.getItem('portfolio_files');
-    if (!storedFilesStr) return url;
-    const storedFiles = JSON.parse(storedFilesStr) as Record<string, { dataUrl: string }>;
-    const fileData = storedFiles[filename];
-    if (!fileData) return url;
-    return fileData.dataUrl;
-  } catch (error) {
-    console.error('Error resolving file URL:', error);
+  if (!url) return url;
+  
+  // If it's already a proper HTTP(S) URL, return as-is
+  if (url.startsWith('http://') || url.startsWith('https://')) {
     return url;
   }
+  
+  // If it's a relative URL starting with /, it's a public asset - return as-is
+  if (url.startsWith('/')) {
+    return url;
+  }
+  
+  // Handle file:// URLs from localStorage for backward compatibility
+  if (url.startsWith('file://')) {
+    const filename = url.replace('file://', '');
+    try {
+      const storedFilesStr = localStorage.getItem('portfolio_files');
+      if (!storedFilesStr) {
+        console.warn(`LocalStorage file not found for: ${filename}`);
+        return url;
+      }
+      const storedFiles = JSON.parse(storedFilesStr) as Record<string, { dataUrl: string }>;
+      const fileData = storedFiles[filename];
+      if (!fileData) {
+        console.warn(`File data not found in localStorage for: ${filename}`);
+        return url;
+      }
+      return fileData.dataUrl;
+    } catch (error) {
+      console.error('Error resolving file URL:', error);
+      return url;
+    }
+  }
+  
+  // If it's a relative path without /, prepend with /
+  if (!url.startsWith('./') && !url.includes('://')) {
+    return `/${url}`;
+  }
+  
+  return url;
 };
 
 // Shared materials to reduce memory usage

@@ -8,6 +8,7 @@ import ErrorBoundary from './components/ErrorBoundary'
 import useMobileDetection from './hooks/useMobileDetection'
 import { AudioProvider } from './context/AudioContext'
 import { MusicPlayer } from './components/MusicPlayer'
+import { MediaDebugPanel } from './components/MediaDebugPanel'
 
 // Define the style object with proper TypeScript types
 const styles = {
@@ -515,6 +516,7 @@ function App() {
         <AudioProvider>
           <AppContent />
           <MusicPlayer />
+          <MediaDebugPanel enabled={true} />
         </AudioProvider>
       </ChatProvider>
     </ErrorBoundary>
