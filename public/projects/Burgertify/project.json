@@ -240,12 +240,7 @@
       "category": "images",
       "url": "/projects/Burgertify/assets/images/Honduras Shades.jpg"
     },
-    {
-      "name": "HondurasDay.HEIC",
-      "type": "image",
-      "category": "images",
-      "url": "/projects/Burgertify/assets/images/HondurasDay.HEIC"
-    },
+
     {
       "name": "Ice Climber.jpg",
       "type": "image",
@@ -306,12 +301,7 @@
       "category": "images",
       "url": "/projects/Burgertify/assets/images/Patio.JPG"
     },
-    {
-      "name": "Patio.heic",
-      "type": "image",
-      "category": "images",
-      "url": "/projects/Burgertify/assets/images/Patio.heic"
-    },
+
     {
       "name": "Patio2.JPG",
       "type": "image",

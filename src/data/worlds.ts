@@ -215,11 +215,11 @@ function generateDeterministicPositions(projects: Project[]): PositionWithId[] {
   const result: PositionWithId[] = [];
   
   // Use different formations but assign them deterministically
-  // Increased radii for better separation
-  const circleRadiusBase = 30; // Increased from 25
-  const spiralRadiusBase = 20; // Increased from 15
-  const gridSpacing = 8;      // Spacing for a grid formation
-  const numGridColumns = 5;   // Number of columns for grid
+  // IMPROVED: Much better spacing between cards for better navigation
+  const circleRadiusBase = 45; // Significantly increased from 30 for better spacing
+  const spiralRadiusBase = 30; // Increased from 20 for better spacing
+  const gridSpacing = 12;     // Increased from 8 for much better spacing
+  const numGridColumns = 4;   // Reduced from 5 to spread cards out more
 
   // Assign each project to a formation and position based on ID
   projects.forEach(project => {
@@ -233,7 +233,7 @@ function generateDeterministicPositions(projects: Project[]): PositionWithId[] {
     if (projectId % 3 === 0) {
       // Circle formation
       const angle = (projectIndexFactor * 0.5) % (Math.PI * 2); // Spread out angles more
-      const radiusVariation = (projectId % 5) * 2; // Add some radius variation (0, 2, 4, 6, 8)
+      const radiusVariation = (projectId % 5) * 4; // Increased variation (0, 4, 8, 12, 16)
       const currentRadius = circleRadiusBase + radiusVariation;
       const x = Math.cos(angle) * currentRadius;
       const z = Math.sin(angle) * currentRadius;
@@ -276,20 +276,32 @@ const isObjectInteractive = (object: WorldObject): boolean => {
 };
 
 export const createProjectWorld = (project: Project, isTouchDevice: boolean): World => {
-  console.log('Creating project world for project:', project, 'isTouchDevice:', isTouchDevice);
+  console.log(`Creating project world for project: ${project.name} (ID: ${project.id}), isTouchDevice:`, isTouchDevice);
+  console.log('Project data summary:', {
+    name: project.name,
+    id: project.id,
+    hasMediaObjects: !!(project.mediaObjects && project.mediaObjects.length > 0),
+    mediaObjectsCount: project.mediaObjects?.length || 0,
+    hasAssetGallery: !!((project as any).assetGallery && (project as any).assetGallery.length > 0),
+    assetGalleryCount: (project as any).assetGallery?.length || 0,
+    hasWorldSettings: !!(project.worldSettings)
+  });
 
   const worldObjects: WorldObject[] = [];
 
   // Use persisted media objects if available
   if (project.mediaObjects && project.mediaObjects.length > 0) {
-    console.log('Using mediaObjects from project data:', project.mediaObjects);
-    project.mediaObjects.forEach(obj => worldObjects.push(obj));
+    console.log(`Adding ${project.mediaObjects.length} mediaObjects from project data for ${project.name}`);
+    project.mediaObjects.forEach(obj => {
+      console.log(`- Adding mediaObject: ${obj.id} (${obj.type}) - ${obj.title}`);
+      worldObjects.push(obj);
+    });
   }
 
   // Add assetGallery items if available (similar to ProjectSubworld component)
   if ((project as any).assetGallery && (project as any).assetGallery.length > 0) {
     const assetGallery = (project as any).assetGallery;
-    console.log(`Adding ${assetGallery.length} assetGallery items to project world`);
+    console.log(`Adding ${assetGallery.length} assetGallery items to project world for ${project.name}`);
     
     const galleryObjects = assetGallery.map((asset: any, index: number) => {
       // Generate grid positions for asset gallery items
@@ -446,7 +458,13 @@ export const createProjectWorld = (project: Project, isTouchDevice: boolean): Wo
     objects: worldObjects,
   };
 
-  console.log(`Created project world ${projectWorld.id} with ${projectWorld.objects.length} objects`);
+  console.log(`Created project world ${projectWorld.id} for ${project.name} with ${projectWorld.objects.length} objects`);
+  console.log('Project world objects summary:', projectWorld.objects.map(obj => ({
+    id: obj.id,
+    type: obj.type,
+    title: obj.title
+  })));
+  
   return projectWorld;
 };
 

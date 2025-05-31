@@ -213,6 +213,59 @@ export const WorldProvider = ({
         
         // Load projects from project.json files instead of localStorage
         await projectDataService.initialize();
+        
+        // CRITICAL FIX: Synchronize ProjectService with ProjectDataService
+        // This ensures both services have the same project data
+        console.log('WorldProvider: Synchronizing ProjectService with ProjectDataService...');
+        await projectDataService.synchronizeWithProjectService();
+        console.log('WorldProvider: Synchronization completed');
+
+        // CRITICAL FIX: Force regenerate all project worlds with full data
+        // After synchronization, we need to ensure all project worlds are created with the complete
+        // project.json data including mediaObjects and assetGallery
+        console.log('WorldProvider: Force regenerating all project worlds with full data...');
+        try {
+          // Get all projects from ProjectDataService (which has the full data)
+          const allProjectsData = await projectDataService.getAllProjects();
+          
+          for (const projectData of allProjectsData) {
+            const projectWorldId = `project-world-${projectData.id}`;
+            
+            // Convert ProjectData to Project format with assetGallery preserved
+            const project: Project = {
+              id: projectData.id,
+              name: projectData.name,
+              description: projectData.description,
+              link: projectData.link,
+              thumbnail: projectData.thumbnail,
+              status: projectData.status as 'completed' | 'in-progress',
+              type: projectData.type as 'standard' | 'video',
+              videoUrl: projectData.videoUrl,
+              customLink: projectData.customLink,
+              mediaObjects: projectData.mediaObjects?.map(mediaObj => ({
+                ...mediaObj,
+                type: mediaObj.type as 'video' | 'image' | 'pdf' | 'project' | 'link' | 'button'
+              })),
+              worldSettings: projectData.worldSettings,
+              // Preserve assetGallery for project world creation
+              ...(projectData.assetGallery && { assetGallery: projectData.assetGallery })
+            };
+            
+            // Force recreate the project world with full data
+            console.log(`WorldProvider: Regenerating project world ${projectWorldId} for ${project.name}`);
+            const regeneratedWorld = createProjectWorld(project, isTouchDevice);
+            
+            // Update the world in the service
+            worldService.updateWorld(regeneratedWorld);
+            
+            console.log(`WorldProvider: Project world ${projectWorldId} regenerated with ${regeneratedWorld.objects.length} objects`);
+          }
+          
+          console.log(`WorldProvider: Successfully regenerated ${allProjectsData.length} project worlds`);
+        } catch (error) {
+          console.error('WorldProvider: Error regenerating project worlds:', error);
+        }
+        
         const loadedProjects = await projectDataService.getAllProjects();
         
         console.log('WorldProvider: ProjectDataService loaded projects:', loadedProjects.length);

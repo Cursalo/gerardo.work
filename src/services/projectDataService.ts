@@ -280,6 +280,59 @@ class ProjectDataService {
     this.initialized = false;
     await this.initialize();
   }
+
+  // CRITICAL FIX: Synchronize ProjectService with ProjectDataService
+  // This ensures that ProjectService has all the projects that ProjectDataService loaded
+  async synchronizeWithProjectService(): Promise<void> {
+    try {
+      if (!this.initialized) {
+        await this.initialize();
+      }
+
+      console.log(`ProjectDataService: Synchronizing ${this.projectsList.length} projects with ProjectService...`);
+
+      // Convert ProjectData to Project format for ProjectService
+      const projectsForService = this.projectsList.map((projectData: ProjectData) => ({
+        id: projectData.id,
+        name: projectData.name,
+        description: projectData.description,
+        link: projectData.link,
+        thumbnail: projectData.thumbnail,
+        status: projectData.status as 'completed' | 'in-progress',
+        type: projectData.type as 'standard' | 'video',
+        videoUrl: projectData.videoUrl,
+        customLink: projectData.customLink,
+        mediaObjects: projectData.mediaObjects?.map(mediaObj => ({
+          ...mediaObj,
+          type: mediaObj.type as 'video' | 'image' | 'pdf' | 'project' | 'link' | 'button'
+        })) || [],
+        worldSettings: projectData.worldSettings,
+        // Preserve assetGallery for project world creation
+        ...(projectData.assetGallery && { assetGallery: projectData.assetGallery })
+      }));
+
+      // Save directly to localStorage to synchronize with ProjectService
+      const STORAGE_KEY = 'portfolio_projects';
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(projectsForService));
+      localStorage.setItem(`${STORAGE_KEY}_backup`, JSON.stringify(projectsForService));
+
+      console.log(`ProjectDataService: Successfully synchronized ${projectsForService.length} projects to localStorage`);
+      console.log('ProjectDataService: Synchronized project IDs:', projectsForService.map(p => p.id).sort((a, b) => a - b));
+
+      // Force ProjectService to reload from the updated localStorage
+      try {
+        const { projectService } = await import('./projectService');
+        await projectService.forceReloadProjects();
+        console.log('ProjectDataService: ProjectService reloaded successfully');
+      } catch (error) {
+        console.error('ProjectDataService: Error reloading ProjectService:', error);
+      }
+
+    } catch (error) {
+      console.error('ProjectDataService: Error synchronizing with ProjectService:', error);
+      throw error;
+    }
+  }
 }
 
 export const projectDataService = new ProjectDataService(); 
