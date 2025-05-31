@@ -23,7 +23,7 @@ export const ImageCard: React.FC<ImageCardProps> = ({
   const [imageError, setImageError] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
 
-  // Enhanced URL resolution for mobile compatibility
+  // Enhanced URL resolution for mobile compatibility with proper encoding
   const getResolvedImageUrl = (url: string) => {
     if (!url) return '';
     
@@ -32,14 +32,14 @@ export const ImageCard: React.FC<ImageCardProps> = ({
       return url;
     }
     
-    // If it's a relative URL from public directory, ensure it starts with /
-    if (url.startsWith('/projects/') || url.startsWith('/assets/')) {
-      return url;
+    // If it's a relative URL from public directory, encode spaces and special characters
+    if (url.startsWith('/projects/') || url.startsWith('/assets/') || url.startsWith('/')) {
+      return url.split('/').map(segment => segment ? encodeURIComponent(segment) : segment).join('/');
     }
     
-    // If it's just a path without leading /, add it
+    // If it's just a path without leading /, add it and encode
     if (!url.startsWith('/') && !url.includes('://')) {
-      return `/${url}`;
+      return `/${url}`.split('/').map(segment => segment ? encodeURIComponent(segment) : segment).join('/');
     }
     
     return url;

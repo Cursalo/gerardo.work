@@ -44,9 +44,10 @@ const resolveFileUrl = (url: string): string => {
     return url;
   }
   
-  // If it's a relative URL starting with /, it's a public asset - return as-is
+  // If it's a relative URL starting with /, it's a public asset - encode spaces and return
   if (url.startsWith('/')) {
-    return url;
+    // URL encode spaces and other special characters in the path, but preserve empty segments
+    return url.split('/').map(segment => segment ? encodeURIComponent(segment) : segment).join('/');
   }
   
   // Handle file:// URLs from localStorage for backward compatibility
@@ -71,9 +72,10 @@ const resolveFileUrl = (url: string): string => {
     }
   }
   
-  // If it's a relative path without /, prepend with /
+  // If it's a relative path without /, prepend with / and encode
   if (!url.startsWith('./') && !url.includes('://')) {
-    return `/${url}`;
+    const encodedUrl = `/${url}`.split('/').map(segment => segment ? encodeURIComponent(segment) : segment).join('/');
+    return encodedUrl;
   }
   
   return url;
