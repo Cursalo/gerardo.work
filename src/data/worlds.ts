@@ -304,19 +304,48 @@ export const createProjectWorld = (project: Project, isTouchDevice: boolean): Wo
     console.log(`Adding ${assetGallery.length} assetGallery items to project world for ${project.name}`);
     
     const galleryObjects = assetGallery.map((asset: any, index: number) => {
-      // Generate grid positions for asset gallery items
-      const gridSize = Math.ceil(Math.sqrt(assetGallery.length));
-      const row = Math.floor(index / gridSize);
-      const col = index % gridSize;
-      const spacing = 3;
-      const offsetX = (gridSize - 1) * spacing / 2;
-      const offsetZ = (gridSize - 1) * spacing / 2;
+      // Create beautiful randomized positioning for a frutiger space aesthetic
+      const totalAssets = assetGallery.length;
+      
+      // Generate deterministic but varied positions based on asset index
+      const seededRandom = (seed: number, min: number, max: number): number => {
+        const x = Math.sin(seed * 12.9898 + seed * 78.233) * 43758.5453;
+        return min + (max - min) * (x - Math.floor(x));
+      };
+      
+      // Create clusters and organic spacing
+      const clusterCount = Math.max(3, Math.ceil(totalAssets / 8)); // Create clusters of ~8 items each
+      const currentCluster = index % clusterCount;
+      
+      // Base cluster positions in a rough circle
+      const clusterAngle = (currentCluster / clusterCount) * Math.PI * 2;
+      const clusterRadius = 15 + (clusterCount * 2); // Scale radius with number of clusters
+      const clusterX = Math.cos(clusterAngle) * clusterRadius;
+      const clusterZ = Math.sin(clusterAngle) * clusterRadius;
+      
+      // Add organic randomization within each cluster
+      const inClusterIndex = Math.floor(index / clusterCount);
+      const randomX = seededRandom(index * 7 + 123, -8, 8); // Random spread within cluster
+      const randomZ = seededRandom(index * 11 + 456, -8, 8);
+      const randomY = seededRandom(index * 13 + 789, 1.5, 4.5); // Varied heights for floating effect
+      
+      // Create spiral-like distribution within clusters for more organic feel
+      const spiralRadius = 2 + (inClusterIndex * 0.8);
+      const spiralAngle = inClusterIndex * 2.3; // Golden ratio-ish angle for natural distribution
+      const spiralX = Math.cos(spiralAngle) * spiralRadius;
+      const spiralZ = Math.sin(spiralAngle) * spiralRadius;
       
       const position: [number, number, number] = [
-        col * spacing - offsetX + 5, // Offset to the right of main media
-        2, 
-        row * spacing - offsetZ
+        clusterX + spiralX + randomX * 0.5, // Combine cluster, spiral, and random
+        randomY,
+        clusterZ + spiralZ + randomZ * 0.5
       ];
+      
+      // Randomize rotation for more organic look (KEEP MINIMAL - NO TILTING)
+      const randomRotationY = seededRandom(index * 17 + 234, -0.3, 0.3); // Reduced rotation range
+      
+      // Varied scales for visual interest
+      const scaleVariation = seededRandom(index * 23 + 890, 0.8, 1.3);
       
       return {
         id: `asset-${index}`,
@@ -324,10 +353,10 @@ export const createProjectWorld = (project: Project, isTouchDevice: boolean): Wo
         title: asset.name,
         description: `Asset from ${project.name}`,
         url: asset.url,
-        thumbnail: asset.url, // Use the asset URL as thumbnail for images
+        thumbnail: asset.url,
         position,
-        rotation: [0, 0, 0] as [number, number, number],
-        scale: [1.5, 1.5, 0.1] as [number, number, number]
+        rotation: [0, randomRotationY, 0] as [number, number, number], // Only Y rotation, no tilting
+        scale: [1.2 * scaleVariation, 0.9 * scaleVariation, 0.1] as [number, number, number]
       };
     });
     

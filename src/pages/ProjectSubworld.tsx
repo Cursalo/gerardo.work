@@ -1,6 +1,6 @@
-import React, { useEffect, useState, Suspense } from 'react';
+import React, { useEffect, useState, Suspense, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Environment, Html, Text } from '@react-three/drei';
 import { projectDataService, ProjectData } from '../services/projectDataService';
 import { WorldObject } from '../data/worlds';
@@ -11,74 +11,161 @@ interface ProjectSubworldProps {}
 // Enhanced MediaCard component that handles different media types
 const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
   const [hovered, setHovered] = useState(false);
-  const [texture, setTexture] = useState<THREE.Texture | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [lowResTexture, setLowResTexture] = useState<THREE.Texture | null>(null);
+  const [highResTexture, setHighResTexture] = useState<THREE.Texture | null>(null);
+  const [isLoadingLowRes, setIsLoadingLowRes] = useState(true);
+  const [isLoadingHighRes, setIsLoadingHighRes] = useState(false);
   const [error, setError] = useState(false);
+  const [cameraDistance, setCameraDistance] = useState(Infinity);
   const navigate = useNavigate();
   
+  // Add refs for animation and camera tracking
+  const groupRef = useRef<THREE.Group>(null);
+  const meshRef = useRef<THREE.Mesh>(null);
+  
+  // Get camera for distance calculation
+  const { camera } = useThree();
+  
   useEffect(() => {
-    const loadTexture = async () => {
+    const loadLowResTexture = async () => {
       try {
         let textureUrl = mediaObject.thumbnail || mediaObject.url;
         
-        // Handle different media types
-        if (mediaObject.type === 'video') {
-          // For videos, try to use thumbnail or generate from video
-          textureUrl = mediaObject.thumbnail || mediaObject.url;
-        } else if (mediaObject.type === 'image') {
-          textureUrl = mediaObject.url;
-        } else if (mediaObject.type === 'html') {
-          // For HTML cards, use custom thumbnail from project.json
-          textureUrl = mediaObject.thumbnail || '/assets/html-placeholder.png';
-        } else if (mediaObject.type === 'pdf') {
-          textureUrl = mediaObject.thumbnail || '/assets/pdf-placeholder.png';
+        // Create low-resolution URL for faster loading
+        let lowResUrl = textureUrl;
+        if (mediaObject.type === 'image' && textureUrl) {
+          // For images, try to create a smaller version URL or use thumbnail
+          // If using a service like Cloudinary or similar, you could add size parameters
+          // For now, we'll use thumbnail if available, otherwise the original
+          lowResUrl = mediaObject.thumbnail || textureUrl;
         }
         
-        if (textureUrl) {
+        if (lowResUrl) {
           const loader = new THREE.TextureLoader();
           const loadedTexture = await new Promise<THREE.Texture>((resolve, reject) => {
             loader.load(
-              textureUrl,
+              lowResUrl,
               resolve,
               undefined,
               reject
             );
           });
-          setTexture(loadedTexture);
+          
+          // Set texture filtering for better quality at distance
+          loadedTexture.minFilter = THREE.LinearMipmapLinearFilter;
+          loadedTexture.magFilter = THREE.LinearFilter;
+          loadedTexture.generateMipmaps = true;
+          
+          setLowResTexture(loadedTexture);
         }
       } catch (err) {
-        console.error('Error loading texture for media card:', err);
+        console.error('Error loading low-res texture for media card:', err);
         setError(true);
       } finally {
-        setIsLoading(false);
+        setIsLoadingLowRes(false);
       }
     };
     
-    loadTexture();
+    loadLowResTexture();
   }, [mediaObject]);
+
+  // Load high-res texture when camera gets close
+  useEffect(() => {
+    const loadHighResTexture = async () => {
+      if (cameraDistance > 8 || isLoadingHighRes || highResTexture) return;
+      
+      setIsLoadingHighRes(true);
+      
+      try {
+        let highResUrl = mediaObject.url;
+        
+        if (highResUrl && highResUrl !== (mediaObject.thumbnail || mediaObject.url)) {
+          const loader = new THREE.TextureLoader();
+          const loadedTexture = await new Promise<THREE.Texture>((resolve, reject) => {
+            loader.load(
+              highResUrl,
+              resolve,
+              undefined,
+              reject
+            );
+          });
+          
+          // Set texture filtering for high quality
+          loadedTexture.minFilter = THREE.LinearMipmapLinearFilter;
+          loadedTexture.magFilter = THREE.LinearFilter;
+          loadedTexture.generateMipmaps = true;
+          
+          setHighResTexture(loadedTexture);
+        }
+      } catch (err) {
+        console.error('Error loading high-res texture for media card:', err);
+      } finally {
+        setIsLoadingHighRes(false);
+      }
+    };
+    
+    loadHighResTexture();
+  }, [cameraDistance, mediaObject, isLoadingHighRes, highResTexture]);
+
+  // Animation and camera distance tracking with useFrame
+  useFrame((state) => {
+    if (groupRef.current && camera) {
+      const time = state.clock.elapsedTime;
+      
+      // Calculate distance to camera
+      const groupPos = groupRef.current.position;
+      const distance = camera.position.distanceTo(groupPos);
+      setCameraDistance(distance);
+      
+      // Gentle floating motion (KEEP THIS)
+      const baseY = mediaObject.position[1] || 2;
+      const floatAmplitude = 0.2;
+      const floatSpeed = 0.6 + (mediaObject.id?.length || 0) * 0.05;
+      groupRef.current.position.y = baseY + Math.sin(time * floatSpeed) * floatAmplitude;
+      
+      // Keep original X and Z position
+      groupRef.current.position.x = mediaObject.position[0] || 0;
+      groupRef.current.position.z = mediaObject.position[2] || 0;
+      
+      // REMOVE ROTATION - Keep cards straight
+      groupRef.current.rotation.x = 0;
+      groupRef.current.rotation.y = mediaObject.rotation?.[1] || 0; // Only use initial Y rotation if set
+      groupRef.current.rotation.z = 0;
+      
+      // Enhanced hover effects (KEEP SCALE ONLY)
+      if (hovered && meshRef.current) {
+        // Subtle pulsing effect
+        const pulse = 1 + Math.sin(time * 4) * 0.05;
+        groupRef.current.scale.setScalar(pulse * 1.1);
+      } else if (groupRef.current) {
+        // Smooth scale transition back to normal
+        const currentScale = groupRef.current.scale.x;
+        const targetScale = 1;
+        groupRef.current.scale.setScalar(THREE.MathUtils.lerp(currentScale, targetScale, 0.1));
+      }
+    }
+  });
 
   const handleClick = () => {
     console.log('MediaCard clicked:', mediaObject);
     
     // Handle different click actions based on media type
     if (mediaObject.type === 'video' && mediaObject.url) {
-      // Open video in new tab or show video player
       window.open(mediaObject.url, '_blank');
     } else if (mediaObject.type === 'image' && mediaObject.url) {
-      // Open image in new tab
       window.open(mediaObject.url, '_blank');
     } else if (mediaObject.type === 'html' && mediaObject.url) {
-      // Navigate to HTML page
       window.open(mediaObject.url, '_blank');
     } else if (mediaObject.type === 'pdf' && mediaObject.url) {
-      // Open PDF in new tab
       window.open(mediaObject.url, '_blank');
     } else if (mediaObject.url) {
-      // Generic URL opening
       window.open(mediaObject.url, '_blank');
     }
   };
 
+  // Choose texture based on distance and loading state
+  const currentTexture = (cameraDistance < 8 && highResTexture) ? highResTexture : lowResTexture;
+  
   // Calculate scale based on media object scale or use default
   const scale = mediaObject.scale || [2, 1.5, 0.1];
   const position = mediaObject.position || [0, 2, 0];
@@ -86,29 +173,52 @@ const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
 
   return (
     <group 
+      ref={groupRef}
       position={position} 
-      rotation={rotation}
+      rotation={[rotation[0], rotation[1], rotation[2]]} // Keep initial rotation only
       scale={scale}
       onClick={handleClick}
       onPointerOver={() => setHovered(true)}
       onPointerOut={() => setHovered(false)}
     >
       {/* Main card mesh */}
-      <mesh>
+      <mesh ref={meshRef}>
         <boxGeometry args={[1, 0.6, 0.05]} />
         <meshStandardMaterial 
-          map={texture} 
-          color={error ? "#ff6b6b" : (isLoading ? "#cccccc" : "#ffffff")}
-          emissive={hovered ? "#444444" : "#000000"}
+          map={currentTexture} 
+          color={error ? "#ff6b6b" : (isLoadingLowRes ? "#cccccc" : "#ffffff")}
+          emissive={hovered ? "#222222" : "#000000"}
           emissiveIntensity={hovered ? 0.2 : 0}
+          metalness={0.1}
+          roughness={0.6}
         />
       </mesh>
       
-      {/* Title text */}
+      {/* Enhanced glow effect when hovered */}
+      {hovered && (
+        <mesh position={[0, 0, -0.01]}>
+          <boxGeometry args={[1.1, 0.7, 0.02]} />
+          <meshBasicMaterial 
+            color="#4CAF50" 
+            transparent 
+            opacity={0.3}
+          />
+        </mesh>
+      )}
+      
+      {/* Loading indicator for high-res texture */}
+      {isLoadingHighRes && cameraDistance < 8 && (
+        <mesh position={[0.4, -0.25, 0.03]}>
+          <boxGeometry args={[0.1, 0.05, 0.01]} />
+          <meshBasicMaterial color="#4CAF50" />
+        </mesh>
+      )}
+      
+      {/* Title text with enhanced styling */}
       <Text
         position={[0, -0.4, 0.03]}
-        fontSize={0.1}
-        color="#333333"
+        fontSize={0.08}
+        color={hovered ? "#ffffff" : "#333333"}
         anchorX="center"
         anchorY="middle"
         maxWidth={0.8}
@@ -116,23 +226,35 @@ const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
         {mediaObject.title || mediaObject.name || 'Untitled'}
       </Text>
       
-      {/* Type indicator */}
+      {/* Type indicator with better styling */}
       <Text
         position={[0.4, 0.25, 0.03]}
-        fontSize={0.06}
-        color="#666666"
+        fontSize={0.05}
+        color={hovered ? "#4CAF50" : "#666666"}
         anchorX="center"
         anchorY="middle"
       >
         {mediaObject.type?.toUpperCase() || 'MEDIA'}
       </Text>
       
-      {/* Hover effect border */}
+      {/* Floating particles effect when hovered (SIMPLIFIED) */}
       {hovered && (
-        <mesh position={[0, 0, -0.001]}>
-          <boxGeometry args={[1.05, 0.65, 0.01]} />
-          <meshBasicMaterial color="#4CAF50" transparent opacity={0.3} />
-        </mesh>
+        <>
+          {Array.from({ length: 3 }, (_, i) => (
+            <mesh key={i} position={[
+              (Math.random() - 0.5) * 1.5, 
+              (Math.random() - 0.5) * 0.8, 
+              0.1 + Math.random() * 0.2
+            ]}>
+              <sphereGeometry args={[0.015, 6, 6]} />
+              <meshBasicMaterial 
+                color="#4CAF50" 
+                transparent 
+                opacity={0.5}
+              />
+            </mesh>
+          ))}
+        </>
       )}
       
       {/* Description on hover */}
@@ -140,14 +262,16 @@ const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
         <Html
           position={[0, 0.8, 0.1]}
           style={{
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            padding: '8px',
-            borderRadius: '4px',
+            backgroundColor: 'rgba(0, 0, 0, 0.9)',
+            padding: '12px',
+            borderRadius: '8px',
             color: 'white',
-            width: '200px',
-            fontSize: '12px',
+            width: '220px',
+            fontSize: '13px',
             textAlign: 'center',
             pointerEvents: 'none',
+            border: '1px solid #4CAF50',
+            boxShadow: '0 4px 12px rgba(76, 175, 80, 0.3)',
           }}
         >
           {mediaObject.description}
@@ -279,19 +403,49 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
   // Add assetGallery items (auto-positioned)
   if (projectData.assetGallery && projectData.assetGallery.length > 0) {
     const galleryObjects = projectData.assetGallery.map((asset, index) => {
-      // Generate grid positions for asset gallery items
-      const gridSize = Math.ceil(Math.sqrt(projectData.assetGallery!.length));
-      const row = Math.floor(index / gridSize);
-      const col = index % gridSize;
-      const spacing = 3;
-      const offsetX = (gridSize - 1) * spacing / 2;
-      const offsetZ = (gridSize - 1) * spacing / 2;
+      // Create beautiful randomized positioning for a frutiger space aesthetic
+      const totalAssets = projectData.assetGallery!.length;
+      
+      // Generate deterministic but varied positions based on asset index
+      const seededRandom = (seed: number, min: number, max: number): number => {
+        const x = Math.sin(seed * 12.9898 + seed * 78.233) * 43758.5453;
+        return min + (max - min) * (x - Math.floor(x));
+      };
+      
+      // Create clusters and organic spacing
+      const clusterCount = Math.max(3, Math.ceil(totalAssets / 8)); // Create clusters of ~8 items each
+      const currentCluster = index % clusterCount;
+      
+      // Base cluster positions in a rough circle
+      const clusterAngle = (currentCluster / clusterCount) * Math.PI * 2;
+      const clusterRadius = 15 + (clusterCount * 2); // Scale radius with number of clusters
+      const clusterX = Math.cos(clusterAngle) * clusterRadius;
+      const clusterZ = Math.sin(clusterAngle) * clusterRadius;
+      
+      // Add organic randomization within each cluster
+      const inClusterIndex = Math.floor(index / clusterCount);
+      const randomX = seededRandom(index * 7 + 123, -8, 8); // Random spread within cluster
+      const randomZ = seededRandom(index * 11 + 456, -8, 8);
+      const randomY = seededRandom(index * 13 + 789, 1.5, 4.5); // Varied heights for floating effect
+      
+      // Create spiral-like distribution within clusters for more organic feel
+      const spiralRadius = 2 + (inClusterIndex * 0.8);
+      const spiralAngle = inClusterIndex * 2.3; // Golden ratio-ish angle for natural distribution
+      const spiralX = Math.cos(spiralAngle) * spiralRadius;
+      const spiralZ = Math.sin(spiralAngle) * spiralRadius;
       
       const position: [number, number, number] = [
-        col * spacing - offsetX + 5, // Offset to the right of main media
-        2, 
-        row * spacing - offsetZ
+        clusterX + spiralX + randomX * 0.5, // Combine cluster, spiral, and random
+        randomY,
+        clusterZ + spiralZ + randomZ * 0.5
       ];
+      
+      // Randomize rotation for more organic look (KEEP MINIMAL - NO TILTING)
+      const randomRotationY = seededRandom(index * 17 + 234, -0.3, 0.3); // Reduced rotation range
+      // REMOVE tilting rotations - keep cards straight
+      
+      // Varied scales for visual interest
+      const scaleVariation = seededRandom(index * 23 + 890, 0.8, 1.3);
       
       return {
         id: `asset-${index}`,
@@ -299,15 +453,15 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
         title: asset.name,
         description: `Asset from ${projectData.name}`,
         url: asset.url,
-        thumbnail: asset.url, // Use the asset URL as thumbnail for images
+        thumbnail: asset.url,
         position,
-        rotation: [0, 0, 0] as [number, number, number],
-        scale: [1.5, 1.5, 0.1] as [number, number, number]
+        rotation: [0, randomRotationY, 0] as [number, number, number], // Only Y rotation, no tilting
+        scale: [1.2 * scaleVariation, 0.9 * scaleVariation, 0.1] as [number, number, number]
       };
     });
     
     allMediaObjects.push(...galleryObjects);
-    console.log(`ProjectSubworld: Added ${galleryObjects.length} assetGallery items`);
+    console.log(`ProjectSubworld: Added ${galleryObjects.length} assetGallery items with organic positioning`);
   }
 
   console.log(`ProjectSubworld: Total media objects to render: ${allMediaObjects.length}`);
