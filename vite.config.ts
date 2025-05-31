@@ -6,6 +6,13 @@ export default defineConfig({
   plugins: [react()],
   // Ensure proper base path for production
   base: './',
+  // Fix worker and MIME type issues
+  worker: {
+    format: 'es'
+  },
+  optimizeDeps: {
+    exclude: ['three']
+  },
   // Build configuration for production
   build: {
     // Generate relative paths for assets
@@ -25,7 +32,17 @@ export default defineConfig({
   server: {
     // Enable CORS for development
     cors: true,
+    // Fix MIME type issues for worker scripts
+    headers: {
+      'Cross-Origin-Embedder-Policy': 'credentialless',
+      'Cross-Origin-Opener-Policy': 'same-origin'
+    }
   },
   // Ensure proper asset handling
-  assetsInclude: ['**/*.glb', '**/*.gltf', '**/*.hdr', '**/*.exr']
+  assetsInclude: ['**/*.glb', '**/*.gltf', '**/*.hdr', '**/*.exr'],
+  // Define global constants to fix __name errors
+  define: {
+    __name: '"vite-app"',
+    global: 'globalThis'
+  }
 })

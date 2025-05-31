@@ -344,7 +344,10 @@ const Scene = ({ worldId }: SceneProps) => {
                 gl={{
                   antialias: config.antialiasing,
                   alpha: false, // Disable transparency for better performance
-                  powerPreference: 'high-performance'
+                  powerPreference: 'high-performance',
+                  preserveDrawingBuffer: false,
+                  stencil: false,
+                  depth: true
                 }}
                 camera={{
                   fov: 75,
@@ -369,7 +372,7 @@ const Scene = ({ worldId }: SceneProps) => {
               >
                 <Suspense fallback={<Loading3D />}>
                   <SceneContent key={currentWorld ? currentWorld.id : 'loading'} worldId={worldId} />
-                  <PerformanceMonitor enabled={process.env.NODE_ENV === 'development'} showStats={false} />
+                  {/* <PerformanceMonitor enabled={process.env.NODE_ENV === 'development'} showStats={false} /> */}
                 </Suspense>
               </Canvas>
             </VisibilityContext.Provider>
