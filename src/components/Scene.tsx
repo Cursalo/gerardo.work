@@ -1,5 +1,6 @@
 import React, { Suspense, createContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
+import { Html } from '@react-three/drei';
 import { Vector3, Camera } from 'three';
 import Environment from './Environment';
 import FirstPersonCamera from './FirstPersonCamera';
@@ -16,9 +17,20 @@ import { InteractionProvider } from '../context/InteractionContext';
 import InteractionButton from './InteractionButton'; 
 import DesktopBackHint from './DesktopBackHint';
 import { SpeakerExperience } from './SpeakerExperience';
+import PerformanceMonitor from './PerformanceMonitor';
+import * as THREE from 'three';
 
 // Maximum distance for full quality rendering
 const MAX_RENDER_DISTANCE = 50;
+
+// Performance configuration based on device capabilities
+const getPerformanceConfig = (isMobile: boolean) => ({
+  maxObjects: isMobile ? 20 : 66,
+  shadowQuality: isMobile ? 'low' : 'medium',
+  antialiasing: !isMobile,
+  pixelRatio: isMobile ? Math.min(window.devicePixelRatio, 2) : Math.min(window.devicePixelRatio, 2),
+  frameRate: isMobile ? 30 : 60
+});
 
 // Create a context to share visibility information for overlapping detection
 export const VisibilityContext = createContext<{
@@ -31,28 +43,31 @@ export const VisibilityContext = createContext<{
   checkOverlap: () => false
 });
 
-// Loading 3D state while in 3D world
 const Loading3D = () => {
   return (
-    <mesh position={[0, 1, 0]}>
-      <sphereGeometry args={[0.5, 16, 16]} />
-      <meshStandardMaterial color="#4dffaa" wireframe />
-    </mesh>
+    <Html center>
+      <div style={{ color: 'white', fontSize: '20px' }}>Loading 3D Scene...</div>
+    </Html>
   );
 };
 
-// CRITICAL FIX: Throttle camera position updates to prevent infinite re-renders
-// Camera position changes every frame, but we don't need to recalculate visible objects that often
-const useThrottledCameraPosition = (camera: Camera, interval: number = 200) => {
+// PERFORMANCE: Optimized camera position tracking with adaptive throttling
+const useThrottledCameraPosition = (camera: Camera, interval: number = 500) => {
   const [throttledPosition, setThrottledPosition] = useState(() => camera.position.clone());
   const lastUpdateTime = useRef(0);
+  const frameCounter = useRef(0);
 
   useFrame(() => {
+    frameCounter.current++;
+    
+    // Only check on every 10th frame for better performance
+    if (frameCounter.current % 10 !== 0) return;
+    
     const now = Date.now();
     if (now - lastUpdateTime.current > interval) {
       // Only update if camera has moved significantly (avoid micro-movements)
       const distance = throttledPosition.distanceTo(camera.position);
-      if (distance > 0.5) { // Only update if moved more than 0.5 units
+      if (distance > 1.0) { // Increased threshold for less frequent updates
         setThrottledPosition(camera.position.clone());
         lastUpdateTime.current = now;
       }
@@ -62,35 +77,57 @@ const useThrottledCameraPosition = (camera: Camera, interval: number = 200) => {
   return throttledPosition;
 };
 
-// Determine which objects to render based on camera position and performance requirements
+// PERFORMANCE: Optimized object filtering with distance-based culling and LOD
 const useObjectFiltering = (objects: any[], camera: Camera, isMobile: boolean) => {
-  const throttledCameraPosition = useThrottledCameraPosition(camera, 500); // Increased interval for better performance
+  const throttledCameraPosition = useThrottledCameraPosition(camera, 1000); // Further increased interval
+  const config = getPerformanceConfig(isMobile);
   
   return useMemo(() => {
     if (!objects || objects.length === 0) return [];
     
-    // For desktop, we can render more objects at a greater distance
-    const maxRenderDistance = isMobile ? MAX_RENDER_DISTANCE * 0.7 : MAX_RENDER_DISTANCE;
-    
-    // Filter out objects that are too far away
-    return objects.filter(object => {
-      // Always include project objects regardless of distance
-      if (object.type === 'project') {
-        return true;
+    // Calculate distances and sort by priority
+    const objectsWithDistance = objects.map(object => {
+      let distance = 0;
+      let priority = 0;
+      
+      if (object.position) {
+        const objPos = new Vector3(
+          object.position.x || 0,
+          object.position.y || 0,
+          object.position.z || 0
+        );
+        distance = throttledCameraPosition.distanceTo(objPos);
       }
       
-      if (!object.position) return true; // Always render objects without position data
+      // Higher priority for project objects
+      if (object.type === 'project') priority = 1000;
+      else if (object.type === 'button') priority = 500;
+      else priority = 100;
       
-      const objPos = new Vector3(
-        object.position.x || 0,
-        object.position.y || 0,
-        object.position.z || 0
-      );
-      
-      const distance = throttledCameraPosition.distanceTo(objPos);
-      return distance < maxRenderDistance;
+      return { object, distance, priority };
     });
-  }, [objects, throttledCameraPosition, isMobile]); // Now depends on throttled position instead of exact position
+    
+    // Sort by priority first, then by distance
+    objectsWithDistance.sort((a, b) => {
+      if (a.priority !== b.priority) return b.priority - a.priority;
+      return a.distance - b.distance;
+    });
+    
+    // Take only the most important objects based on device capability
+    const visibleObjects = objectsWithDistance
+      .slice(0, config.maxObjects)
+      .filter(({ distance, object }) => {
+        // Always include project objects regardless of distance
+        if (object.type === 'project') return true;
+        
+        // Filter by distance for other objects
+        const maxDistance = isMobile ? MAX_RENDER_DISTANCE * 0.6 : MAX_RENDER_DISTANCE;
+        return distance < maxDistance;
+      })
+      .map(({ object }) => object);
+    
+    return visibleObjects;
+  }, [objects, throttledCameraPosition, isMobile, config.maxObjects]);
 };
 
 interface SceneContentProps {
@@ -103,7 +140,7 @@ const SceneContent = React.memo(({ worldId }: SceneContentProps) => {
   const { isMobile } = useMobileDetection();
   const { camera } = useThree();
   
-  // Get filtered objects based on distance
+  // Get filtered objects based on distance and performance
   const visibleObjects = useObjectFiltering(
     currentWorld?.objects || [],
     camera,
@@ -125,7 +162,6 @@ const SceneContent = React.memo(({ worldId }: SceneContentProps) => {
     event.stopPropagation();
     if (event.object?.userData?.worldId) {
       const targetWorldId = event.object.userData.worldId;
-      console.log(`Navigating to world: ${targetWorldId}`);
       setCurrentWorldId(targetWorldId);
     }
   }, [setCurrentWorldId]);
@@ -136,7 +172,6 @@ const SceneContent = React.memo(({ worldId }: SceneContentProps) => {
       if (e.key.toLowerCase() === 'b') {
         // Check if we're in a project world by looking at the world ID pattern
         if (currentWorld && currentWorld.id.startsWith('project-world-')) {
-          console.log("B key pressed - returning to main world");
           setCurrentWorldId('mainWorld');
           // Prevent any other keyboard handlers from activating
           e.preventDefault();
@@ -166,11 +201,6 @@ const SceneContent = React.memo(({ worldId }: SceneContentProps) => {
     return <Loading3D />;
   }
   
-  // PERFORMANCE: Only log occasionally to prevent console spam
-  if (process.env.NODE_ENV === 'development' && Math.random() < 0.01) {
-    console.log("SceneContent rendering world:", currentWorld.id, "with total objects:", currentWorld.objects.length, "visible objects:", visibleObjects.length);
-  }
-  
   return (
     <>
       <Environment />
@@ -185,7 +215,7 @@ const SceneContent = React.memo(({ worldId }: SceneContentProps) => {
         deceleration={0.2}
       />
       
-      {/* World Objects - only render those that are visible based on distance */}
+      {/* World Objects - only render optimized visible objects */}
       {visibleObjects.map(object => (
         <WorldObject 
           key={object.id}
@@ -200,17 +230,17 @@ const SceneContent = React.memo(({ worldId }: SceneContentProps) => {
             npcId="technoclaw" 
             name="TechnoClaw" 
             position={[0, 0, -4]} 
-            debug={process.env.NODE_ENV === 'development'}
+            debug={false} // Always false for production performance
           />
           <SpeakerExperience position={[5, 0, 0]} scale={0.5} rotation={[0, -Math.PI / 4, 0]} />
           
-          {/* Fallback safety measure - add an additional invisible light to ensure TechnoClaw is illuminated */}
+          {/* Optimized lighting for performance */}
           <pointLight 
             position={[0, 5, -4]} 
             intensity={0.5} 
             distance={10} 
             color="#ffffff" 
-            castShadow={false} 
+            castShadow={false} // Disabled for performance
           />
         </>
       )}
@@ -221,7 +251,7 @@ const SceneContent = React.memo(({ worldId }: SceneContentProps) => {
   return prevProps.worldId === nextProps.worldId;
 });
 
-// Main Scene component - now much simpler
+// Main Scene component with performance optimizations
 interface SceneProps {
   worldId?: string;
 }
@@ -233,6 +263,7 @@ const Scene = ({ worldId }: SceneProps) => {
   // Get necessary contexts/hooks for passing down
   const { currentWorld, isLoading, setCurrentWorldId } = useWorld();
   const { isTouchDevice } = useMobileDetection();
+  const config = getPerformanceConfig(isTouchDevice);
 
   // Memoize visibility context functions to prevent unnecessary re-renders
   const registerPosition = useCallback((id: number, position: [number, number, number]) => {
@@ -266,19 +297,18 @@ const Scene = ({ worldId }: SceneProps) => {
       }
     }
     return false;
-  }, [positions]); // Dependency on positions map
+  }, [positions]);
 
-  // Memoize the context value itself - MUST be before early return
+  // Memoize the context value itself
   const visibilityContextValue = React.useMemo(() => ({ 
     registerPosition, 
     unregisterPosition,
     checkOverlap 
   }), [registerPosition, unregisterPosition, checkOverlap]);
 
-  // Loading check moved here
+  // Loading check
   if (isLoading || !currentWorld) {
-    console.log("Scene returning LoadingScreen");
-    return <LoadingScreen />; // Now safe to return early
+    return <LoadingScreen />;
   }
 
   // Return providers wrapping the Canvas container and the UI buttons directly
@@ -286,7 +316,7 @@ const Scene = ({ worldId }: SceneProps) => {
     <InteractionProvider>
       <MobileControlsProvider>
         <>
-          {/* Canvas Container */}
+          {/* Optimized Canvas Container */}
           <div 
             id="canvas-container"
             style={{
@@ -298,48 +328,48 @@ const Scene = ({ worldId }: SceneProps) => {
               overflow: 'hidden',
               top: 0,
               left: 0,
-              zIndex: 0, // Ensure canvas container is behind buttons
+              zIndex: 0,
               backgroundColor: '#ffffff',
             }}
           >
             <VisibilityContext.Provider value={visibilityContextValue}>
               <Canvas
-                shadows
-                dpr={[1, 2]}
-                performance={{ min: 0.5 }}
-                eventPrefix="client"
-                camera={{
-                  fov: 70,
-                  near: 0.1,
-                  far: 1000,
-                  position: [0, 1.7, 15],
-                  up: [0, 1, 0]
+                shadows={config.shadowQuality !== 'low'}
+                dpr={config.pixelRatio}
+                performance={{
+                  min: 0.5, // Minimum performance target
+                  max: 1,   // Maximum performance target
+                  debounce: 200 // Debounce performance adjustments
                 }}
                 gl={{
-                  antialias: true,
-                  alpha: false,
-                  stencil: false,
-                  powerPreference: 'high-performance',
+                  antialias: config.antialiasing,
+                  alpha: false, // Disable transparency for better performance
+                  powerPreference: 'high-performance'
                 }}
-                raycaster={{
-                  far: 100
+                camera={{
+                  fov: 75,
+                  near: 0.1,
+                  far: 1000,
+                  position: [0, 1.7, 15]
                 }}
                 style={{
-                  touchAction: 'none', // Correct way to apply touchAction
-                  outline: 'none',
-                  cursor: 'none',
+                  display: 'block',
                   width: '100%',
                   height: '100%',
-                  display: 'block',
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  backgroundColor: '#ffffff',
+                  outline: 'none'
+                }}
+                onCreated={({ gl }) => {
+                  // Performance optimizations
+                  gl.setPixelRatio(config.pixelRatio);
+                  gl.shadowMap.enabled = config.shadowQuality !== 'low';
+                  if (gl.shadowMap.enabled) {
+                    gl.shadowMap.type = THREE.PCFSoftShadowMap;
+                  }
                 }}
               >
-                <color attach="background" args={['#ffffff']} />
                 <Suspense fallback={<Loading3D />}>
                   <SceneContent key={currentWorld ? currentWorld.id : 'loading'} worldId={worldId} />
+                  <PerformanceMonitor enabled={process.env.NODE_ENV === 'development'} showStats={false} />
                 </Suspense>
               </Canvas>
             </VisibilityContext.Provider>
