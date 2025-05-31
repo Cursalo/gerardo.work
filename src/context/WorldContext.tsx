@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
 import { World, WorldService, getWorldServiceInstance, createMainWorld, createProjectWorld } from '../data/worlds';
 import { Project, projectService } from '../services/projectService';
 import { projectDataService, ProjectData } from '../services/projectDataService';
@@ -328,28 +328,8 @@ export const WorldProvider = ({
     setupWorlds();
   }, [currentWorldId, refreshTrigger, worldService, isTouchDevice]);
 
-  const getCameraTarget = (): [number, number, number] => {
-    if (currentWorld?.cameraTarget) {
-      const target = currentWorld.cameraTarget;
-      return [target.x, target.y, target.z];
-    }
-    return [0, 0, 0];
-  };
-
-  const setCurrentWorldId = (id: string) => {
-    // Check if this is a project world
-    if (id.startsWith('project-world-')) {
-      const projectId = parseInt(id.replace('project-world-', ''), 10);
-      
-      // Ensure the project world exists
-      ensureProjectWorldExists(projectId, id);
-    }
-    
-    setCurrentWorldIdState(id);
-  };
-  
   // Utility function to ensure a project world exists
-  const ensureProjectWorldExists = async (projectId: number, worldId: string) => {
+  const ensureProjectWorldExists = useCallback(async (projectId: number, worldId: string) => {
     // Check if the world already exists
     const worldExists = worldService.getWorld(worldId);
     
@@ -397,7 +377,27 @@ export const WorldProvider = ({
     } catch (error) {
       console.error(`Error creating project world:`, error);
     }
-  };
+  }, [worldService, isTouchDevice, refreshWorlds]);
+
+  const getCameraTarget = useCallback((): [number, number, number] => {
+    if (currentWorld?.cameraTarget) {
+      const target = currentWorld.cameraTarget;
+      return [target.x, target.y, target.z];
+    }
+    return [0, 0, 0];
+  }, [currentWorld?.cameraTarget]);
+
+  const setCurrentWorldId = useCallback((id: string) => {
+    // Check if this is a project world
+    if (id.startsWith('project-world-')) {
+      const projectId = parseInt(id.replace('project-world-', ''), 10);
+      
+      // Ensure the project world exists
+      ensureProjectWorldExists(projectId, id);
+    }
+    
+    setCurrentWorldIdState(id);
+  }, [ensureProjectWorldExists]);
 
   const value = {
     worlds,

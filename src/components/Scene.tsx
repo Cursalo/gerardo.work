@@ -44,7 +44,7 @@ const Loading3D = () => {
 // CRITICAL FIX: Throttle camera position updates to prevent infinite re-renders
 // Camera position changes every frame, but we don't need to recalculate visible objects that often
 const useThrottledCameraPosition = (camera: Camera, interval: number = 200) => {
-  const [throttledPosition, setThrottledPosition] = useState(camera.position.clone());
+  const [throttledPosition, setThrottledPosition] = useState(() => camera.position.clone());
   const lastUpdateTime = useRef(0);
 
   useFrame(() => {
@@ -64,7 +64,7 @@ const useThrottledCameraPosition = (camera: Camera, interval: number = 200) => {
 
 // Determine which objects to render based on camera position and performance requirements
 const useObjectFiltering = (objects: any[], camera: Camera, isMobile: boolean) => {
-  const throttledCameraPosition = useThrottledCameraPosition(camera, 200); // Update every 200ms max
+  const throttledCameraPosition = useThrottledCameraPosition(camera, 500); // Increased interval for better performance
   
   return useMemo(() => {
     if (!objects || objects.length === 0) return [];
@@ -97,7 +97,7 @@ interface SceneContentProps {
   worldId?: string;
 }
 
-const SceneContent = ({ worldId }: SceneContentProps) => {
+const SceneContent = React.memo(({ worldId }: SceneContentProps) => {
   // Get context/hooks
   const { currentWorld, isLoading, setCurrentWorldId } = useWorld();
   const { isMobile } = useMobileDetection();
@@ -121,14 +121,14 @@ const SceneContent = ({ worldId }: SceneContentProps) => {
   }, [worldId, currentWorld?.id, setCurrentWorldId]);
   
   // Handler for sub-world navigation (move to project world)
-  const handleNavigateToSubworld = (event: any) => {
+  const handleNavigateToSubworld = useCallback((event: any) => {
     event.stopPropagation();
     if (event.object?.userData?.worldId) {
       const targetWorldId = event.object.userData.worldId;
       console.log(`Navigating to world: ${targetWorldId}`);
       setCurrentWorldId(targetWorldId);
     }
-  };
+  }, [setCurrentWorldId]);
   
   // Handle "B" key press to return to main world
   useEffect(() => {
@@ -149,30 +149,35 @@ const SceneContent = ({ worldId }: SceneContentProps) => {
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [currentWorld, setCurrentWorldId]);
+
+  // Memoize camera position to prevent unnecessary Vector3 creation
+  const cameraPosition = useMemo(() => {
+    if (currentWorld?.cameraPosition) {
+      return new Vector3(
+        currentWorld.cameraPosition.x,
+        currentWorld.cameraPosition.y,
+        currentWorld.cameraPosition.z
+      );
+    }
+    return new Vector3(0, 1.7, 15);
+  }, [currentWorld?.cameraPosition]);
   
   if (isLoading || !currentWorld) {
-    console.log("SceneContent returning Loading3D");
     return <Loading3D />;
   }
   
-  console.log("SceneContent rendering world:", currentWorld.id, "with total objects:", currentWorld.objects.length, "visible objects:", visibleObjects.length);
-  console.log("SceneContent visible objects preview:", visibleObjects.slice(0, 3).map(obj => ({ id: obj.id, type: obj.type, title: obj.title })));
+  // PERFORMANCE: Only log occasionally to prevent console spam
+  if (process.env.NODE_ENV === 'development' && Math.random() < 0.01) {
+    console.log("SceneContent rendering world:", currentWorld.id, "with total objects:", currentWorld.objects.length, "visible objects:", visibleObjects.length);
+  }
   
   return (
     <>
       <Environment />
       
-      {/* First Person Camera with position from world data if available */}
+      {/* First Person Camera with memoized position */}
       <FirstPersonCamera 
-        position={
-          currentWorld.cameraPosition 
-            ? new Vector3(
-                currentWorld.cameraPosition.x,
-                currentWorld.cameraPosition.y,
-                currentWorld.cameraPosition.z
-              )
-            : new Vector3(0, 1.7, 15)
-        }
+        position={cameraPosition}
         height={1.7} 
         moveSpeed={0.25}
         rotationSpeed={0.0015}
@@ -211,7 +216,10 @@ const SceneContent = ({ worldId }: SceneContentProps) => {
       )}
     </>
   );
-};
+}, (prevProps, nextProps) => {
+  // Custom comparison to prevent unnecessary re-renders
+  return prevProps.worldId === nextProps.worldId;
+});
 
 // Main Scene component - now much simpler
 interface SceneProps {

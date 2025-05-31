@@ -104,8 +104,7 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
   const rotation = object.rotation || [0, 0, 0];
   const scale = object.scale || [1, 1, 1];
   
-  // CRITICAL FIX: Simplify LOD system - remove interval-based updates
-  // Instead, use a much simpler distance-based approach that doesn't update constantly
+  // PERFORMANCE: Optimize LOD calculation with throttled position updates
   const detailLevel = useMemo(() => {
     if (!camera) return 'low';
     
@@ -123,7 +122,13 @@ const WorldObject = React.memo(({ object }: WorldObjectProps) => {
     } else {
       return 'low';
     }
-  }, [camera.position.x, camera.position.y, camera.position.z, position, isMobile]); // Only update when camera or position actually changes
+  }, [
+    Math.round(camera.position.x * 10) / 10, // Round to 1 decimal place to reduce updates
+    Math.round(camera.position.y * 10) / 10, 
+    Math.round(camera.position.z * 10) / 10, 
+    position[0], position[1], position[2], // Use array elements instead of objects
+    isMobile
+  ]);
 
   // Load project details if this is a project object
   useEffect(() => {
