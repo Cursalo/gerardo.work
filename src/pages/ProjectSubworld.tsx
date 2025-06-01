@@ -1,7 +1,7 @@
 import React, { useEffect, useState, Suspense, useRef, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { Environment, Html, Text } from '@react-three/drei';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Environment, Html, Text, RoundedBox } from '@react-three/drei';
 import { projectDataService, ProjectData } from '../services/projectDataService';
 import { WorldObject } from '../data/worlds';
 import * as THREE from 'three';
@@ -61,54 +61,42 @@ const normalizeUrl = (url: string): string => {
   return url;
 };
 
-// Enhanced MediaCard component that handles different media types
+// Performance-optimized MediaCard with proper orientation and rounded corners
 const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
   const [hovered, setHovered] = useState(false);
   const [currentTexture, setCurrentTexture] = useState<THREE.Texture | null>(null);
   const [textureQuality, setTextureQuality] = useState<TextureQuality>('loading_placeholder');
-  const [aspectRatio, setAspectRatio] = useState(() => 
-    getDefaultAspectRatio(mediaObject.url || mediaObject.thumbnail, mediaObject.type)
-  );
-  const navigate = useNavigate();
+  const [aspectRatio, setAspectRatio] = useState(1.77); // Default 16:9, will be updated when image loads
+  const [isVisible, setIsVisible] = useState(false);
   
   const groupRef = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.Mesh>(null);
-  const [isVisibleForFullLoad, setIsVisibleForFullLoad] = useState(false);
+  const { camera } = useThree();
 
-  // Memoize placeholderUrl and fullResUrl
+  // Memoize URLs and title
   const placeholderUrl = useMemo(() => mediaObject.thumbnail || mediaObject.url, [mediaObject.thumbnail, mediaObject.url]);
   const fullResUrl = useMemo(() => mediaObject.url, [mediaObject.url]);
-
-  // Detect mobile device
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-  // WebP browser support detection
-  const supportsWebP = (() => {
-    try {
-      return document.createElement('canvas').toDataURL('image/webp').indexOf('data:image/webp') === 0;
-    } catch (err) {
-      return false;
-    }
-  })();
-
-  // Get the display title - use filename if no title is provided
   const displayTitle = useMemo(() => {
     return mediaObject.title || mediaObject.name || getFilenameFromUrl(mediaObject.url);
   }, [mediaObject.title, mediaObject.name, mediaObject.url]);
 
-  // Determine when to trigger full resolution load
-  useEffect(() => {
-    const isImportantMedia = ['video', 'html'].includes(mediaObject.type) || !mediaObject.id?.startsWith('asset-');
-    if (isImportantMedia) {
-      setIsVisibleForFullLoad(true);
-    } else {
-      const visibilityTimer = setTimeout(() => setIsVisibleForFullLoad(true), Math.random() * 2000 + 500);
-      return () => clearTimeout(visibilityTimer);
+  // Performance: Check visibility and distance
+  useFrame(() => {
+    if (!groupRef.current || !camera) return;
+    
+    const distance = camera.position.distanceTo(groupRef.current.position);
+    const wasVisible = isVisible;
+    const shouldBeVisible = distance < 50; // Only load if within 50 units
+    
+    if (shouldBeVisible !== wasVisible) {
+      setIsVisible(shouldBeVisible);
     }
-  }, [mediaObject.type, mediaObject.id]);
+  });
 
-  // Simplified texture loading with stable dependencies
+  // Optimized texture loading - only when visible
   useEffect(() => {
+    if (!isVisible) return;
+    
     let isActive = true;
     const loader = new THREE.TextureLoader();
 
@@ -116,8 +104,7 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
       if (!urlToLoad || !isActive) return;
       
       const actualUrlToLoad = normalizeUrl(urlToLoad);
-      console.log(`🔄 (${displayTitle}) Loading ${isPlaceholder ? 'Placeholder' : 'FullRes'}: ${actualUrlToLoad}`);
-
+      
       try {
         const loadedTex = await new Promise<THREE.Texture>((resolve, reject) => {
           loader.load(actualUrlToLoad, resolve, undefined, reject);
@@ -128,158 +115,153 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
           return;
         }
 
-        // Configure texture
+        // Configure texture for clean appearance
         loadedTex.minFilter = THREE.LinearFilter;
         loadedTex.magFilter = THREE.LinearFilter;
         loadedTex.generateMipmaps = false;
         loadedTex.flipY = false;
+        loadedTex.wrapS = THREE.ClampToEdgeWrapping;
+        loadedTex.wrapT = THREE.ClampToEdgeWrapping;
 
-        // Update aspect ratio for images
-        if (mediaObject.type === 'image' && !isPlaceholder && loadedTex.image) {
+        // Update aspect ratio from actual image dimensions
+        if (loadedTex.image && loadedTex.image.width && loadedTex.image.height) {
           const newAR = loadedTex.image.width / loadedTex.image.height;
-          if (newAR && !isNaN(newAR) && isFinite(newAR)) {
+          if (newAR && !isNaN(newAR) && isFinite(newAR) && newAR > 0.1 && newAR < 10) {
             setAspectRatio(newAR);
-            console.log(`📐 (${displayTitle}) Aspect ratio updated to: ${newAR.toFixed(2)}`);
           }
         }
 
         setCurrentTexture(loadedTex);
         setTextureQuality(isPlaceholder ? 'loaded_placeholder' : 'loaded_full');
-        console.log(`✅ (${displayTitle}) Loaded ${isPlaceholder ? 'Placeholder' : 'FullRes'}`);
 
       } catch (err) {
         if (!isActive) return;
-        console.warn(`⚠️ (${displayTitle}) Failed to load ${isPlaceholder ? 'Placeholder' : 'FullRes'}:`, err);
         setTextureQuality('error');
       }
     };
 
-    // Load placeholder first
+    // Progressive loading: placeholder first, then full res
     if (textureQuality === 'loading_placeholder') {
       loadTexture(placeholderUrl, true);
-    }
-
-    // Load full resolution when ready
-    if (textureQuality === 'loaded_placeholder' && isVisibleForFullLoad && fullResUrl && fullResUrl !== placeholderUrl) {
-      loadTexture(fullResUrl, false);
-    } else if (textureQuality === 'loaded_placeholder' && isVisibleForFullLoad && (!fullResUrl || fullResUrl === placeholderUrl)) {
-      setTextureQuality('loaded_full');
+    } else if (textureQuality === 'loaded_placeholder' && fullResUrl !== placeholderUrl) {
+      setTimeout(() => loadTexture(fullResUrl, false), 100); // Small delay for performance
     }
     
     return () => {
       isActive = false;
-      // Clean up the current texture, but only the one we created in this effect
-      const textureToDispose = currentTexture;
-      if (textureToDispose) {
-        setTimeout(() => {
-          textureToDispose.dispose();
-          console.log(`🗑️ (${displayTitle}) Disposed texture on unmount/change.`);
-        }, 0);
+      if (currentTexture) {
+        setTimeout(() => currentTexture.dispose(), 100);
       }
     };
-  }, [textureQuality, isVisibleForFullLoad, placeholderUrl, fullResUrl, displayTitle, mediaObject.type]); // Removed currentTexture from dependencies to prevent infinite loop
-  
-  // Base dimensions, will be scaled by aspectRatio
-  const baseDimension = isMobile ? 2.0 : 2.5;
-  const finalHeight = baseDimension;
-  const finalWidth = baseDimension * aspectRatio;
+  }, [isVisible, textureQuality, placeholderUrl, fullResUrl]);
 
-  // Simplified animation 
+  // Calculate dimensions based on aspect ratio
+  const baseSize = 3.0;
+  const cardWidth = baseSize * Math.min(aspectRatio, 2.5); // Cap max width
+  const cardHeight = baseSize / Math.max(aspectRatio / 2.5, 1); // Cap max height
+  const cardDepth = 0.05;
+
+  // Smooth floating animation
   useFrame((state) => {
     if (groupRef.current) {
       const time = state.clock.elapsedTime;
-      const baseY = mediaObject.position[1] || 2;
-      groupRef.current.position.y = baseY + Math.sin(time * 0.5 + (mediaObject.id?.length || 0) * 0.1) * 0.1;
+      const baseY = mediaObject.position[1] || 3;
+      const floatOffset = Math.sin(time * 0.3 + (mediaObject.id?.length || 0) * 0.2) * 0.2;
+      groupRef.current.position.y = baseY + floatOffset;
       
-      if (hovered) {
-        groupRef.current.scale.setScalar(1.05);
-      } else {
-        groupRef.current.scale.setScalar(1.0);
-      }
+      // Smooth scale on hover
+      const targetScale = hovered ? 1.1 : 1.0;
+      const currentScale = groupRef.current.scale.x;
+      const newScale = currentScale + (targetScale - currentScale) * 0.1;
+      groupRef.current.scale.setScalar(newScale);
     }
   });
 
   const handleClick = () => {
-    if (mediaObject.type === 'html' && mediaObject.url) {
-      window.open(mediaObject.url, '_blank');
-    } else if (mediaObject.type === 'pdf' && mediaObject.url) {
-      window.open(mediaObject.url, '_blank');
-    } else if (mediaObject.type === 'video' && mediaObject.url) {
+    if (mediaObject.url) {
       window.open(mediaObject.url, '_blank');
     }
   };
 
+  // Don't render if not visible (performance optimization)
+  if (!isVisible) {
+    return null;
+  }
+
   return (
     <group 
       ref={groupRef}
-      position={mediaObject.position || [0, 2, 0]}
+      position={mediaObject.position || [0, 3, 0]}
       rotation={mediaObject.rotation || [0, 0, 0]}
-      scale={mediaObject.scale || [1, 1, 1]}
       onPointerOver={() => setHovered(true)}
       onPointerOut={() => setHovered(false)}
       onClick={handleClick}
     >
-      {/* Main card mesh */}
-      <mesh ref={meshRef} castShadow>
-        <planeGeometry args={[finalWidth, finalHeight]} />
-        <meshStandardMaterial 
+      {/* Rounded card with proper orientation */}
+      <RoundedBox
+        ref={meshRef}
+        args={[cardWidth, cardHeight, cardDepth]}
+        radius={0.05}
+        smoothness={8}
+        castShadow
+        receiveShadow
+      >
+        <meshStandardMaterial
           map={currentTexture}
-          transparent={true}
-          side={THREE.DoubleSide}
-          color={textureQuality === 'error' ? '#ff4444' : '#ffffff'}
+          transparent={false}
+          side={THREE.FrontSide}
+          color={textureQuality === 'error' ? '#ff6b6b' : '#ffffff'}
+          metalness={0.1}
+          roughness={0.2}
+          envMapIntensity={0.5}
         />
-      </mesh>
+      </RoundedBox>
 
-      {/* Loading indicator */}
-      {(textureQuality === 'loading_placeholder' || textureQuality === 'loading_full') && (
-        <Html position={[0, 0, 0.1]} center>
-          <div style={{
-            color: 'white',
-            fontSize: '12px',
-            textAlign: 'center',
-            background: 'rgba(0,0,0,0.7)',
-            padding: '4px 8px',
-            borderRadius: '4px'
-          }}>
-            Loading...
-          </div>
-        </Html>
-      )}
-
-      {/* Error indicator */}
-      {textureQuality === 'error' && (
-        <Html position={[0, 0, 0.1]} center>
-          <div style={{
-            color: 'white',
-            fontSize: '12px',
-            textAlign: 'center',
-            background: 'rgba(255,0,0,0.7)',
-            padding: '4px 8px',
-            borderRadius: '4px'
-          }}>
-            Failed to load
-          </div>
-        </Html>
-      )}
-
-      {/* Title */}
+      {/* Clean title with better visibility */}
       <Text
-        position={[0, -finalHeight/2 - 0.3, 0]}
-        fontSize={0.15}
-        color="#ffffff"
+        position={[0, -cardHeight/2 - 0.4, 0]}
+        fontSize={0.2}
+        color="#333333"
         anchorX="center"
         anchorY="top"
-        maxWidth={finalWidth}
+        maxWidth={cardWidth}
+        font="/fonts/Inter-Regular.woff"
       >
         {displayTitle}
       </Text>
 
-      {/* Hover effect - border */}
+      {/* Subtle glow effect on hover */}
       {hovered && (
-        <mesh position={[0, 0, -0.01]}>
-          <planeGeometry args={[finalWidth + 0.1, finalHeight + 0.1]} />
-          <meshBasicMaterial color="#00ff88" transparent opacity={0.3} />
-        </mesh>
+        <RoundedBox
+          args={[cardWidth + 0.1, cardHeight + 0.1, cardDepth + 0.02]}
+          radius={0.06}
+          smoothness={8}
+          position={[0, 0, -0.01]}
+        >
+          <meshBasicMaterial 
+            color="#4facfe" 
+            transparent 
+            opacity={0.3}
+            side={THREE.BackSide}
+          />
+        </RoundedBox>
+      )}
+
+      {/* Loading state */}
+      {textureQuality === 'loading_placeholder' && (
+        <Html position={[0, 0, cardDepth + 0.1]} center>
+          <div style={{
+            color: '#666',
+            fontSize: '14px',
+            textAlign: 'center',
+            background: 'rgba(255,255,255,0.9)',
+            padding: '8px 12px',
+            borderRadius: '8px',
+            fontFamily: 'system-ui'
+          }}>
+            Loading...
+          </div>
+        </Html>
       )}
     </group>
   );
@@ -290,27 +272,52 @@ const SceneContent: React.FC<{ allMediaObjects: any[], projectData: ProjectData 
   // Register FP interaction hook
   useFirstPersonInteractions();
   
-  // Apply world settings from project data
-  const worldSettings = projectData.worldSettings || {};
-  const ambientIntensity = (worldSettings as any).ambientLightIntensity || 0.6;
-  const directionalIntensity = (worldSettings as any).directionalLightIntensity || 1.0;
+  // Create striped floor texture
+  const floorTexture = useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d')!;
+    
+    // Base white
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, 512, 512);
+    
+    // Subtle gray stripes
+    ctx.fillStyle = '#f8f8f8';
+    for (let i = 0; i < 512; i += 32) {
+      ctx.fillRect(i, 0, 16, 512);
+      ctx.fillRect(0, i, 512, 16);
+    }
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(50, 50);
+    
+    return texture;
+  }, []);
 
   return (
     <>
-      {/* Lighting based on project settings */}
-      <ambientLight 
-        color={(worldSettings as any).ambientLightColor || '#ffffff'} 
-        intensity={ambientIntensity} 
-      />
+      {/* Clean, bright lighting for gallery-like feel */}
+      <ambientLight color="#ffffff" intensity={0.8} />
       <directionalLight 
-        position={[10, 10, 5]} 
-        intensity={directionalIntensity}
-        color={(worldSettings as any).directionalLightColor || '#ffffff'}
+        position={[10, 20, 10]} 
+        intensity={0.6}
+        color="#ffffff"
         castShadow
+        shadow-mapSize-width={2048}
+        shadow-mapSize-height={2048}
+        shadow-camera-far={100}
+        shadow-camera-left={-50}
+        shadow-camera-right={50}
+        shadow-camera-top={50}
+        shadow-camera-bottom={-50}
       />
 
-      {/* Environment */}
-      <Environment preset="studio" />
+      {/* Clean gallery environment */}
+      <Environment preset="apartment" />
 
       {/* First Person Camera - same as main world */}
       <FirstPersonCamera 
@@ -322,11 +329,14 @@ const SceneContent: React.FC<{ allMediaObjects: any[], projectData: ProjectData 
         deceleration={0.2}
       />
 
-      {/* Floor */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -2, 0]} receiveShadow>
-        <planeGeometry args={[200, 200]} />
+      {/* Clean white floor with subtle stripes */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]} receiveShadow>
+        <planeGeometry args={[300, 300]} />
         <meshStandardMaterial 
-          color={(worldSettings as any).floorColor || '#333333'} 
+          map={floorTexture}
+          color="#ffffff"
+          roughness={0.8}
+          metalness={0.0}
         />
       </mesh>
 
@@ -480,11 +490,8 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
     );
   }
 
-  // Apply world settings from project data
-  const worldSettings = projectData.worldSettings || {};
-  const backgroundColor = (worldSettings as any).backgroundColor || '#1a1a1a';
-  const ambientIntensity = (worldSettings as any).ambientLightIntensity || 0.6;
-  const directionalIntensity = (worldSettings as any).directionalLightIntensity || 1.0;
+  // Clean white gallery environment
+  const backgroundColor = '#ffffff';
 
   // Combine mediaObjects and assetGallery into a single array
   const allMediaObjects = [];
