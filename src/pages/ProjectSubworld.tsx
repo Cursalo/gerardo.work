@@ -63,6 +63,7 @@ const normalizeUrl = (url: string): string => {
 
 // Performance-optimized MediaCard with proper orientation and rounded corners
 const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
+  console.log('MediaCard rendering:', mediaObject?.id || 'no-id', mediaObject?.title || mediaObject?.name);
   const [hovered, setHovered] = useState(false);
   const [currentTexture, setCurrentTexture] = useState<THREE.Texture | null>(null);
   const [textureQuality, setTextureQuality] = useState<TextureQuality>('loading_placeholder');
@@ -218,7 +219,6 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
         anchorX="center"
         anchorY="top"
         maxWidth={cardWidth}
-        font="/fonts/Inter-Regular.woff"
       >
         {displayTitle}
       </Text>
@@ -268,6 +268,11 @@ const SceneContent: React.FC<{ allMediaObjects: any[], projectData: ProjectData 
   // Debug logging
   console.log(`SceneContent: Rendering ${allMediaObjects.length} media objects`);
   
+  // Debug first few media objects
+  if (allMediaObjects.length > 0) {
+    console.log('First 3 media objects:', allMediaObjects.slice(0, 3));
+  }
+  
   // Create striped floor texture
   const floorTexture = useMemo(() => {
     const canvas = document.createElement('canvas');
@@ -313,7 +318,7 @@ const SceneContent: React.FC<{ allMediaObjects: any[], projectData: ProjectData 
       />
 
       {/* Clean white gallery environment */}
-      <Environment preset="city" background={false} />
+      <Environment preset="sunset" background={false} />
       
       {/* Force white background */}
       <color attach="background" args={['#ffffff']} />
@@ -346,7 +351,6 @@ const SceneContent: React.FC<{ allMediaObjects: any[], projectData: ProjectData 
         color="#333333"
         anchorX="center"
         anchorY="middle"
-        font="/fonts/Inter-Regular.woff"
       >
         {projectData.name}
       </Text>
@@ -358,11 +362,16 @@ const SceneContent: React.FC<{ allMediaObjects: any[], projectData: ProjectData 
         color="#666666"
         anchorX="center"
         anchorY="middle"
-        font="/fonts/Inter-Regular.woff"
       >
         {allMediaObjects.length} media object{allMediaObjects.length !== 1 ? 's' : ''}
       </Text>
 
+      {/* Test cube to verify 3D rendering works */}
+      <mesh position={[5, 2, 0]}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color="#ff0000" />
+      </mesh>
+      
       {/* Render all media objects - debugging */}
       {allMediaObjects.map((mediaObj, index) => (
         <MediaCard key={mediaObj.id || index} mediaObject={mediaObj} />
