@@ -6,7 +6,6 @@ import { Project } from '../services/projectService';
 import { VisibilityContext } from './Scene';
 import R3FErrorBoundary from './R3FErrorBoundary';
 import useMobileDetection from '../hooks/useMobileDetection';
-import { useWorld } from '../context/WorldContext';
 
 interface ProjectWindowProps {
   project: Project;
@@ -37,8 +36,7 @@ const ProjectWindow = React.memo(({ project, position }: ProjectWindowProps) => 
   // Get visibility tools from context
   const { registerPosition, unregisterPosition, checkOverlap } = useContext(VisibilityContext);
 
-  // Get world context for navigation
-  const { setCurrentWorldId } = useWorld();
+  // Navigation is now handled via URL changes
 
   // Generate a stable ID for this card
   const idRef = useRef<number>(project.id);
@@ -126,16 +124,15 @@ const ProjectWindow = React.memo(({ project, position }: ProjectWindowProps) => 
     
     console.log("ProjectWindow clicked - navigating to project subworld");
     
-    // Navigate to the project world using the proper world ID format
-    const projectWorldId = `project-world-${project.id}`;
-    console.log(`Navigating to project world: ${projectWorldId}`);
-    setCurrentWorldId(projectWorldId);
+    // Use URL navigation instead of world context for consistency between localhost and GitHub
+    console.log(`Navigating to project: ${project.id} via URL`);
+    window.location.href = `/project/${project.id}`;
     
     // Reset after a brief delay
     setTimeout(() => setClicked(false), 300);
     
     return false;
-  }, [project.id, setCurrentWorldId]);
+  }, [project.id]);
 
   // 16:9 aspect ratio dimensions, lighter default size
   const width = 320;

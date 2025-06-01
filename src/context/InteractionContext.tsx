@@ -47,9 +47,8 @@ export const InteractionProvider: React.FC<{ children: ReactNode }> = ({ childre
 
     // Logic moved from InteractionButton/useEffect
     if (data.projectId !== undefined) {
-      const subWorldId = `project-world-${data.projectId}`;
-      console.log(`[InteractionContext] Navigating to project ${data.projectId} -> ${subWorldId}`);
-      setCurrentWorldId(subWorldId);
+      console.log(`[InteractionContext] Navigating to project ${data.projectId} via URL`);
+      window.location.href = `/project/${data.projectId}`;
     } else if (data.type === 'button' && data.action === 'navigate') {
       const { destination, subWorldId } = data;
       if (destination === 'hub' || destination === 'mainWorld') {
