@@ -275,7 +275,7 @@ const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
       onPointerOut={() => setHovered(false)}
     >
       {/* Main card mesh with dynamic aspect ratio-based geometry */}
-      <mesh ref={meshRef}>
+      <mesh ref={meshRef} key={`${dimensions.width}-${dimensions.height}`}>
         <boxGeometry args={[dimensions.width, dimensions.height, 0.05]} />
         <meshStandardMaterial 
           map={texture} 
@@ -584,12 +584,12 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
         id: `asset-${index}`,
         type: asset.type,
         title: getAssetTitle(asset.url),
-        description: `${getAssetTitle(asset.url)} from ${projectData.name}`,
+        description: getAssetTitle(asset.url),
         url: asset.url,
         thumbnail: asset.url,
         position,
         rotation: [0, randomRotationY, 0] as [number, number, number], // Only Y rotation, no tilting
-        scale: [1.2 * scaleVariation, 0.9 * scaleVariation, 0.1] as [number, number, number]
+        scale: [2.0 * scaleVariation, 1.5 * scaleVariation, 0.1] as [number, number, number]
       };
     });
     
@@ -602,7 +602,7 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
   return (
     <div style={{ width: '100vw', height: '100vh', backgroundColor }}>
       <Canvas 
-        camera={{ position: [0, 5, 15], fov: 60 }}
+        camera={{ position: [0, 8, 25], fov: 75 }}
         style={{ background: backgroundColor }}
       >
         <Suspense fallback={null}>

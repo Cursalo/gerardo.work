@@ -71,7 +71,7 @@
       "title": "Project Website",
       "description": "Full project details and documentation for Burgertify.",
       "url": "/projects/Burgertify/index.html",
-      "thumbnail": "/projects/Burgertify/assets/images/Burgertify Logo.png",
+      "thumbnail": "/projects/Burgertify/assets/images/Burgertify Logo.webp",
       "position": [
         4,
         2,
@@ -91,300 +91,298 @@
   ],
   "assetGallery": [
     {
-      "name": "Arcades.JPG",
+      "name": "Arcades.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Arcades.JPG"
+      "url": "/projects/Burgertify/assets/images/Arcades.webp"
     },
     {
-      "name": "Arcades2.jpg",
+      "name": "Arcades2.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Arcades2.jpg"
+      "url": "/projects/Burgertify/assets/images/Arcades2.webp"
     },
     {
-      "name": "Arcades3.jpg",
+      "name": "Arcades3.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Arcades3.jpg"
+      "url": "/projects/Burgertify/assets/images/Arcades3.webp"
     },
     {
-      "name": "B.jpg",
+      "name": "B.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/B.jpg"
+      "url": "/projects/Burgertify/assets/images/B.webp"
     },
     {
-      "name": "Belgrano Architecture.JPG",
+      "name": "Belgrano Architecture.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Belgrano Architecture.JPG"
+      "url": "/projects/Burgertify/assets/images/Belgrano Architecture.webp"
     },
     {
-      "name": "Belgrano.JPG",
+      "name": "Belgrano.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Belgrano.JPG"
+      "url": "/projects/Burgertify/assets/images/Belgrano.webp"
     },
     {
-      "name": "Birthday.JPG",
+      "name": "Birthday.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Birthday.JPG"
+      "url": "/projects/Burgertify/assets/images/Birthday.webp"
     },
     {
-      "name": "Bread.JPG",
+      "name": "Bread.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Bread.JPG"
+      "url": "/projects/Burgertify/assets/images/Bread.webp"
     },
     {
-      "name": "Building Belgrano.JPG",
+      "name": "Building Belgrano.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Building Belgrano.JPG"
+      "url": "/projects/Burgertify/assets/images/Building Belgrano.webp"
     },
     {
-      "name": "Building Recoleta.JPG",
+      "name": "Building Recoleta.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Building Recoleta.JPG"
+      "url": "/projects/Burgertify/assets/images/Building Recoleta.webp"
     },
     {
-      "name": "Built Mario.JPG",
+      "name": "Built Mario.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Built Mario.JPG"
+      "url": "/projects/Burgertify/assets/images/Built Mario.webp"
     },
     {
-      "name": "Burgers.jpg",
+      "name": "Burgers.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Burgers.jpg"
+      "url": "/projects/Burgertify/assets/images/Burgers.webp"
     },
     {
-      "name": "Burgertify Club Card 1.JPG",
+      "name": "Burgertify Club Card 1.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Burgertify Club Card 1.JPG"
+      "url": "/projects/Burgertify/assets/images/Burgertify Club Card 1.webp"
     },
     {
-      "name": "Burgertify Club Card 2.JPG",
+      "name": "Burgertify Club Card 2.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Burgertify Club Card 2.JPG"
+      "url": "/projects/Burgertify/assets/images/Burgertify Club Card 2.webp"
     },
     {
-      "name": "Burgertify Front.JPG",
+      "name": "Burgertify Front.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Burgertify Front.JPG"
+      "url": "/projects/Burgertify/assets/images/Burgertify Front.webp"
     },
     {
-      "name": "Burgertify Logo.png",
+      "name": "Burgertify Logo.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Burgertify Logo.png"
+      "url": "/projects/Burgertify/assets/images/Burgertify Logo.webp"
     },
     {
-      "name": "Construction Belgrano2.JPG",
+      "name": "Construction Belgrano2.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Construction Belgrano2.JPG"
+      "url": "/projects/Burgertify/assets/images/Construction Belgrano2.webp"
     },
     {
-      "name": "Costa Rica Mural.JPG",
+      "name": "Costa Rica Mural.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Costa Rica Mural.JPG"
+      "url": "/projects/Burgertify/assets/images/Costa Rica Mural.webp"
     },
     {
-      "name": "Donkey Donut.jpg",
+      "name": "Donkey Donut.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Donkey Donut.jpg"
+      "url": "/projects/Burgertify/assets/images/Donkey Donut.webp"
     },
     {
-      "name": "Friends.JPG",
+      "name": "Friends.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Friends.JPG"
+      "url": "/projects/Burgertify/assets/images/Friends.webp"
     },
     {
-      "name": "Frogger.jpg",
+      "name": "Frogger.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Frogger.jpg"
+      "url": "/projects/Burgertify/assets/images/Frogger.webp"
     },
     {
-      "name": "Front.JPG",
+      "name": "Front.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Front.JPG"
+      "url": "/projects/Burgertify/assets/images/Front.webp"
     },
     {
-      "name": "Honduras 2nd Floor.JPG",
+      "name": "Honduras 2nd Floor.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Honduras 2nd Floor.JPG"
+      "url": "/projects/Burgertify/assets/images/Honduras 2nd Floor.webp"
     },
     {
-      "name": "Honduras Patio.jpg",
+      "name": "Honduras Patio.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Honduras Patio.jpg"
+      "url": "/projects/Burgertify/assets/images/Honduras Patio.webp"
     },
     {
-      "name": "Honduras Shades.jpg",
+      "name": "Honduras Shades.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Honduras Shades.jpg"
-    },
-
-    {
-      "name": "Ice Climber.jpg",
-      "type": "image",
-      "category": "images",
-      "url": "/projects/Burgertify/assets/images/Ice Climber.jpg"
+      "url": "/projects/Burgertify/assets/images/Honduras Shades.webp"
     },
     {
-      "name": "Lamps.JPG",
+      "name": "Ice Climber.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Lamps.JPG"
+      "url": "/projects/Burgertify/assets/images/Ice Climber.webp"
     },
     {
-      "name": "Lamps2.JPG",
+      "name": "Lamps.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Lamps2.JPG"
+      "url": "/projects/Burgertify/assets/images/Lamps.webp"
     },
     {
-      "name": "Mario.JPEG",
+      "name": "Lamps2.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Mario.JPEG"
+      "url": "/projects/Burgertify/assets/images/Lamps2.webp"
     },
     {
-      "name": "NES Alpha.JPG",
+      "name": "Mario.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/NES Alpha.JPG"
+      "url": "/projects/Burgertify/assets/images/Mario.webp"
     },
     {
-      "name": "Pac-Man.JPG",
+      "name": "NES Alpha.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Pac-Man.JPG"
+      "url": "/projects/Burgertify/assets/images/NES Alpha.webp"
     },
     {
-      "name": "Patio 3.jpg",
+      "name": "Pac-Man.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Patio 3.jpg"
+      "url": "/projects/Burgertify/assets/images/Pac-Man.webp"
     },
     {
-      "name": "Patio Tournament.JPG",
+      "name": "Patio 3.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Patio Tournament.JPG"
+      "url": "/projects/Burgertify/assets/images/Patio 3.webp"
     },
     {
-      "name": "Patio by night.JPG",
+      "name": "Patio Tournament.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Patio by night.JPG"
+      "url": "/projects/Burgertify/assets/images/Patio Tournament.webp"
     },
     {
-      "name": "Patio.JPG",
+      "name": "Patio by night.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Patio.JPG"
-    },
-
-    {
-      "name": "Patio2.JPG",
-      "type": "image",
-      "category": "images",
-      "url": "/projects/Burgertify/assets/images/Patio2.JPG"
+      "url": "/projects/Burgertify/assets/images/Patio by night.webp"
     },
     {
-      "name": "Patio3.JPG",
+      "name": "Patio.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Patio3.JPG"
+      "url": "/projects/Burgertify/assets/images/Patio.webp"
     },
     {
-      "name": "People.JPG",
+      "name": "Patio2.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/People.JPG"
+      "url": "/projects/Burgertify/assets/images/Patio2.webp"
     },
     {
-      "name": "Promo.JPG",
+      "name": "Patio3.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Promo.JPG"
+      "url": "/projects/Burgertify/assets/images/Patio3.webp"
     },
     {
-      "name": "TV.JPG",
+      "name": "People.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/TV.JPG"
+      "url": "/projects/Burgertify/assets/images/People.webp"
     },
     {
-      "name": "Tanooki Combo.jpg",
+      "name": "Promo.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Tanooki Combo.jpg"
+      "url": "/projects/Burgertify/assets/images/Promo.webp"
     },
     {
-      "name": "Tanooki.JPG",
+      "name": "TV.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Tanooki.JPG"
+      "url": "/projects/Burgertify/assets/images/TV.webp"
     },
     {
-      "name": "Team.JPG",
+      "name": "Tanooki Combo.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Team.JPG"
+      "url": "/projects/Burgertify/assets/images/Tanooki Combo.webp"
     },
     {
-      "name": "The Chainsmokers .JPG",
+      "name": "Tanooki.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/The Chainsmokers .JPG"
+      "url": "/projects/Burgertify/assets/images/Tanooki.webp"
     },
     {
-      "name": "Tournament Patio.JPG",
+      "name": "Team.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Tournament Patio.JPG"
+      "url": "/projects/Burgertify/assets/images/Team.webp"
     },
     {
-      "name": "Tournament.JPG",
+      "name": "The Chainsmokers .webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Tournament.JPG"
+      "url": "/projects/Burgertify/assets/images/The Chainsmokers .webp"
     },
     {
-      "name": "Tunnel.jpg",
+      "name": "Tournament Patio.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Tunnel.jpg"
+      "url": "/projects/Burgertify/assets/images/Tournament Patio.webp"
     },
     {
-      "name": "Website.JPG",
+      "name": "Tournament.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Website.JPG"
+      "url": "/projects/Burgertify/assets/images/Tournament.webp"
     },
     {
-      "name": "Wonder Boy.jpg",
+      "name": "Tunnel.webp",
       "type": "image",
       "category": "images",
-      "url": "/projects/Burgertify/assets/images/Wonder Boy.jpg"
+      "url": "/projects/Burgertify/assets/images/Tunnel.webp"
+    },
+    {
+      "name": "Website.webp",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Website.webp"
+    },
+    {
+      "name": "Wonder Boy.webp",
+      "type": "image",
+      "category": "images",
+      "url": "/projects/Burgertify/assets/images/Wonder Boy.webp"
     },
     {
       "name": "Burgertify Main Video",
@@ -393,62 +391,62 @@
       "url": "/projects/Burgertify/assets/videos/Burgertify .MP4"
     },
     {
-      "name": "Lamp Building",
+      "name": "Lamp Building.MP4",
       "type": "video",
       "category": "videos",
       "url": "/projects/Burgertify/assets/videos/Lamp Building.MP4"
     },
     {
-      "name": "Lamp Building 2",
+      "name": "Lamp Building 2.MP4",
       "type": "video",
       "category": "videos",
       "url": "/projects/Burgertify/assets/videos/Lamp Building 2.MP4"
     },
     {
-      "name": "Lamp Building 3",
+      "name": "Lamp Building 3.MP4",
       "type": "video",
       "category": "videos",
       "url": "/projects/Burgertify/assets/videos/Lamp Building 3.MP4"
     },
     {
-      "name": "Animation",
+      "name": "Animation.MP4",
       "type": "video",
       "category": "videos",
       "url": "/projects/Burgertify/assets/videos/Animation.MP4"
     },
     {
       "name": "Burgertify - Brandbook.pdf",
-      "type": "document",
+      "type": "pdf",
       "category": "documents",
       "url": "/projects/Burgertify/assets/documents/Burgertify - Brandbook.pdf"
     },
     {
       "name": "Burgertify Bag.pdf",
-      "type": "document",
+      "type": "pdf",
       "category": "documents",
       "url": "/projects/Burgertify/assets/documents/Burgertify Bag.pdf"
     },
     {
       "name": "Reciclaje Burgertify.pdf",
-      "type": "document",
+      "type": "pdf",
       "category": "documents",
       "url": "/projects/Burgertify/assets/documents/Reciclaje Burgertify.pdf"
     },
     {
       "name": "Burgertify Club App",
-      "type": "other",
+      "type": "html",
       "category": "preview",
       "url": "/projects/Burgertify/assets/preview/Burgertify Club App"
     },
     {
       "name": "Installing Belgrano Lamps",
-      "type": "other",
+      "type": "html",
       "category": "preview",
       "url": "/projects/Burgertify/assets/preview/Installing Belgrano Lamps"
     },
     {
       "name": "Lamp Making",
-      "type": "other",
+      "type": "html",
       "category": "preview",
       "url": "/projects/Burgertify/assets/preview/Lamp Making"
     }
