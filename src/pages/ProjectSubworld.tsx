@@ -21,6 +21,7 @@ const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
   const groupRef = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.Mesh>(null);
   const geometryRef = useRef<THREE.BoxGeometry>(null);
+  const [isVisible, setIsVisible] = useState(false);
   
   // Detect mobile device
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -119,40 +120,69 @@ const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
   
   // Removed complex initialization - using static values
   
-  // SIMPLE texture loading - no complex logic
+  // Check visibility on mount and load important textures first
   useEffect(() => {
-    if (!mediaObject.url) return;
+    const isImportantMedia = ['video', 'html'].includes(mediaObject.type) || !mediaObject.id?.startsWith('asset-');
+    if (isImportantMedia) {
+      setIsVisible(true); // Load important media immediately
+    } else {
+      // Gallery items load after a delay
+      const visibilityTimer = setTimeout(() => setIsVisible(true), Math.random() * 3000 + 1000);
+      return () => clearTimeout(visibilityTimer);
+    }
+  }, []);
+
+  // SMART texture loading with memory management
+  useEffect(() => {
+    if (!mediaObject.url || !isVisible) return;
     
     setIsLoading(true);
     setError(false);
     
-    const loader = new THREE.TextureLoader();
-    const textureUrl = normalizeUrl(mediaObject.url);
+    // Add delay for gallery items to prevent WebGL context loss
+    const isGalleryItem = mediaObject.id?.startsWith('asset-');
+    const loadDelay = isGalleryItem ? Math.random() * 2000 : 0; // Random delay up to 2 seconds
     
-    loader.load(
-      textureUrl,
-      (loadedTexture) => {
-        // Basic texture optimization
-        loadedTexture.minFilter = THREE.LinearFilter;
-        loadedTexture.magFilter = THREE.LinearFilter;
-        loadedTexture.generateMipmaps = false; // Disable for performance
-        
-        setTexture(loadedTexture);
-        setIsLoading(false);
-        console.log(`✅ Loaded texture: ${displayTitle}`);
-      },
-      undefined,
-      (error) => {
-        console.warn(`⚠️ Failed to load texture: ${displayTitle}`, error);
-        setError(true);
-        setIsLoading(false);
-      }
-    );
+    const loadTexture = () => {
+      const loader = new THREE.TextureLoader();
+      const textureUrl = normalizeUrl(mediaObject.url);
+      
+      loader.load(
+        textureUrl,
+        (loadedTexture) => {
+          // Aggressive texture optimization for WebGL stability
+          loadedTexture.minFilter = THREE.LinearFilter;
+          loadedTexture.magFilter = THREE.LinearFilter;
+          loadedTexture.generateMipmaps = false;
+          loadedTexture.flipY = false;
+          
+          // Reduce texture size for gallery items to save memory
+          if (isGalleryItem) {
+            loadedTexture.format = THREE.RGBFormat; // Use less memory
+          }
+          
+          setTexture(loadedTexture);
+          setIsLoading(false);
+          console.log(`✅ Loaded texture: ${displayTitle}`);
+        },
+        undefined,
+        (error) => {
+          console.warn(`⚠️ Failed to load texture: ${displayTitle}`, error);
+          setError(true);
+          setIsLoading(false);
+        }
+      );
+    };
+    
+    // Delayed loading for gallery items
+    const timeoutId = setTimeout(loadTexture, loadDelay);
     
     // Cleanup
     return () => {
+      clearTimeout(timeoutId);
       if (texture) {
         texture.dispose();
+        console.log(`🗑️ Disposed texture: ${displayTitle}`);
       }
     };
   }, [mediaObject.url]);
@@ -473,6 +503,30 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
       <Canvas 
         camera={{ position: [0, 15, 60], fov: 90 }}
         style={{ background: backgroundColor }}
+        gl={{
+          antialias: false, // Disable antialiasing to save memory
+          alpha: false,
+          powerPreference: "high-performance",
+          failIfMajorPerformanceCaveat: false,
+          preserveDrawingBuffer: false
+        }}
+        onCreated={(state) => {
+          // WebGL context recovery
+          const gl = state.gl.getContext();
+          const handleContextLost = (event: any) => {
+            event.preventDefault();
+            console.warn('🚨 WebGL context lost - attempting recovery');
+          };
+          
+          const handleContextRestored = () => {
+            console.log('✅ WebGL context restored');
+            // Force reload textures
+            window.location.reload();
+          };
+          
+          gl.canvas.addEventListener('webglcontextlost', handleContextLost);
+          gl.canvas.addEventListener('webglcontextrestored', handleContextRestored);
+        }}
       >
         <Suspense fallback={null}>
           {/* Lighting based on project settings */}
@@ -537,8 +591,8 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
             </Text>
           </group>
 
-          {/* Render all media objects as 3D cards */}
-          {allMediaObjects.map((mediaObj, index) => (
+          {/* Render media objects as 3D cards - LIMIT for performance */}
+          {allMediaObjects.slice(0, 30).map((mediaObj, index) => (
             <MediaCard key={mediaObj.id || index} mediaObject={mediaObj} />
           ))}
 
