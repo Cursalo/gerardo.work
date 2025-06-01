@@ -8,24 +8,31 @@ import * as THREE from 'three';
 
 interface ProjectSubworldProps {}
 
+// Define MediaCardProps at the top level
+interface MediaCardProps {
+  mediaObject: any;
+}
+
+type TextureQuality = 'placeholder' | 'loading_placeholder' | 'loaded_placeholder' | 'loading_full' | 'loaded_full' | 'error';
+
 // Enhanced MediaCard component that handles different media types
-const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
+const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
   const [hovered, setHovered] = useState(false);
-  const [texture, setTexture] = useState<THREE.Texture | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(false);
-  const aspectRatio = 1.5; // Static aspect ratio for simplicity
+  const [currentTexture, setCurrentTexture] = useState<THREE.Texture | null>(null);
+  const [textureQuality, setTextureQuality] = useState<TextureQuality>('loading_placeholder');
+  const [aspectRatio, setAspectRatio] = useState(1.5); // Initial default, will update
   const navigate = useNavigate();
   
-  // Add refs for animation and geometry updates
   const groupRef = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.Mesh>(null);
-  const geometryRef = useRef<THREE.BoxGeometry>(null);
-  const [isVisible, setIsVisible] = useState(false);
-  
+  const [isVisibleForFullLoad, setIsVisibleForFullLoad] = useState(false);
+
+  const placeholderUrl = mediaObject.thumbnail || mediaObject.url; // Prioritize thumbnail if available
+  const fullResUrl = mediaObject.url;
+
   // Detect mobile device
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  
+
   // WebP browser support detection
   const supportsWebP = (() => {
     try {
@@ -34,7 +41,7 @@ const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
       return false;
     }
   })();
-  
+
   // Extract filename from URL to use as title
   const getFilenameFromUrl = (url: string): string => {
     if (!url) return 'Untitled';
@@ -53,156 +60,138 @@ const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
       return 'Untitled';
     }
   };
-  
+
   // Get the display title - use filename if no title is provided
   const displayTitle = mediaObject.title || mediaObject.name || getFilenameFromUrl(mediaObject.url);
-  
+
   // Smart aspect ratio defaults based on content type and filename
   const getDefaultAspectRatio = (url: string, type: string): number => {
     const filename = url?.toLowerCase() || '';
     
-    // Known portrait formats
-    if (filename.includes('card') || filename.includes('poster') || type === 'pdf') {
-      return 0.67; // Portrait
-    }
-    
-    // Known square formats  
-    if (filename.includes('logo') || filename.includes('icon')) {
-      return 1.0; // Square
-    }
-    
-    // Wide formats
-    if (filename.includes('banner') || filename.includes('header')) {
-      return 2.5; // Wide banner
-    }
-    
-    // Default landscape
-    return 1.5; // Slightly wider than 4:3
-  };
-  
-  // Get fallback URL (WebP -> original format)
-  const getFallbackUrl = (originalUrl: string): string => {
-    if (!originalUrl) return '';
-    
-    // Normalize URL for production (handle www subdomain)
-    let normalizedUrl = originalUrl;
-    if (window.location.hostname === 'gerardo.work' && !normalizedUrl.startsWith('http')) {
-      normalizedUrl = `https://www.gerardo.work${normalizedUrl}`;
-    } else if (!normalizedUrl.startsWith('http') && normalizedUrl.startsWith('/')) {
-      // For local development, use relative URLs
-      normalizedUrl = normalizedUrl;
-    }
-    
-    // If it's already WebP and WebP isn't supported, try to find original
-    if (normalizedUrl.includes('.webp') && !supportsWebP) {
-      // Try common original formats
-      const baseUrl = normalizedUrl.replace('.webp', '');
-      const possibleExtensions = ['.jpg', '.jpeg', '.png', '.JPG', '.JPEG', '.PNG'];
-      
-      // For now, try .jpg as most common fallback
-      return baseUrl + '.jpg';
-    }
-    
-    return normalizedUrl;
+    if (type === 'pdf') return 0.67; // Portrait for PDFs
+    if (filename.includes('card') || filename.includes('poster')) return 0.67; // Portrait
+    if (filename.includes('logo') || filename.includes('icon')) return 1.0; // Square
+    if (filename.includes('banner') || filename.includes('header')) return 2.5; // Wide banner
+    return 1.77; // Default to 16:9 if not specified, common for videos/images
   };
   
   // Simple URL normalization for production
   const normalizeUrl = (url: string): string => {
     if (!url) return '';
-    
-    // If we're on production and URL is relative, make it absolute with www
     if (window.location.hostname === 'gerardo.work' && !url.startsWith('http')) {
       return `https://www.gerardo.work${url}`;
     }
-    
     return url;
   };
+
+  // Initialize aspect ratio based on media type/url
+  useEffect(() => {
+    setAspectRatio(getDefaultAspectRatio(mediaObject.url || mediaObject.thumbnail, mediaObject.type));
+  }, [mediaObject.url, mediaObject.thumbnail, mediaObject.type]);
   
-  // Removed complex initialization - using static values
-  
-  // Check visibility on mount and load important textures first
+  // Determine when to trigger full resolution load
   useEffect(() => {
     const isImportantMedia = ['video', 'html'].includes(mediaObject.type) || !mediaObject.id?.startsWith('asset-');
     if (isImportantMedia) {
-      setIsVisible(true); // Load important media immediately
+      setIsVisibleForFullLoad(true);
     } else {
-      // Gallery items load after a delay
-      const visibilityTimer = setTimeout(() => setIsVisible(true), Math.random() * 3000 + 1000);
+      const visibilityTimer = setTimeout(() => setIsVisibleForFullLoad(true), Math.random() * 2000 + 500); // Shorter delay
       return () => clearTimeout(visibilityTimer);
     }
-  }, []);
+  }, [mediaObject.type, mediaObject.id]);
 
-  // SMART texture loading with memory management
+  // Progressive Texture Loading (Placeholder -> Full Resolution)
   useEffect(() => {
-    if (!mediaObject.url || !isVisible) return;
-    
-    setIsLoading(true);
-    setError(false);
-    
-    // Add delay for gallery items to prevent WebGL context loss
-    const isGalleryItem = mediaObject.id?.startsWith('asset-');
-    const loadDelay = isGalleryItem ? Math.random() * 2000 : 0; // Random delay up to 2 seconds
-    
-    const loadTexture = () => {
-      const loader = new THREE.TextureLoader();
-      const textureUrl = normalizeUrl(mediaObject.url);
+    let isActive = true;
+    const loader = new THREE.TextureLoader();
+
+    // Determine if media is critical for initial load (used for texture format optimization)
+    const isImportantMedia = ['video', 'html'].includes(mediaObject.type) || !mediaObject.id?.startsWith('asset-');
+
+    const loadAndSetTexture = (urlToLoad: string, targetQuality: TextureQuality, successQuality: TextureQuality, isPlaceholder: boolean) => {
+      if (!urlToLoad) {
+        if (isActive) setTextureQuality('error');
+        return;
+      }
+      if (isActive) setTextureQuality(targetQuality);
+
+      const actualUrlToLoad = normalizeUrl(urlToLoad);
       
+      console.log(`🔄 (${displayTitle}) Loading ${isPlaceholder ? 'Placeholder' : 'FullRes'}: ${actualUrlToLoad}`);
+
       loader.load(
-        textureUrl,
-        (loadedTexture) => {
-          // Aggressive texture optimization for WebGL stability
-          loadedTexture.minFilter = THREE.LinearFilter;
-          loadedTexture.magFilter = THREE.LinearFilter;
-          loadedTexture.generateMipmaps = false;
-          loadedTexture.flipY = false;
-          
-          // Reduce texture size for gallery items to save memory
-          if (isGalleryItem) {
-            loadedTexture.format = THREE.RGBFormat; // Use less memory
+        actualUrlToLoad,
+        (loadedTex) => {
+          if (!isActive) {
+            loadedTex.dispose();
+            return;
+          }
+          loadedTex.minFilter = THREE.LinearFilter;
+          loadedTex.magFilter = THREE.LinearFilter;
+          loadedTex.generateMipmaps = false;
+          loadedTex.flipY = false; // Usually true for image textures, ensure consistency
+
+          // For placeholders or if WebGL performance is a concern, reduce format
+          if (isPlaceholder || (mediaObject.id?.startsWith('asset-') && !isImportantMedia)) {
+             loadedTex.format = THREE.RGBFormat; // Saves memory
           }
           
-          setTexture(loadedTexture);
-          setIsLoading(false);
-          console.log(`✅ Loaded texture: ${displayTitle}`);
+          // Update aspect ratio based on loaded texture (if it's an image and not a placeholder from thumbnail)
+          if (mediaObject.type === 'image' && !isPlaceholder && loadedTex.image) {
+            const newAR = loadedTex.image.width / loadedTex.image.height;
+            if (newAR && !isNaN(newAR) && isFinite(newAR)) {
+              setAspectRatio(newAR);
+              console.log(`📐 (${displayTitle}) Aspect ratio updated to: ${newAR.toFixed(2)}`);
+            }
+          }
+
+          setCurrentTexture(loadedTex);
+          setTextureQuality(successQuality);
+          console.log(`✅ (${displayTitle}) Loaded ${isPlaceholder ? 'Placeholder' : 'FullRes'}`);
         },
-        undefined,
-        (error) => {
-          console.warn(`⚠️ Failed to load texture: ${displayTitle}`, error);
-          setError(true);
-          setIsLoading(false);
+        undefined, // onProgress callback
+        (err) => {
+          if (!isActive) return;
+          console.warn(`⚠️ (${displayTitle}) Failed to load ${isPlaceholder ? 'Placeholder' : 'FullRes'} from ${actualUrlToLoad}:`, err);
+          setTextureQuality('error');
         }
       );
     };
+
+    // Stage 1: Load Placeholder
+    if (textureQuality === 'loading_placeholder') {
+      loadAndSetTexture(placeholderUrl, 'loading_placeholder', 'loaded_placeholder', true);
+    }
+
+    // Stage 2: Load Full Resolution (if ready and different from placeholder)
+    if (textureQuality === 'loaded_placeholder' && isVisibleForFullLoad && fullResUrl && fullResUrl !== placeholderUrl) {
+      loadAndSetTexture(fullResUrl, 'loading_full', 'loaded_full', false);
+    } else if (textureQuality === 'loaded_placeholder' && isVisibleForFullLoad && (!fullResUrl || fullResUrl === placeholderUrl)) {
+      // If placeholder is the only/best URL, consider it loaded_full
+      if (isActive) setTextureQuality('loaded_full');
+    }
     
-    // Delayed loading for gallery items
-    const timeoutId = setTimeout(loadTexture, loadDelay);
-    
-    // Cleanup
     return () => {
-      clearTimeout(timeoutId);
-      if (texture) {
-        texture.dispose();
-        console.log(`🗑️ Disposed texture: ${displayTitle}`);
+      isActive = false;
+      if (currentTexture) {
+        currentTexture.dispose();
+        console.log(`🗑️ (${displayTitle}) Disposed texture on unmount/change.`);
       }
     };
-  }, [mediaObject.url]);
+  }, [mediaObject.url, mediaObject.thumbnail, displayTitle, textureQuality, isVisibleForFullLoad, placeholderUrl, fullResUrl, mediaObject.type, mediaObject.id]);
   
-  // Simple static dimensions - no dynamic updates
-  const baseWidth = isMobile ? 2.5 : 3.0;
-  const baseHeight = baseWidth / aspectRatio;
-  const finalWidth = baseWidth;
-  const finalHeight = baseHeight;
+  // Base dimensions, will be scaled by aspectRatio
+  const baseDimension = isMobile ? 2.0 : 2.5; // Smaller base for mobile
+  const finalHeight = baseDimension;
+  const finalWidth = baseDimension * aspectRatio;
 
   // Simplified animation 
   useFrame((state) => {
     if (groupRef.current) {
       const time = state.clock.elapsedTime;
-      
-      // Simple floating motion
       const baseY = mediaObject.position[1] || 2;
-      groupRef.current.position.y = baseY + Math.sin(time * 0.5) * 0.1;
+      groupRef.current.position.y = baseY + Math.sin(time * 0.5 + (mediaObject.id?.length || 0) * 0.1) * 0.1; // Add slight variation
       
-      // Simple hover scale
       if (hovered) {
         groupRef.current.scale.setScalar(1.05);
       } else {
@@ -212,83 +201,72 @@ const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
   });
 
   const handleClick = () => {
-    console.log('MediaCard clicked:', mediaObject);
-    
-    // Handle different click actions based on media type
-    if (mediaObject.type === 'video' && mediaObject.url) {
-      window.open(mediaObject.url, '_blank');
-    } else if (mediaObject.type === 'image' && mediaObject.url) {
-      window.open(mediaObject.url, '_blank');
-    } else if (mediaObject.type === 'html' && mediaObject.url) {
-      window.open(mediaObject.url, '_blank');
-    } else if (mediaObject.type === 'pdf' && mediaObject.url) {
-      window.open(mediaObject.url, '_blank');
-    } else if (mediaObject.url) {
-      window.open(mediaObject.url, '_blank');
+    console.log('MediaCard clicked:', mediaObject, `Current URL: ${normalizeUrl(mediaObject.url)}`);
+    const targetUrl = normalizeUrl(mediaObject.url);
+    if (targetUrl) {
+      window.open(targetUrl, '_blank');
     }
   };
 
-  // Apply custom scale if provided, otherwise use calculated dimensions
-  const scale = mediaObject.scale || [1, 1, 0.1];
-  const position = mediaObject.position || [0, 2, 0];
-  const rotation = mediaObject.rotation || [0, 0, 0];
+  // Apply custom scale if provided, otherwise use calculated dimensions for the card itself
+  const objectScale = mediaObject.scale || [1, 1, 1]; // This scale is for the group
+
+  const showLoadingIndicator = textureQuality === 'loading_placeholder' || textureQuality === 'loading_full';
+  const showErrorIndicator = textureQuality === 'error';
 
   return (
     <group 
       ref={groupRef}
-      position={position} 
-      rotation={[rotation[0], rotation[1], rotation[2]]}
-      scale={scale}
+      position={mediaObject.position || [0, 2, 0]} 
+      rotation={mediaObject.rotation || [0, 0, 0]}
+      scale={objectScale} // Use the scale from project.json for the group
       onClick={handleClick}
       onPointerOver={() => setHovered(true)}
       onPointerOut={() => setHovered(false)}
     >
-      {/* Main card mesh with simple geometry */}
       <mesh ref={meshRef}>
         <boxGeometry args={[finalWidth, finalHeight, 0.05]} />
         <meshStandardMaterial 
-          map={texture} 
-          color={error ? "#ff6b6b" : "#ffffff"}
-          emissive={hovered ? "#333333" : "#000000"}
-          emissiveIntensity={hovered ? 0.15 : 0}
-          metalness={0.1}
-          roughness={0.7}
+          map={currentTexture} 
+          color={textureQuality === 'error' ? "#ff6b6b" : (showLoadingIndicator ? "#555555" : "#ffffff")}
+          emissive={hovered ? "#444444" : "#000000"} // Slightly brighter emissive
+          emissiveIntensity={hovered ? 0.2 : 0}
+          metalness={0.2} // A bit more metallic
+          roughness={0.6} // A bit less rough
+          transparent={showLoadingIndicator}
+          opacity={showLoadingIndicator ? 0.7 : 1.0}
         />
       </mesh>
       
-      {/* Enhanced glow effect when hovered */}
       {hovered && (
         <mesh position={[0, 0, -0.01]}>
-          <boxGeometry args={[finalWidth * 1.1, finalHeight * 1.1, 0.02]} />
-          <meshBasicMaterial 
-            color="#4CAF50" 
-            transparent 
-            opacity={0.4}
-          />
+          <boxGeometry args={[finalWidth * 1.05, finalHeight * 1.05, 0.02]} />
+          <meshBasicMaterial color="#66bb6a" transparent opacity={0.3} />
         </mesh>
       )}
       
-      {/* Title text using filename */}
       <Text
-        position={[0, -finalHeight * 0.65, 0.03]}
-        fontSize={0.08}
-        color={hovered ? "#ffffff" : "#495057"}
+        position={[0, -finalHeight * 0.6, 0.03]} // Adjusted Y position
+        fontSize={Math.min(finalWidth, finalHeight) * 0.08} // Responsive font size
+        color={hovered ? "#f0f0f0" : "#cccccc"}
         anchorX="center"
         anchorY="middle"
         maxWidth={finalWidth * 0.9}
+        outlineWidth={0.002}
+        outlineColor="#222222"
       >
         {displayTitle}
       </Text>
       
-      {/* Type indicator */}
+      {/* Type/Status indicator */}
       <Text
-        position={[finalWidth * 0.38, finalHeight * 0.38, 0.03]}
-        fontSize={0.045}
-        color={hovered ? "#28a745" : "#6c757d"}
-        anchorX="center"
-        anchorY="middle"
+        position={[finalWidth * 0.45, finalHeight * 0.45, 0.03]} // Corner
+        fontSize={Math.min(finalWidth, finalHeight) * 0.04} // Smaller responsive font
+        color={showErrorIndicator ? "#ff8a80" : (showLoadingIndicator ? "#ffeb3b" : "#a0a0a0")}
+        anchorX="right"
+        anchorY="top"
       >
-        {mediaObject.type?.toUpperCase() || 'MEDIA'}
+        {showErrorIndicator ? "ERROR" : (showLoadingIndicator ? "LOADING..." : mediaObject.type?.toUpperCase() || 'MEDIA')}
       </Text>
     </group>
   );
@@ -345,6 +323,13 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
 
     loadProject();
   }, [projectId, projectName]);
+
+  // Ensure THREE is available for gl settings if not already
+  useEffect(() => {
+    if (typeof THREE === 'undefined') {
+      console.error("THREE is not defined globally for ProjectSubworld gl settings!");
+    }
+  }, []);
 
   if (isLoading) {
     return (
@@ -591,8 +576,8 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
             </Text>
           </group>
 
-          {/* Render media objects as 3D cards - LIMIT for performance */}
-          {allMediaObjects.slice(0, 30).map((mediaObj, index) => (
+          {/* Render all media objects - progressive loading will handle performance */}
+          {allMediaObjects.map((mediaObj, index) => (
             <MediaCard key={mediaObj.id || index} mediaObject={mediaObj} />
           ))}
 
