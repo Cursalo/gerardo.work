@@ -162,12 +162,27 @@ class ProjectDataService {
     
     for (const projectName of expectedProjects) {
       try {
-        const response = await fetch(`/projects/${projectName}/project.json`);
+        // Get the proper URL for fetching project.json
+        const projectUrl = this.getProjectJsonUrl(projectName);
+        console.log(`ProjectDataService: Attempting to fetch ${projectName} from ${projectUrl}`);
+        
+        const response = await fetch(projectUrl, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+          },
+          // Add cache busting for development
+          cache: process.env.NODE_ENV === 'development' ? 'no-cache' : 'default'
+        });
+        
         if (response.ok) {
           projectNames.push(projectName);
-          console.log(`ProjectDataService: Found project directory: ${projectName}`);
+          console.log(`ProjectDataService: ✅ Successfully found project: ${projectName}`);
+        } else {
+          console.warn(`ProjectDataService: ❌ Failed to load ${projectName}: ${response.status} ${response.statusText}`);
         }
       } catch (error) {
+        console.warn(`ProjectDataService: ❌ Error fetching ${projectName}:`, error);
         // Silently skip projects that don't exist
       }
     }
@@ -176,19 +191,59 @@ class ProjectDataService {
     return projectNames;
   }
 
+  // Helper method to get the correct URL for project.json files
+  private getProjectJsonUrl(projectName: string): string {
+    // Handle different base path configurations
+    const basePath = import.meta.env.BASE_URL || '/';
+    
+    // Encode project name to handle spaces and special characters
+    const encodedProjectName = encodeURIComponent(projectName);
+    
+    // Build the URL - ensure it works in both dev and production
+    let url: string;
+    
+    if (basePath === '/' || basePath === '') {
+      // Standard deployment with root base path
+      url = `/projects/${encodedProjectName}/project.json`;
+    } else {
+      // Handle relative base paths (like './' from Vite config)
+      url = `${basePath}projects/${encodedProjectName}/project.json`;
+    }
+    
+    // Remove double slashes
+    url = url.replace(/\/+/g, '/');
+    
+    console.log(`ProjectDataService: Generated URL for ${projectName}: ${url}`);
+    return url;
+  }
+
   private async loadProjectData(projectName: string): Promise<ProjectData | null> {
     try {
-      const response = await fetch(`/projects/${projectName}/project.json`);
+      const projectUrl = this.getProjectJsonUrl(projectName);
+      console.log(`ProjectDataService: Loading project data from ${projectUrl}`);
+      
+      const response = await fetch(projectUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+        // Add cache busting for development
+        cache: process.env.NODE_ENV === 'development' ? 'no-cache' : 'default'
+      });
+      
       if (!response.ok) {
-        console.warn(`ProjectDataService: Failed to load project.json for ${projectName}:`, response.status);
+        console.warn(`ProjectDataService: Failed to load project.json for ${projectName}: ${response.status} ${response.statusText}`);
+        console.warn(`ProjectDataService: Response headers:`, Object.fromEntries(response.headers.entries()));
         return null;
       }
       
       const data = await response.json();
-      console.log(`ProjectDataService: Loaded data for ${projectName}:`, { 
+      console.log(`ProjectDataService: ✅ Successfully loaded data for ${projectName}:`, { 
         id: data.id, 
         name: data.name, 
-        customLink: data.customLink 
+        customLink: data.customLink,
+        mediaObjectsCount: data.mediaObjects?.length || 0,
+        assetGalleryCount: data.assetGallery?.length || 0
       });
       
       // Store in cache by project name for quick lookup
@@ -196,7 +251,7 @@ class ProjectDataService {
       
       return data;
     } catch (error) {
-      console.warn(`ProjectDataService: Error loading project data for ${projectName}:`, error);
+      console.error(`ProjectDataService: Error loading project data for ${projectName}:`, error);
       return null;
     }
   }

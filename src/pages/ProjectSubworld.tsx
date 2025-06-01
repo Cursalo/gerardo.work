@@ -161,12 +161,16 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
     
     return () => {
       isActive = false;
-      if (currentTexture) {
-        currentTexture.dispose();
-        console.log(`🗑️ (${displayTitle}) Disposed texture on unmount/change.`);
+      // Clean up the current texture, but only the one we created in this effect
+      const textureToDispose = currentTexture;
+      if (textureToDispose) {
+        setTimeout(() => {
+          textureToDispose.dispose();
+          console.log(`🗑️ (${displayTitle}) Disposed texture on unmount/change.`);
+        }, 0);
       }
     };
-  }, [textureQuality, isVisibleForFullLoad, placeholderUrl, fullResUrl, displayTitle, mediaObject.type]);
+  }, [textureQuality, isVisibleForFullLoad, placeholderUrl, fullResUrl, displayTitle, mediaObject.type]); // Removed currentTexture from dependencies to prevent infinite loop
   
   // Base dimensions, will be scaled by aspectRatio
   const baseDimension = isMobile ? 2.0 : 2.5;

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Loading Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .loading { background-color: #fff3cd; color: #856404; }
+    </style>
+</head>
+<body>
+    <h1>Project Loading Test</h1>
+    <div id="results"></div>
+    
+    <script>
+        async function testProjectLoading() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="loading">Testing project loading...</div>';
+            
+            const testProjects = ['Burgertify', 'Avatarmatic', 'Develop Argentina'];
+            const results = [];
+            
+            for (const projectName of testProjects) {
+                try {
+                    // Encode project name to handle spaces
+                    const encodedProjectName = encodeURIComponent(projectName);
+                    const url = `/projects/${encodedProjectName}/project.json`;
+                    
+                    console.log(`Testing: ${projectName} -> ${url}`);
+                    
+                    const response = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json',
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        results.push({
+                            project: projectName,
+                            status: 'success',
+                            data: { id: data.id, name: data.name, mediaObjects: data.mediaObjects?.length || 0, assetGallery: data.assetGallery?.length || 0 }
+                        });
+                    } else {
+                        results.push({
+                            project: projectName,
+                            status: 'error',
+                            error: `HTTP ${response.status}: ${response.statusText}`
+                        });
+                    }
+                } catch (error) {
+                    results.push({
+                        project: projectName,
+                        status: 'error',
+                        error: error.message
+                    });
+                }
+            }
+            
+            // Display results
+            let html = '<h2>Test Results:</h2>';
+            results.forEach(result => {
+                if (result.status === 'success') {
+                    html += `<div class="test-result success">
+                        ✅ <strong>${result.project}</strong>: Loaded successfully<br>
+                        ID: ${result.data.id}, Name: ${result.data.name}<br>
+                        Media Objects: ${result.data.mediaObjects}, Asset Gallery: ${result.data.assetGallery}
+                    </div>`;
+                } else {
+                    html += `<div class="test-result error">
+                        ❌ <strong>${result.project}</strong>: ${result.error}
+                    </div>`;
+                }
+            });
+            
+            const successCount = results.filter(r => r.status === 'success').length;
+            html += `<div class="test-result ${successCount === results.length ? 'success' : 'error'}">
+                <strong>Summary:</strong> ${successCount}/${results.length} projects loaded successfully
+            </div>`;
+            
+            resultsDiv.innerHTML = html;
+        }
+        
+        // Run test when page loads
+        window.addEventListener('load', testProjectLoading);
+    </script>
+</body>
+</html> 

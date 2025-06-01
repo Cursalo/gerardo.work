@@ -1,11 +1,36 @@
 {
   "rewrites": [
     {
-      "source": "/((?!api|_next|_static|_vercel|favicon.ico|public).*)",
+      "source": "/((?!api|_next|_static|_vercel|favicon.ico|public|projects).*)",
       "destination": "/index.html"
     }
   ],
   "headers": [
+    {
+      "source": "/projects/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Accept"
+        }
+      ]
+    },
     {
       "source": "/assets/(.*)",
       "headers": [
