@@ -67,7 +67,7 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
   const [currentTexture, setCurrentTexture] = useState<THREE.Texture | null>(null);
   const [textureQuality, setTextureQuality] = useState<TextureQuality>('loading_placeholder');
   const [aspectRatio, setAspectRatio] = useState(1.77); // Default 16:9, will be updated when image loads
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(true); // Start visible for gallery
   
   const groupRef = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.Mesh>(null);
@@ -80,13 +80,13 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
     return mediaObject.title || mediaObject.name || getFilenameFromUrl(mediaObject.url);
   }, [mediaObject.title, mediaObject.name, mediaObject.url]);
 
-  // Performance: Check visibility and distance
+  // Performance: Check visibility and distance (more generous for gallery)
   useFrame(() => {
     if (!groupRef.current || !camera) return;
     
     const distance = camera.position.distanceTo(groupRef.current.position);
     const wasVisible = isVisible;
-    const shouldBeVisible = distance < 50; // Only load if within 50 units
+    const shouldBeVisible = distance < 100; // Increased range for gallery viewing
     
     if (shouldBeVisible !== wasVisible) {
       setIsVisible(shouldBeVisible);
@@ -316,8 +316,11 @@ const SceneContent: React.FC<{ allMediaObjects: any[], projectData: ProjectData 
         shadow-camera-bottom={-50}
       />
 
-      {/* Clean gallery environment */}
-      <Environment preset="apartment" />
+      {/* Clean white gallery environment */}
+      <Environment preset="studio" background />
+      
+      {/* Force white background */}
+      <color attach="background" args={['#ffffff']} />
 
       {/* First Person Camera - same as main world */}
       <FirstPersonCamera 
@@ -340,24 +343,26 @@ const SceneContent: React.FC<{ allMediaObjects: any[], projectData: ProjectData 
         />
       </mesh>
 
-      {/* Project title */}
+      {/* Project title - dark text for white background */}
       <Text
         position={[0, 4, -5]}
         fontSize={0.5}
-        color="#ffffff"
+        color="#333333"
         anchorX="center"
         anchorY="middle"
+        font="/fonts/Inter-Regular.woff"
       >
         {projectData.name}
       </Text>
 
-      {/* Subtitle with media count */}
+      {/* Subtitle with media count - dark text */}
       <Text
         position={[0, 3.3, -5]}
         fontSize={0.2}
-        color="#cccccc"
+        color="#666666"
         anchorX="center"
         anchorY="middle"
+        font="/fonts/Inter-Regular.woff"
       >
         {allMediaObjects.length} media object{allMediaObjects.length !== 1 ? 's' : ''}
       </Text>
@@ -598,6 +603,9 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
               preserveDrawingBuffer: false
             }}
             onCreated={(state) => {
+              // Set white background
+              state.scene.background = new THREE.Color('#ffffff');
+              
               // WebGL context recovery
               const gl = state.gl.getContext();
               const handleContextLost = (event: any) => {
