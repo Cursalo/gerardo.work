@@ -1,4 +1,4 @@
-import React, { useEffect, useState, Suspense, useRef, useMemo } from 'react';
+import React, { useEffect, useState, Suspense, useRef, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Environment, Html, Text } from '@react-three/drei';
@@ -15,12 +15,53 @@ interface MediaCardProps {
 
 type TextureQuality = 'placeholder' | 'loading_placeholder' | 'loaded_placeholder' | 'loading_full' | 'loaded_full' | 'error';
 
+// Move utility functions outside component to prevent re-creation
+const getFilenameFromUrl = (url: string): string => {
+  if (!url) return 'Untitled';
+  
+  try {
+    const urlParts = url.split('/');
+    const filename = urlParts[urlParts.length - 1];
+    const nameWithoutExtension = filename.replace(/\.[^/.]+$/, '');
+    const cleanName = nameWithoutExtension
+      .replace(/[_-]/g, ' ')
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+    
+    return cleanName;
+  } catch (error) {
+    console.warn('Error extracting filename from URL:', url, error);
+    return 'Untitled';
+  }
+};
+
+// Smart aspect ratio defaults based on content type and filename
+const getDefaultAspectRatio = (url: string, type: string): number => {
+  const filename = url?.toLowerCase() || '';
+  
+  if (type === 'pdf') return 0.67; // Portrait for PDFs
+  if (filename.includes('card') || filename.includes('poster')) return 0.67; // Portrait
+  if (filename.includes('logo') || filename.includes('icon')) return 1.0; // Square
+  if (filename.includes('banner') || filename.includes('header')) return 2.5; // Wide banner
+  return 1.77; // Default to 16:9 if not specified, common for videos/images
+};
+
+// Simple URL normalization for production
+const normalizeUrl = (url: string): string => {
+  if (!url) return '';
+  if (window.location.hostname === 'gerardo.work' && !url.startsWith('http')) {
+    return `https://www.gerardo.work${url}`;
+  }
+  return url;
+};
+
 // Enhanced MediaCard component that handles different media types
 const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
   const [hovered, setHovered] = useState(false);
   const [currentTexture, setCurrentTexture] = useState<THREE.Texture | null>(null);
   const [textureQuality, setTextureQuality] = useState<TextureQuality>('loading_placeholder');
-  const [aspectRatio, setAspectRatio] = useState(1.5); // Initial default, will update
+  const [aspectRatio, setAspectRatio] = useState(() => 
+    getDefaultAspectRatio(mediaObject.url || mediaObject.thumbnail, mediaObject.type)
+  );
   const navigate = useNavigate();
   
   const groupRef = useRef<THREE.Group>(null);
@@ -43,136 +84,79 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
     }
   })();
 
-  // Extract filename from URL to use as title
-  const getFilenameFromUrl = (url: string): string => {
-    if (!url) return 'Untitled';
-    
-    try {
-      const urlParts = url.split('/');
-      const filename = urlParts[urlParts.length - 1];
-      const nameWithoutExtension = filename.replace(/\.[^/.]+$/, '');
-      const cleanName = nameWithoutExtension
-        .replace(/[_-]/g, ' ')
-        .replace(/\b\w/g, (char) => char.toUpperCase());
-      
-      return cleanName;
-    } catch (error) {
-      console.warn('Error extracting filename from URL:', url, error);
-      return 'Untitled';
-    }
-  };
-
   // Get the display title - use filename if no title is provided
-  // Memoize displayTitle
   const displayTitle = useMemo(() => {
     return mediaObject.title || mediaObject.name || getFilenameFromUrl(mediaObject.url);
   }, [mediaObject.title, mediaObject.name, mediaObject.url]);
 
-  // Smart aspect ratio defaults based on content type and filename
-  const getDefaultAspectRatio = (url: string, type: string): number => {
-    const filename = url?.toLowerCase() || '';
-    
-    if (type === 'pdf') return 0.67; // Portrait for PDFs
-    if (filename.includes('card') || filename.includes('poster')) return 0.67; // Portrait
-    if (filename.includes('logo') || filename.includes('icon')) return 1.0; // Square
-    if (filename.includes('banner') || filename.includes('header')) return 2.5; // Wide banner
-    return 1.77; // Default to 16:9 if not specified, common for videos/images
-  };
-  
-  // Simple URL normalization for production
-  const normalizeUrl = (url: string): string => {
-    if (!url) return '';
-    if (window.location.hostname === 'gerardo.work' && !url.startsWith('http')) {
-      return `https://www.gerardo.work${url}`;
-    }
-    return url;
-  };
-
-  // Initialize aspect ratio based on media type/url
-  useEffect(() => {
-    setAspectRatio(getDefaultAspectRatio(mediaObject.url || mediaObject.thumbnail, mediaObject.type));
-  }, [mediaObject.url, mediaObject.thumbnail, mediaObject.type]);
-  
   // Determine when to trigger full resolution load
   useEffect(() => {
     const isImportantMedia = ['video', 'html'].includes(mediaObject.type) || !mediaObject.id?.startsWith('asset-');
     if (isImportantMedia) {
       setIsVisibleForFullLoad(true);
     } else {
-      const visibilityTimer = setTimeout(() => setIsVisibleForFullLoad(true), Math.random() * 2000 + 500); // Shorter delay
+      const visibilityTimer = setTimeout(() => setIsVisibleForFullLoad(true), Math.random() * 2000 + 500);
       return () => clearTimeout(visibilityTimer);
     }
   }, [mediaObject.type, mediaObject.id]);
 
-  // Progressive Texture Loading (Placeholder -> Full Resolution)
+  // Simplified texture loading with stable dependencies
   useEffect(() => {
     let isActive = true;
     const loader = new THREE.TextureLoader();
 
-    // Determine if media is critical for initial load (used for texture format optimization)
-    const isImportantMedia = ['video', 'html'].includes(mediaObject.type) || !mediaObject.id?.startsWith('asset-');
-
-    const loadAndSetTexture = (urlToLoad: string, targetQuality: TextureQuality, successQuality: TextureQuality, isPlaceholder: boolean) => {
-      if (!urlToLoad) {
-        if (isActive) setTextureQuality('error');
-        return;
-      }
-      if (isActive) setTextureQuality(targetQuality);
-
-      const actualUrlToLoad = normalizeUrl(urlToLoad);
+    const loadTexture = async (urlToLoad: string, isPlaceholder: boolean) => {
+      if (!urlToLoad || !isActive) return;
       
+      const actualUrlToLoad = normalizeUrl(urlToLoad);
       console.log(`🔄 (${displayTitle}) Loading ${isPlaceholder ? 'Placeholder' : 'FullRes'}: ${actualUrlToLoad}`);
 
-      loader.load(
-        actualUrlToLoad,
-        (loadedTex) => {
-          if (!isActive) {
-            loadedTex.dispose();
-            return;
-          }
-          loadedTex.minFilter = THREE.LinearFilter;
-          loadedTex.magFilter = THREE.LinearFilter;
-          loadedTex.generateMipmaps = false;
-          loadedTex.flipY = false; // Usually true for image textures, ensure consistency
+      try {
+        const loadedTex = await new Promise<THREE.Texture>((resolve, reject) => {
+          loader.load(actualUrlToLoad, resolve, undefined, reject);
+        });
 
-          // For placeholders or if WebGL performance is a concern, reduce format
-          if (isPlaceholder || (mediaObject.id?.startsWith('asset-') && !isImportantMedia)) {
-             loadedTex.format = THREE.RGBFormat; // Saves memory
-          }
-          
-          // Update aspect ratio based on loaded texture (if it's an image and not a placeholder from thumbnail)
-          if (mediaObject.type === 'image' && !isPlaceholder && loadedTex.image) {
-            const newAR = loadedTex.image.width / loadedTex.image.height;
-            if (newAR && !isNaN(newAR) && isFinite(newAR)) {
-              setAspectRatio(newAR);
-              console.log(`📐 (${displayTitle}) Aspect ratio updated to: ${newAR.toFixed(2)}`);
-            }
-          }
-
-          setCurrentTexture(loadedTex);
-          setTextureQuality(successQuality);
-          console.log(`✅ (${displayTitle}) Loaded ${isPlaceholder ? 'Placeholder' : 'FullRes'}`);
-        },
-        undefined, // onProgress callback
-        (err) => {
-          if (!isActive) return;
-          console.warn(`⚠️ (${displayTitle}) Failed to load ${isPlaceholder ? 'Placeholder' : 'FullRes'} from ${actualUrlToLoad}:`, err);
-          setTextureQuality('error');
+        if (!isActive) {
+          loadedTex.dispose();
+          return;
         }
-      );
+
+        // Configure texture
+        loadedTex.minFilter = THREE.LinearFilter;
+        loadedTex.magFilter = THREE.LinearFilter;
+        loadedTex.generateMipmaps = false;
+        loadedTex.flipY = false;
+
+        // Update aspect ratio for images
+        if (mediaObject.type === 'image' && !isPlaceholder && loadedTex.image) {
+          const newAR = loadedTex.image.width / loadedTex.image.height;
+          if (newAR && !isNaN(newAR) && isFinite(newAR)) {
+            setAspectRatio(newAR);
+            console.log(`📐 (${displayTitle}) Aspect ratio updated to: ${newAR.toFixed(2)}`);
+          }
+        }
+
+        setCurrentTexture(loadedTex);
+        setTextureQuality(isPlaceholder ? 'loaded_placeholder' : 'loaded_full');
+        console.log(`✅ (${displayTitle}) Loaded ${isPlaceholder ? 'Placeholder' : 'FullRes'}`);
+
+      } catch (err) {
+        if (!isActive) return;
+        console.warn(`⚠️ (${displayTitle}) Failed to load ${isPlaceholder ? 'Placeholder' : 'FullRes'}:`, err);
+        setTextureQuality('error');
+      }
     };
 
-    // Stage 1: Load Placeholder
+    // Load placeholder first
     if (textureQuality === 'loading_placeholder') {
-      loadAndSetTexture(placeholderUrl, 'loading_placeholder', 'loaded_placeholder', true);
+      loadTexture(placeholderUrl, true);
     }
 
-    // Stage 2: Load Full Resolution (if ready and different from placeholder)
+    // Load full resolution when ready
     if (textureQuality === 'loaded_placeholder' && isVisibleForFullLoad && fullResUrl && fullResUrl !== placeholderUrl) {
-      loadAndSetTexture(fullResUrl, 'loading_full', 'loaded_full', false);
+      loadTexture(fullResUrl, false);
     } else if (textureQuality === 'loaded_placeholder' && isVisibleForFullLoad && (!fullResUrl || fullResUrl === placeholderUrl)) {
-      // If placeholder is the only/best URL, consider it loaded_full
-      if (isActive) setTextureQuality('loaded_full');
+      setTextureQuality('loaded_full');
     }
     
     return () => {
@@ -182,10 +166,10 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
         console.log(`🗑️ (${displayTitle}) Disposed texture on unmount/change.`);
       }
     };
-  }, [mediaObject.type, mediaObject.id, displayTitle, textureQuality, isVisibleForFullLoad, placeholderUrl, fullResUrl, normalizeUrl, getDefaultAspectRatio]); // Added normalizeUrl and getDefaultAspectRatio to dependencies, they are stable due to useCallback or being top-level
+  }, [textureQuality, isVisibleForFullLoad, placeholderUrl, fullResUrl, displayTitle, mediaObject.type]);
   
   // Base dimensions, will be scaled by aspectRatio
-  const baseDimension = isMobile ? 2.0 : 2.5; // Smaller base for mobile
+  const baseDimension = isMobile ? 2.0 : 2.5;
   const finalHeight = baseDimension;
   const finalWidth = baseDimension * aspectRatio;
 
@@ -194,7 +178,7 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
     if (groupRef.current) {
       const time = state.clock.elapsedTime;
       const baseY = mediaObject.position[1] || 2;
-      groupRef.current.position.y = baseY + Math.sin(time * 0.5 + (mediaObject.id?.length || 0) * 0.1) * 0.1; // Add slight variation
+      groupRef.current.position.y = baseY + Math.sin(time * 0.5 + (mediaObject.id?.length || 0) * 0.1) * 0.1;
       
       if (hovered) {
         groupRef.current.scale.setScalar(1.05);
@@ -205,73 +189,87 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
   });
 
   const handleClick = () => {
-    console.log('MediaCard clicked:', mediaObject, `Current URL: ${normalizeUrl(mediaObject.url)}`);
-    const targetUrl = normalizeUrl(mediaObject.url);
-    if (targetUrl) {
-      window.open(targetUrl, '_blank');
+    if (mediaObject.type === 'html' && mediaObject.url) {
+      window.open(mediaObject.url, '_blank');
+    } else if (mediaObject.type === 'pdf' && mediaObject.url) {
+      window.open(mediaObject.url, '_blank');
+    } else if (mediaObject.type === 'video' && mediaObject.url) {
+      window.open(mediaObject.url, '_blank');
     }
   };
-
-  // Apply custom scale if provided, otherwise use calculated dimensions for the card itself
-  const objectScale = mediaObject.scale || [1, 1, 1]; // This scale is for the group
-
-  const showLoadingIndicator = textureQuality === 'loading_placeholder' || textureQuality === 'loading_full';
-  const showErrorIndicator = textureQuality === 'error';
 
   return (
     <group 
       ref={groupRef}
-      position={mediaObject.position || [0, 2, 0]} 
+      position={mediaObject.position || [0, 2, 0]}
       rotation={mediaObject.rotation || [0, 0, 0]}
-      scale={objectScale} // Use the scale from project.json for the group
-      onClick={handleClick}
+      scale={mediaObject.scale || [1, 1, 1]}
       onPointerOver={() => setHovered(true)}
       onPointerOut={() => setHovered(false)}
+      onClick={handleClick}
     >
-      <mesh ref={meshRef}>
-        <boxGeometry args={[finalWidth, finalHeight, 0.05]} />
+      {/* Main card mesh */}
+      <mesh ref={meshRef} castShadow>
+        <planeGeometry args={[finalWidth, finalHeight]} />
         <meshStandardMaterial 
-          map={currentTexture} 
-          color={textureQuality === 'error' ? "#ff6b6b" : (showLoadingIndicator ? "#555555" : "#ffffff")}
-          emissive={hovered ? "#444444" : "#000000"} // Slightly brighter emissive
-          emissiveIntensity={hovered ? 0.2 : 0}
-          metalness={0.2} // A bit more metallic
-          roughness={0.6} // A bit less rough
-          transparent={showLoadingIndicator}
-          opacity={showLoadingIndicator ? 0.7 : 1.0}
+          map={currentTexture}
+          transparent={true}
+          side={THREE.DoubleSide}
+          color={textureQuality === 'error' ? '#ff4444' : '#ffffff'}
         />
       </mesh>
-      
-      {hovered && (
-        <mesh position={[0, 0, -0.01]}>
-          <boxGeometry args={[finalWidth * 1.05, finalHeight * 1.05, 0.02]} />
-          <meshBasicMaterial color="#66bb6a" transparent opacity={0.3} />
-        </mesh>
+
+      {/* Loading indicator */}
+      {(textureQuality === 'loading_placeholder' || textureQuality === 'loading_full') && (
+        <Html position={[0, 0, 0.1]} center>
+          <div style={{
+            color: 'white',
+            fontSize: '12px',
+            textAlign: 'center',
+            background: 'rgba(0,0,0,0.7)',
+            padding: '4px 8px',
+            borderRadius: '4px'
+          }}>
+            Loading...
+          </div>
+        </Html>
       )}
-      
+
+      {/* Error indicator */}
+      {textureQuality === 'error' && (
+        <Html position={[0, 0, 0.1]} center>
+          <div style={{
+            color: 'white',
+            fontSize: '12px',
+            textAlign: 'center',
+            background: 'rgba(255,0,0,0.7)',
+            padding: '4px 8px',
+            borderRadius: '4px'
+          }}>
+            Failed to load
+          </div>
+        </Html>
+      )}
+
+      {/* Title */}
       <Text
-        position={[0, -finalHeight * 0.6, 0.03]} // Adjusted Y position
-        fontSize={Math.min(finalWidth, finalHeight) * 0.08} // Responsive font size
-        color={hovered ? "#f0f0f0" : "#cccccc"}
+        position={[0, -finalHeight/2 - 0.3, 0]}
+        fontSize={0.15}
+        color="#ffffff"
         anchorX="center"
-        anchorY="middle"
-        maxWidth={finalWidth * 0.9}
-        outlineWidth={0.002}
-        outlineColor="#222222"
+        anchorY="top"
+        maxWidth={finalWidth}
       >
         {displayTitle}
       </Text>
-      
-      {/* Type/Status indicator */}
-      <Text
-        position={[finalWidth * 0.45, finalHeight * 0.45, 0.03]} // Corner
-        fontSize={Math.min(finalWidth, finalHeight) * 0.04} // Smaller responsive font
-        color={showErrorIndicator ? "#ff8a80" : (showLoadingIndicator ? "#ffeb3b" : "#a0a0a0")}
-        anchorX="right"
-        anchorY="top"
-      >
-        {showErrorIndicator ? "ERROR" : (showLoadingIndicator ? "LOADING..." : mediaObject.type?.toUpperCase() || 'MEDIA')}
-      </Text>
+
+      {/* Hover effect - border */}
+      {hovered && (
+        <mesh position={[0, 0, -0.01]}>
+          <planeGeometry args={[finalWidth + 0.1, finalHeight + 0.1]} />
+          <meshBasicMaterial color="#00ff88" transparent opacity={0.3} />
+        </mesh>
+      )}
     </group>
   );
 };
@@ -327,13 +325,6 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
 
     loadProject();
   }, [projectId, projectName]);
-
-  // Ensure THREE is available for gl settings if not already
-  useEffect(() => {
-    if (typeof THREE === 'undefined') {
-      console.error("THREE is not defined globally for ProjectSubworld gl settings!");
-    }
-  }, []);
 
   if (isLoading) {
     return (
@@ -447,7 +438,6 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
       
       // Randomize rotation for more organic look (KEEP MINIMAL - NO TILTING)
       const randomRotationY = seededRandom(index * 17 + 234, -0.3, 0.3); // Reduced rotation range
-      // REMOVE tilting rotations - keep cards straight
       
       // Varied scales for visual interest
       const scaleVariation = seededRandom(index * 23 + 890, 0.8, 1.3);
