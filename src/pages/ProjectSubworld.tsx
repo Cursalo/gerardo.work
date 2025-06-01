@@ -12,10 +12,10 @@ interface ProjectSubworldProps {}
 const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
   const [hovered, setHovered] = useState(false);
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false); // Changed: Start with false, don't block rendering
   const [error, setError] = useState(false);
-  const [aspectRatio, setAspectRatio] = useState(1.67); // Default 16:9 aspect ratio
-  const [dimensions, setDimensions] = useState({ width: 2.0, height: 1.2 });
+  const [aspectRatio, setAspectRatio] = useState(1.5); // Changed: Better default aspect ratio
+  const [dimensions, setDimensions] = useState({ width: 3.0, height: 2.0 }); // Changed: Larger default size
   const navigate = useNavigate();
   
   // Add refs for animation
@@ -24,6 +24,15 @@ const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
   
   // Detect mobile device
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  
+  // WebP browser support detection
+  const supportsWebP = (() => {
+    try {
+      return document.createElement('canvas').toDataURL('image/webp').indexOf('data:image/webp') === 0;
+    } catch (err) {
+      return false;
+    }
+  })();
   
   // Extract filename from URL to use as title
   const getFilenameFromUrl = (url: string): string => {
@@ -47,20 +56,84 @@ const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
   // Get the display title - use filename if no title is provided
   const displayTitle = mediaObject.title || mediaObject.name || getFilenameFromUrl(mediaObject.url);
   
-  // Update dimensions when aspect ratio changes
-  useEffect(() => {
-    const baseWidth = isMobile ? 1.8 : 2.2; // Slightly smaller on mobile
-    const baseHeight = baseWidth / aspectRatio;
-    const maxHeight = isMobile ? 2.5 : 3.0; // Lower max height on mobile
-    const finalHeight = Math.min(baseHeight, maxHeight);
-    const finalWidth = finalHeight * aspectRatio;
+  // Smart aspect ratio defaults based on content type and filename
+  const getDefaultAspectRatio = (url: string, type: string): number => {
+    const filename = url?.toLowerCase() || '';
     
-    setDimensions({ width: finalWidth, height: finalHeight });
-    console.log(`Updated dimensions for ${displayTitle}: ${finalWidth.toFixed(2)}x${finalHeight.toFixed(2)} (AR: ${aspectRatio.toFixed(2)})`);
-  }, [aspectRatio, displayTitle, isMobile]);
+    // Known portrait formats
+    if (filename.includes('card') || filename.includes('poster') || type === 'pdf') {
+      return 0.67; // Portrait
+    }
+    
+    // Known square formats  
+    if (filename.includes('logo') || filename.includes('icon')) {
+      return 1.0; // Square
+    }
+    
+    // Wide formats
+    if (filename.includes('banner') || filename.includes('header')) {
+      return 2.5; // Wide banner
+    }
+    
+    // Default landscape
+    return 1.5; // Slightly wider than 4:3
+  };
   
+  // Get fallback URL (WebP -> original format)
+  const getFallbackUrl = (originalUrl: string): string => {
+    if (!originalUrl) return '';
+    
+    // Normalize URL for production (handle www subdomain)
+    let normalizedUrl = originalUrl;
+    if (window.location.hostname === 'gerardo.work' && !normalizedUrl.startsWith('http')) {
+      normalizedUrl = `https://www.gerardo.work${normalizedUrl}`;
+    } else if (!normalizedUrl.startsWith('http') && normalizedUrl.startsWith('/')) {
+      // For local development, use relative URLs
+      normalizedUrl = normalizedUrl;
+    }
+    
+    // If it's already WebP and WebP isn't supported, try to find original
+    if (normalizedUrl.includes('.webp') && !supportsWebP) {
+      // Try common original formats
+      const baseUrl = normalizedUrl.replace('.webp', '');
+      const possibleExtensions = ['.jpg', '.jpeg', '.png', '.JPG', '.JPEG', '.PNG'];
+      
+      // For now, try .jpg as most common fallback
+      return baseUrl + '.jpg';
+    }
+    
+    return normalizedUrl;
+  };
+  
+  // Normalize URLs for production
+  const normalizeUrl = (url: string): string => {
+    if (!url) return '';
+    
+    // If we're on production and URL is relative, make it absolute with www
+    if (window.location.hostname === 'gerardo.work' && !url.startsWith('http')) {
+      return `https://www.gerardo.work${url}`;
+    }
+    
+    return url;
+  };
+  
+  // Initialize with smart defaults immediately
   useEffect(() => {
-    const loadTextureWithAspectRatio = async () => {
+    const defaultAR = getDefaultAspectRatio(mediaObject.url, mediaObject.type);
+    const baseWidth = isMobile ? 2.5 : 3.0;
+    const baseHeight = baseWidth / defaultAR;
+    
+    setAspectRatio(defaultAR);
+    setDimensions({ width: baseWidth, height: baseHeight });
+    
+    console.log(`Initialized ${displayTitle} with default AR: ${defaultAR.toFixed(2)}, size: ${baseWidth.toFixed(1)}x${baseHeight.toFixed(1)}`);
+  }, []); // Only run once on mount
+  
+  // Progressive texture loading (non-blocking)
+  useEffect(() => {
+    const loadTextureProgressively = async () => {
+      if (!mediaObject.url) return;
+      
       setIsLoading(true);
       setError(false);
       
@@ -70,14 +143,14 @@ const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
         
         // Handle different media types with proper URLs and placeholders
         if (mediaObject.type === 'image') {
-          textureUrl = mediaObject.url || mediaObject.thumbnail;
+          textureUrl = normalizeUrl(mediaObject.url || mediaObject.thumbnail);
           shouldDetectAspectRatio = true;
         } else if (mediaObject.type === 'video') {
-          textureUrl = mediaObject.thumbnail || mediaObject.url;
+          textureUrl = normalizeUrl(mediaObject.thumbnail || mediaObject.url);
           shouldDetectAspectRatio = !!mediaObject.thumbnail;
         } else if (mediaObject.type === 'pdf') {
           if (mediaObject.thumbnail) {
-            textureUrl = mediaObject.thumbnail;
+            textureUrl = normalizeUrl(mediaObject.thumbnail);
             shouldDetectAspectRatio = true;
           } else {
             // Create PDF placeholder with correct aspect ratio
@@ -95,10 +168,13 @@ const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
               </svg>
             `);
             setAspectRatio(400 / 600);
+            // Update dimensions immediately for PDF
+            const baseWidth = isMobile ? 2.5 : 3.0;
+            setDimensions({ width: baseWidth * 0.67, height: baseWidth });
           }
         } else if (mediaObject.type === 'html') {
           if (mediaObject.thumbnail) {
-            textureUrl = mediaObject.thumbnail;
+            textureUrl = normalizeUrl(mediaObject.thumbnail);
             shouldDetectAspectRatio = true;
           } else {
             // Create HTML placeholder with web aspect ratio
@@ -119,96 +195,153 @@ const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
               </svg>
             `);
             setAspectRatio(400 / 300);
+            // Update dimensions immediately for HTML
+            const baseWidth = isMobile ? 2.5 : 3.0;
+            setDimensions({ width: baseWidth, height: baseWidth * 0.75 });
           }
         } else {
-          textureUrl = mediaObject.url || mediaObject.thumbnail;
+          textureUrl = normalizeUrl(mediaObject.url || mediaObject.thumbnail);
           shouldDetectAspectRatio = !!textureUrl;
         }
         
-        // STEP 1: Detect aspect ratio first if needed
+        // Progressive aspect ratio detection (non-blocking)
         if (shouldDetectAspectRatio && textureUrl && !textureUrl.startsWith('data:')) {
-          try {
-            await new Promise<void>((resolve, reject) => {
-              const img = new Image();
-              img.crossOrigin = 'anonymous';
+          // Try multiple URLs with fallbacks
+          const urlsToTry = [
+            textureUrl,
+            getFallbackUrl(textureUrl)
+          ].filter(url => url && url !== textureUrl || url === textureUrl);
+          
+          let aspectRatioDetected = false;
+          
+          for (const url of urlsToTry) {
+            try {
+              await new Promise<void>((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                
+                const timeout = setTimeout(() => {
+                  reject(new Error('Timeout'));
+                }, 2000); // Shorter timeout
+                
+                img.onload = () => {
+                  clearTimeout(timeout);
+                  if (!aspectRatioDetected) {
+                    const detectedAspectRatio = img.width / img.height;
+                    setAspectRatio(detectedAspectRatio);
+                    
+                    // Update dimensions progressively
+                    const baseWidth = isMobile ? 2.5 : 3.0;
+                    const baseHeight = baseWidth / detectedAspectRatio;
+                    const maxHeight = isMobile ? 4.0 : 5.0;
+                    const finalHeight = Math.min(baseHeight, maxHeight);
+                    const finalWidth = finalHeight * detectedAspectRatio;
+                    
+                    setDimensions({ width: finalWidth, height: finalHeight });
+                    console.log(`✅ Enhanced ${displayTitle} with detected AR: ${detectedAspectRatio.toFixed(2)} (${img.width}x${img.height})`);
+                    aspectRatioDetected = true;
+                  }
+                  resolve();
+                };
+                
+                img.onerror = () => {
+                  clearTimeout(timeout);
+                  reject(new Error('Image load failed'));
+                };
+                
+                img.src = url;
+              });
               
-              img.onload = () => {
-                const detectedAspectRatio = img.width / img.height;
-                setAspectRatio(detectedAspectRatio);
-                console.log(`✅ Detected aspect ratio for ${displayTitle}: ${detectedAspectRatio.toFixed(2)} (${img.width}x${img.height})`);
-                resolve();
-              };
-              
-              img.onerror = (err) => {
-                console.warn(`⚠️ Failed to detect aspect ratio for ${displayTitle}:`, err);
-                setAspectRatio(1.67); // Fallback to 16:9
-                resolve(); // Don't reject, continue with fallback
-              };
-              
-              // Add timeout for mobile performance
-              setTimeout(() => {
-                console.warn(`⏱️ Aspect ratio detection timeout for ${displayTitle}`);
-                setAspectRatio(1.67);
-                resolve();
-              }, isMobile ? 3000 : 5000);
-              
-              img.src = textureUrl;
-            });
-          } catch (err) {
-            console.warn(`Error in aspect ratio detection for ${displayTitle}:`, err);
-            setAspectRatio(1.67);
+              // If we got here, aspect ratio was detected successfully
+              if (aspectRatioDetected) {
+                textureUrl = url; // Use the working URL for texture loading
+                break;
+              }
+            } catch (err) {
+              console.warn(`⚠️ Failed to detect aspect ratio for ${displayTitle} with URL ${url}:`, err);
+              continue; // Try next URL
+            }
           }
         }
         
-        // STEP 2: Load texture for display
+        // Load texture for display (independent of aspect ratio detection)
         if (textureUrl) {
-          const loader = new THREE.TextureLoader();
+          const urlsToTry = [
+            textureUrl,
+            getFallbackUrl(textureUrl)
+          ].filter(url => url && url !== textureUrl || url === textureUrl);
           
-          // Add mobile optimization - reduce quality for mobile devices
-          const optimizedUrl = textureUrl;
+          let textureLoaded = false;
           
-          const loadedTexture = await new Promise<THREE.Texture>((resolve, reject) => {
-            const timeoutId = setTimeout(() => {
-              reject(new Error(`Texture loading timeout for ${displayTitle}`));
-            }, isMobile ? 10000 : 15000);
-            
-            loader.load(
-              optimizedUrl,
-              (texture) => {
-                clearTimeout(timeoutId);
-                resolve(texture);
-              },
-              undefined,
-              (error) => {
-                clearTimeout(timeoutId);
-                reject(error);
+          for (const url of urlsToTry) {
+            try {
+              const loader = new THREE.TextureLoader();
+              
+              const loadedTexture = await new Promise<THREE.Texture>((resolve, reject) => {
+                const timeoutId = setTimeout(() => {
+                  reject(new Error(`Texture loading timeout for ${displayTitle}`));
+                }, 5000); // Reasonable timeout
+                
+                loader.load(
+                  url,
+                  (texture) => {
+                    clearTimeout(timeoutId);
+                    resolve(texture);
+                  },
+                  undefined,
+                  (error) => {
+                    clearTimeout(timeoutId);
+                    reject(error);
+                  }
+                );
+              });
+              
+              // Optimize texture settings for performance
+              loadedTexture.minFilter = THREE.LinearMipmapLinearFilter;
+              loadedTexture.magFilter = THREE.LinearFilter;
+              loadedTexture.generateMipmaps = true;
+              
+              if (isMobile) {
+                loadedTexture.format = THREE.RGBFormat;
               }
-            );
-          });
-          
-          // Optimize texture settings for performance
-          loadedTexture.minFilter = THREE.LinearMipmapLinearFilter;
-          loadedTexture.magFilter = THREE.LinearFilter;
-          loadedTexture.generateMipmaps = true;
-          
-          // Mobile optimization: reduce texture size
-          if (isMobile) {
-            loadedTexture.format = THREE.RGBFormat;
+              
+              setTexture(loadedTexture);
+              console.log(`✅ Loaded texture for ${displayTitle} using ${url}`);
+              textureLoaded = true;
+              break;
+            } catch (err) {
+              console.warn(`⚠️ Failed to load texture for ${displayTitle} with URL ${url}:`, err);
+              continue; // Try next URL
+            }
           }
           
-          setTexture(loadedTexture);
-          console.log(`✅ Loaded texture for ${displayTitle}`);
+          if (!textureLoaded) {
+            console.error(`❌ All texture loading attempts failed for ${displayTitle}`);
+            setError(true);
+          }
         }
       } catch (err) {
-        console.error(`❌ Error loading texture for ${displayTitle}:`, err);
+        console.error(`❌ Error in progressive loading for ${displayTitle}:`, err);
         setError(true);
       } finally {
         setIsLoading(false);
       }
     };
     
-    loadTextureWithAspectRatio();
-  }, [mediaObject, displayTitle, isMobile]);
+    // Start loading but don't block rendering
+    loadTextureProgressively();
+  }, [mediaObject.url, displayTitle, isMobile]);
+  
+  // Update dimensions when aspect ratio changes (smooth transition)
+  useEffect(() => {
+    const baseWidth = isMobile ? 2.5 : 3.0;
+    const baseHeight = baseWidth / aspectRatio;
+    const maxHeight = isMobile ? 4.0 : 5.0;
+    const finalHeight = Math.min(baseHeight, maxHeight);
+    const finalWidth = finalHeight * aspectRatio;
+    
+    setDimensions({ width: finalWidth, height: finalHeight });
+  }, [aspectRatio, isMobile]);
 
   // Animation with useFrame
   useFrame((state) => {
@@ -589,7 +722,7 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
         thumbnail: asset.url,
         position,
         rotation: [0, randomRotationY, 0] as [number, number, number], // Only Y rotation, no tilting
-        scale: [2.0 * scaleVariation, 1.5 * scaleVariation, 0.1] as [number, number, number]
+        scale: [5.0 * scaleVariation, 3.5 * scaleVariation, 0.1] as [number, number, number]
       };
     });
     
@@ -602,7 +735,7 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
   return (
     <div style={{ width: '100vw', height: '100vh', backgroundColor }}>
       <Canvas 
-        camera={{ position: [0, 8, 25], fov: 75 }}
+        camera={{ position: [0, 5, 15], fov: 80 }}
         style={{ background: backgroundColor }}
       >
         <Suspense fallback={null}>

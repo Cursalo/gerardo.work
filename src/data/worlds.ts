@@ -372,7 +372,7 @@ export const createProjectWorld = (project: Project, isTouchDevice: boolean): Wo
         thumbnail: asset.url,
         position,
         rotation: [0, randomRotationY, 0] as [number, number, number], // Only Y rotation, no tilting
-        scale: [2.0 * scaleVariation, 1.5 * scaleVariation, 0.1] as [number, number, number]
+        scale: [5.0 * scaleVariation, 3.5 * scaleVariation, 0.1] as [number, number, number]
       };
     });
     
