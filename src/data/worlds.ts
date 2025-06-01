@@ -347,11 +347,27 @@ export const createProjectWorld = (project: Project, isTouchDevice: boolean): Wo
       // Varied scales for visual interest
       const scaleVariation = seededRandom(index * 23 + 890, 0.8, 1.3);
       
+      // Extract filename for title
+      const getAssetTitle = (url: string): string => {
+        if (!url) return 'Untitled Asset';
+        
+        try {
+          const urlParts = url.split('/');
+          const filename = urlParts[urlParts.length - 1];
+          const nameWithoutExtension = filename.replace(/\.[^/.]+$/, '');
+          return nameWithoutExtension
+            .replace(/[_-]/g, ' ')
+            .replace(/\b\w/g, (char) => char.toUpperCase());
+        } catch (error) {
+          return asset.name || 'Untitled Asset';
+        }
+      };
+      
       return {
         id: `asset-${index}`,
         type: asset.type,
-        title: asset.name,
-        description: `Asset from ${project.name}`,
+        title: getAssetTitle(asset.url),
+        description: `${getAssetTitle(asset.url)} from ${project.name}`,
         url: asset.url,
         thumbnail: asset.url,
         position,

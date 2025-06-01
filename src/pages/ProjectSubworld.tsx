@@ -1,6 +1,6 @@
 import React, { useEffect, useState, Suspense, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Environment, Html, Text } from '@react-three/drei';
 import { projectDataService, ProjectData } from '../services/projectDataService';
 import { WorldObject } from '../data/worlds';
@@ -11,113 +11,158 @@ interface ProjectSubworldProps {}
 // Enhanced MediaCard component that handles different media types
 const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
   const [hovered, setHovered] = useState(false);
-  const [lowResTexture, setLowResTexture] = useState<THREE.Texture | null>(null);
-  const [highResTexture, setHighResTexture] = useState<THREE.Texture | null>(null);
-  const [isLoadingLowRes, setIsLoadingLowRes] = useState(true);
-  const [isLoadingHighRes, setIsLoadingHighRes] = useState(false);
+  const [texture, setTexture] = useState<THREE.Texture | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [cameraDistance, setCameraDistance] = useState(Infinity);
+  const [aspectRatio, setAspectRatio] = useState(1.67); // Default 16:9 aspect ratio
   const navigate = useNavigate();
   
-  // Add refs for animation and camera tracking
+  // Add refs for animation
   const groupRef = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.Mesh>(null);
   
-  // Get camera for distance calculation
-  const { camera } = useThree();
+  // Extract filename from URL to use as title
+  const getFilenameFromUrl = (url: string): string => {
+    if (!url) return 'Untitled';
+    
+    try {
+      // Get the last part of the URL (filename)
+      const urlParts = url.split('/');
+      const filename = urlParts[urlParts.length - 1];
+      
+      // Remove the file extension
+      const nameWithoutExtension = filename.replace(/\.[^/.]+$/, '');
+      
+      // Clean up the name: replace underscores and hyphens with spaces, capitalize words
+      const cleanName = nameWithoutExtension
+        .replace(/[_-]/g, ' ')
+        .replace(/\b\w/g, (char) => char.toUpperCase());
+      
+      return cleanName;
+    } catch (error) {
+      console.warn('Error extracting filename from URL:', url, error);
+      return 'Untitled';
+    }
+  };
+  
+  // Get the display title - use filename if no title is provided
+  const displayTitle = mediaObject.title || mediaObject.name || getFilenameFromUrl(mediaObject.url);
   
   useEffect(() => {
-    const loadLowResTexture = async () => {
+    const loadTexture = async () => {
       try {
-        let textureUrl = mediaObject.thumbnail || mediaObject.url;
+        let textureUrl = '';
+        let needsAspectRatioDetection = false;
         
-        // Create low-resolution URL for faster loading
-        let lowResUrl = textureUrl;
-        if (mediaObject.type === 'image' && textureUrl) {
-          // For images, try to create a smaller version URL or use thumbnail
-          // If using a service like Cloudinary or similar, you could add size parameters
-          // For now, we'll use thumbnail if available, otherwise the original
-          lowResUrl = mediaObject.thumbnail || textureUrl;
+        // Handle different media types with proper URLs and placeholders
+        if (mediaObject.type === 'image') {
+          textureUrl = mediaObject.url || mediaObject.thumbnail;
+          needsAspectRatioDetection = true;
+        } else if (mediaObject.type === 'video') {
+          // For videos, use thumbnail if available, otherwise a video placeholder
+          textureUrl = mediaObject.thumbnail || '/assets/video-placeholder.png';
+          if (mediaObject.thumbnail) {
+            needsAspectRatioDetection = true;
+          }
+        } else if (mediaObject.type === 'pdf') {
+          // For PDFs, use a PDF placeholder or thumbnail
+          textureUrl = mediaObject.thumbnail || '/assets/pdf-placeholder.png';
+          if (!mediaObject.thumbnail) {
+            // Create a simple PDF placeholder
+            textureUrl = 'data:image/svg+xml;base64,' + btoa(`
+              <svg width="400" height="600" xmlns="http://www.w3.org/2000/svg">
+                <rect width="400" height="600" fill="#f0f0f0" stroke="#ccc" stroke-width="2"/>
+                <text x="200" y="280" text-anchor="middle" font-family="Arial" font-size="24" fill="#666">PDF</text>
+                <text x="200" y="320" text-anchor="middle" font-family="Arial" font-size="16" fill="#999">Document</text>
+              </svg>
+            `);
+            setAspectRatio(400 / 600); // PDF aspect ratio
+          } else {
+            needsAspectRatioDetection = true;
+          }
+        } else if (mediaObject.type === 'html') {
+          // For HTML, use thumbnail or create a web placeholder
+          textureUrl = mediaObject.thumbnail || '/assets/html-placeholder.png';
+          if (!mediaObject.thumbnail) {
+            // Create a simple HTML placeholder
+            textureUrl = 'data:image/svg+xml;base64,' + btoa(`
+              <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+                <rect width="400" height="300" fill="#1e1e1e" stroke="#333" stroke-width="2"/>
+                <rect x="10" y="10" width="380" height="30" fill="#333" rx="5"/>
+                <circle cx="25" cy="25" r="5" fill="#ff5f56"/>
+                <circle cx="45" cy="25" r="5" fill="#ffbd2e"/>
+                <circle cx="65" cy="25" r="5" fill="#27ca3f"/>
+                <text x="200" y="180" text-anchor="middle" font-family="Arial" font-size="18" fill="#fff">HTML</text>
+                <text x="200" y="200" text-anchor="middle" font-family="Arial" font-size="14" fill="#ccc">Web Page</text>
+              </svg>
+            `);
+            setAspectRatio(400 / 300); // Web page aspect ratio
+          } else {
+            needsAspectRatioDetection = true;
+          }
+        } else {
+          // Generic media type
+          textureUrl = mediaObject.url || mediaObject.thumbnail || '/assets/media-placeholder.png';
+          needsAspectRatioDetection = !!textureUrl;
         }
         
-        if (lowResUrl) {
+        if (textureUrl) {
           const loader = new THREE.TextureLoader();
+          
+          // If we need to detect aspect ratio from an actual image
+          if (needsAspectRatioDetection && !textureUrl.startsWith('data:')) {
+            // Load image to detect dimensions
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            
+            img.onload = () => {
+              const detectedAspectRatio = img.width / img.height;
+              setAspectRatio(detectedAspectRatio);
+              console.log(`Detected aspect ratio for ${displayTitle}: ${detectedAspectRatio} (${img.width}x${img.height})`);
+            };
+            
+            img.onerror = () => {
+              console.warn(`Failed to load image for aspect ratio detection: ${textureUrl}`);
+              setAspectRatio(1.67); // Fallback to 16:9
+            };
+            
+            img.src = textureUrl;
+          }
+          
+          // Load the texture
           const loadedTexture = await new Promise<THREE.Texture>((resolve, reject) => {
             loader.load(
-              lowResUrl,
+              textureUrl,
               resolve,
               undefined,
               reject
             );
           });
           
-          // Set texture filtering for better quality at distance
+          // Set texture filtering for good quality
           loadedTexture.minFilter = THREE.LinearMipmapLinearFilter;
           loadedTexture.magFilter = THREE.LinearFilter;
           loadedTexture.generateMipmaps = true;
           
-          setLowResTexture(loadedTexture);
+          setTexture(loadedTexture);
         }
       } catch (err) {
-        console.error('Error loading low-res texture for media card:', err);
+        console.error('Error loading texture for media card:', err);
         setError(true);
       } finally {
-        setIsLoadingLowRes(false);
+        setIsLoading(false);
       }
     };
     
-    loadLowResTexture();
-  }, [mediaObject]);
+    loadTexture();
+  }, [mediaObject, displayTitle]);
 
-  // Load high-res texture when camera gets close
-  useEffect(() => {
-    const loadHighResTexture = async () => {
-      if (cameraDistance > 8 || isLoadingHighRes || highResTexture) return;
-      
-      setIsLoadingHighRes(true);
-      
-      try {
-        let highResUrl = mediaObject.url;
-        
-        if (highResUrl && highResUrl !== (mediaObject.thumbnail || mediaObject.url)) {
-          const loader = new THREE.TextureLoader();
-          const loadedTexture = await new Promise<THREE.Texture>((resolve, reject) => {
-            loader.load(
-              highResUrl,
-              resolve,
-              undefined,
-              reject
-            );
-          });
-          
-          // Set texture filtering for high quality
-          loadedTexture.minFilter = THREE.LinearMipmapLinearFilter;
-          loadedTexture.magFilter = THREE.LinearFilter;
-          loadedTexture.generateMipmaps = true;
-          
-          setHighResTexture(loadedTexture);
-        }
-      } catch (err) {
-        console.error('Error loading high-res texture for media card:', err);
-      } finally {
-        setIsLoadingHighRes(false);
-      }
-    };
-    
-    loadHighResTexture();
-  }, [cameraDistance, mediaObject, isLoadingHighRes, highResTexture]);
-
-  // Animation and camera distance tracking with useFrame
+  // Animation with useFrame
   useFrame((state) => {
-    if (groupRef.current && camera) {
+    if (groupRef.current) {
       const time = state.clock.elapsedTime;
       
-      // Calculate distance to camera
-      const groupPos = groupRef.current.position;
-      const distance = camera.position.distanceTo(groupPos);
-      setCameraDistance(distance);
-      
-      // Gentle floating motion (KEEP THIS)
+      // Gentle floating motion
       const baseY = mediaObject.position[1] || 2;
       const floatAmplitude = 0.2;
       const floatSpeed = 0.6 + (mediaObject.id?.length || 0) * 0.05;
@@ -127,18 +172,16 @@ const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
       groupRef.current.position.x = mediaObject.position[0] || 0;
       groupRef.current.position.z = mediaObject.position[2] || 0;
       
-      // REMOVE ROTATION - Keep cards straight
+      // Keep cards straight - no rotation
       groupRef.current.rotation.x = 0;
-      groupRef.current.rotation.y = mediaObject.rotation?.[1] || 0; // Only use initial Y rotation if set
+      groupRef.current.rotation.y = mediaObject.rotation?.[1] || 0;
       groupRef.current.rotation.z = 0;
       
-      // Enhanced hover effects (KEEP SCALE ONLY)
+      // Enhanced hover effects
       if (hovered && meshRef.current) {
-        // Subtle pulsing effect
         const pulse = 1 + Math.sin(time * 4) * 0.05;
         groupRef.current.scale.setScalar(pulse * 1.1);
       } else if (groupRef.current) {
-        // Smooth scale transition back to normal
         const currentScale = groupRef.current.scale.x;
         const targetScale = 1;
         groupRef.current.scale.setScalar(THREE.MathUtils.lerp(currentScale, targetScale, 0.1));
@@ -163,11 +206,15 @@ const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
     }
   };
 
-  // Choose texture based on distance and loading state
-  const currentTexture = (cameraDistance < 8 && highResTexture) ? highResTexture : lowResTexture;
+  // Calculate geometry based on aspect ratio
+  const baseWidth = 2.0;
+  const baseHeight = baseWidth / aspectRatio;
+  const maxHeight = 3.0; // Limit maximum height
+  const finalHeight = Math.min(baseHeight, maxHeight);
+  const finalWidth = finalHeight * aspectRatio;
   
-  // Calculate scale based on media object scale or use default
-  const scale = mediaObject.scale || [2, 1.5, 0.1];
+  // Apply custom scale if provided, otherwise use calculated dimensions
+  const scale = mediaObject.scale || [1, 1, 0.1];
   const position = mediaObject.position || [0, 2, 0];
   const rotation = mediaObject.rotation || [0, 0, 0];
 
@@ -175,18 +222,18 @@ const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
     <group 
       ref={groupRef}
       position={position} 
-      rotation={[rotation[0], rotation[1], rotation[2]]} // Keep initial rotation only
+      rotation={[rotation[0], rotation[1], rotation[2]]}
       scale={scale}
       onClick={handleClick}
       onPointerOver={() => setHovered(true)}
       onPointerOut={() => setHovered(false)}
     >
-      {/* Main card mesh */}
+      {/* Main card mesh with aspect ratio-based geometry */}
       <mesh ref={meshRef}>
-        <boxGeometry args={[1, 0.6, 0.05]} />
+        <boxGeometry args={[finalWidth, finalHeight, 0.05]} />
         <meshStandardMaterial 
-          map={currentTexture} 
-          color={error ? "#ff6b6b" : (isLoadingLowRes ? "#cccccc" : "#ffffff")}
+          map={texture} 
+          color={error ? "#ff6b6b" : (isLoading ? "#cccccc" : "#ffffff")}
           emissive={hovered ? "#222222" : "#000000"}
           emissiveIntensity={hovered ? 0.2 : 0}
           metalness={0.1}
@@ -197,7 +244,7 @@ const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
       {/* Enhanced glow effect when hovered */}
       {hovered && (
         <mesh position={[0, 0, -0.01]}>
-          <boxGeometry args={[1.1, 0.7, 0.02]} />
+          <boxGeometry args={[finalWidth * 1.1, finalHeight * 1.1, 0.02]} />
           <meshBasicMaterial 
             color="#4CAF50" 
             transparent 
@@ -206,30 +253,30 @@ const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
         </mesh>
       )}
       
-      {/* Loading indicator for high-res texture */}
-      {isLoadingHighRes && cameraDistance < 8 && (
-        <mesh position={[0.4, -0.25, 0.03]}>
+      {/* Loading indicator */}
+      {isLoading && (
+        <mesh position={[finalWidth * 0.4, -finalHeight * 0.35, 0.03]}>
           <boxGeometry args={[0.1, 0.05, 0.01]} />
           <meshBasicMaterial color="#4CAF50" />
         </mesh>
       )}
       
-      {/* Title text with enhanced styling */}
+      {/* Title text using filename */}
       <Text
-        position={[0, -0.4, 0.03]}
-        fontSize={0.08}
+        position={[0, -finalHeight * 0.6, 0.03]}
+        fontSize={Math.min(0.08, finalWidth * 0.04)}
         color={hovered ? "#ffffff" : "#333333"}
         anchorX="center"
         anchorY="middle"
-        maxWidth={0.8}
+        maxWidth={finalWidth * 0.8}
       >
-        {mediaObject.title || mediaObject.name || 'Untitled'}
+        {displayTitle}
       </Text>
       
-      {/* Type indicator with better styling */}
+      {/* Type indicator */}
       <Text
-        position={[0.4, 0.25, 0.03]}
-        fontSize={0.05}
+        position={[finalWidth * 0.35, finalHeight * 0.35, 0.03]}
+        fontSize={Math.min(0.05, finalWidth * 0.025)}
         color={hovered ? "#4CAF50" : "#666666"}
         anchorX="center"
         anchorY="middle"
@@ -237,13 +284,13 @@ const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
         {mediaObject.type?.toUpperCase() || 'MEDIA'}
       </Text>
       
-      {/* Floating particles effect when hovered (SIMPLIFIED) */}
+      {/* Floating particles effect when hovered */}
       {hovered && (
         <>
           {Array.from({ length: 3 }, (_, i) => (
             <mesh key={i} position={[
-              (Math.random() - 0.5) * 1.5, 
-              (Math.random() - 0.5) * 0.8, 
+              (Math.random() - 0.5) * finalWidth, 
+              (Math.random() - 0.5) * finalHeight, 
               0.1 + Math.random() * 0.2
             ]}>
               <sphereGeometry args={[0.015, 6, 6]} />
@@ -260,7 +307,7 @@ const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
       {/* Description on hover */}
       {hovered && mediaObject.description && (
         <Html
-          position={[0, 0.8, 0.1]}
+          position={[0, finalHeight * 0.8, 0.1]}
           style={{
             backgroundColor: 'rgba(0, 0, 0, 0.9)',
             padding: '12px',
@@ -447,11 +494,27 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
       // Varied scales for visual interest
       const scaleVariation = seededRandom(index * 23 + 890, 0.8, 1.3);
       
+      // Extract filename for title
+      const getAssetTitle = (url: string): string => {
+        if (!url) return 'Untitled Asset';
+        
+        try {
+          const urlParts = url.split('/');
+          const filename = urlParts[urlParts.length - 1];
+          const nameWithoutExtension = filename.replace(/\.[^/.]+$/, '');
+          return nameWithoutExtension
+            .replace(/[_-]/g, ' ')
+            .replace(/\b\w/g, (char) => char.toUpperCase());
+        } catch (error) {
+          return asset.name || 'Untitled Asset';
+        }
+      };
+      
       return {
         id: `asset-${index}`,
         type: asset.type,
-        title: asset.name,
-        description: `Asset from ${projectData.name}`,
+        title: getAssetTitle(asset.url),
+        description: `${getAssetTitle(asset.url)} from ${projectData.name}`,
         url: asset.url,
         thumbnail: asset.url,
         position,
