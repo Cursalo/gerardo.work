@@ -15,25 +15,24 @@ const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
   const [aspectRatio, setAspectRatio] = useState(1.67); // Default 16:9 aspect ratio
+  const [dimensions, setDimensions] = useState({ width: 2.0, height: 1.2 });
   const navigate = useNavigate();
   
   // Add refs for animation
   const groupRef = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.Mesh>(null);
   
+  // Detect mobile device
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  
   // Extract filename from URL to use as title
   const getFilenameFromUrl = (url: string): string => {
     if (!url) return 'Untitled';
     
     try {
-      // Get the last part of the URL (filename)
       const urlParts = url.split('/');
       const filename = urlParts[urlParts.length - 1];
-      
-      // Remove the file extension
       const nameWithoutExtension = filename.replace(/\.[^/.]+$/, '');
-      
-      // Clean up the name: replace underscores and hyphens with spaces, capitalize words
       const cleanName = nameWithoutExtension
         .replace(/[_-]/g, ' ')
         .replace(/\b\w/g, (char) => char.toUpperCase());
@@ -48,114 +47,168 @@ const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
   // Get the display title - use filename if no title is provided
   const displayTitle = mediaObject.title || mediaObject.name || getFilenameFromUrl(mediaObject.url);
   
+  // Update dimensions when aspect ratio changes
   useEffect(() => {
-    const loadTexture = async () => {
+    const baseWidth = isMobile ? 1.8 : 2.2; // Slightly smaller on mobile
+    const baseHeight = baseWidth / aspectRatio;
+    const maxHeight = isMobile ? 2.5 : 3.0; // Lower max height on mobile
+    const finalHeight = Math.min(baseHeight, maxHeight);
+    const finalWidth = finalHeight * aspectRatio;
+    
+    setDimensions({ width: finalWidth, height: finalHeight });
+    console.log(`Updated dimensions for ${displayTitle}: ${finalWidth.toFixed(2)}x${finalHeight.toFixed(2)} (AR: ${aspectRatio.toFixed(2)})`);
+  }, [aspectRatio, displayTitle, isMobile]);
+  
+  useEffect(() => {
+    const loadTextureWithAspectRatio = async () => {
+      setIsLoading(true);
+      setError(false);
+      
       try {
         let textureUrl = '';
-        let needsAspectRatioDetection = false;
+        let shouldDetectAspectRatio = false;
         
         // Handle different media types with proper URLs and placeholders
         if (mediaObject.type === 'image') {
           textureUrl = mediaObject.url || mediaObject.thumbnail;
-          needsAspectRatioDetection = true;
+          shouldDetectAspectRatio = true;
         } else if (mediaObject.type === 'video') {
-          // For videos, use thumbnail if available, otherwise a video placeholder
-          textureUrl = mediaObject.thumbnail || '/assets/video-placeholder.png';
-          if (mediaObject.thumbnail) {
-            needsAspectRatioDetection = true;
-          }
+          textureUrl = mediaObject.thumbnail || mediaObject.url;
+          shouldDetectAspectRatio = !!mediaObject.thumbnail;
         } else if (mediaObject.type === 'pdf') {
-          // For PDFs, use a PDF placeholder or thumbnail
-          textureUrl = mediaObject.thumbnail || '/assets/pdf-placeholder.png';
-          if (!mediaObject.thumbnail) {
-            // Create a simple PDF placeholder
+          if (mediaObject.thumbnail) {
+            textureUrl = mediaObject.thumbnail;
+            shouldDetectAspectRatio = true;
+          } else {
+            // Create PDF placeholder with correct aspect ratio
             textureUrl = 'data:image/svg+xml;base64,' + btoa(`
               <svg width="400" height="600" xmlns="http://www.w3.org/2000/svg">
-                <rect width="400" height="600" fill="#f0f0f0" stroke="#ccc" stroke-width="2"/>
-                <text x="200" y="280" text-anchor="middle" font-family="Arial" font-size="24" fill="#666">PDF</text>
-                <text x="200" y="320" text-anchor="middle" font-family="Arial" font-size="16" fill="#999">Document</text>
+                <rect width="400" height="600" fill="#f8f9fa" stroke="#dee2e6" stroke-width="2"/>
+                <rect x="40" y="80" width="320" height="4" fill="#6c757d" rx="2"/>
+                <rect x="40" y="100" width="280" height="4" fill="#6c757d" rx="2"/>
+                <rect x="40" y="120" width="300" height="4" fill="#6c757d" rx="2"/>
+                <rect x="40" y="160" width="250" height="4" fill="#6c757d" rx="2"/>
+                <rect x="40" y="180" width="290" height="4" fill="#6c757d" rx="2"/>
+                <circle cx="200" cy="300" r="40" fill="#dc3545" opacity="0.1"/>
+                <text x="200" y="280" text-anchor="middle" font-family="Arial" font-size="16" fill="#dc3545" font-weight="bold">PDF</text>
+                <text x="200" y="320" text-anchor="middle" font-family="Arial" font-size="12" fill="#6c757d">Document</text>
               </svg>
             `);
-            setAspectRatio(400 / 600); // PDF aspect ratio
-          } else {
-            needsAspectRatioDetection = true;
+            setAspectRatio(400 / 600);
           }
         } else if (mediaObject.type === 'html') {
-          // For HTML, use thumbnail or create a web placeholder
-          textureUrl = mediaObject.thumbnail || '/assets/html-placeholder.png';
-          if (!mediaObject.thumbnail) {
-            // Create a simple HTML placeholder
+          if (mediaObject.thumbnail) {
+            textureUrl = mediaObject.thumbnail;
+            shouldDetectAspectRatio = true;
+          } else {
+            // Create HTML placeholder with web aspect ratio
             textureUrl = 'data:image/svg+xml;base64,' + btoa(`
               <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
-                <rect width="400" height="300" fill="#1e1e1e" stroke="#333" stroke-width="2"/>
-                <rect x="10" y="10" width="380" height="30" fill="#333" rx="5"/>
-                <circle cx="25" cy="25" r="5" fill="#ff5f56"/>
-                <circle cx="45" cy="25" r="5" fill="#ffbd2e"/>
-                <circle cx="65" cy="25" r="5" fill="#27ca3f"/>
-                <text x="200" y="180" text-anchor="middle" font-family="Arial" font-size="18" fill="#fff">HTML</text>
-                <text x="200" y="200" text-anchor="middle" font-family="Arial" font-size="14" fill="#ccc">Web Page</text>
+                <rect width="400" height="300" fill="#212529" stroke="#495057" stroke-width="2"/>
+                <rect x="10" y="10" width="380" height="30" fill="#343a40" rx="6"/>
+                <circle cx="25" cy="25" r="5" fill="#dc3545"/>
+                <circle cx="45" cy="25" r="5" fill="#ffc107"/>
+                <circle cx="65" cy="25" r="5" fill="#28a745"/>
+                <rect x="90" y="20" width="200" height="10" fill="#6c757d" rx="5"/>
+                <rect x="20" y="60" width="360" height="8" fill="#495057" rx="4"/>
+                <rect x="20" y="80" width="320" height="8" fill="#495057" rx="4"/>
+                <rect x="20" y="100" width="280" height="8" fill="#495057" rx="4"/>
+                <circle cx="200" cy="180" r="30" fill="#007bff" opacity="0.2"/>
+                <text x="200" y="175" text-anchor="middle" font-family="Arial" font-size="14" fill="#007bff" font-weight="bold">HTML</text>
+                <text x="200" y="190" text-anchor="middle" font-family="Arial" font-size="10" fill="#adb5bd">Web Page</text>
               </svg>
             `);
-            setAspectRatio(400 / 300); // Web page aspect ratio
-          } else {
-            needsAspectRatioDetection = true;
+            setAspectRatio(400 / 300);
           }
         } else {
-          // Generic media type
-          textureUrl = mediaObject.url || mediaObject.thumbnail || '/assets/media-placeholder.png';
-          needsAspectRatioDetection = !!textureUrl;
+          textureUrl = mediaObject.url || mediaObject.thumbnail;
+          shouldDetectAspectRatio = !!textureUrl;
         }
         
+        // STEP 1: Detect aspect ratio first if needed
+        if (shouldDetectAspectRatio && textureUrl && !textureUrl.startsWith('data:')) {
+          try {
+            await new Promise<void>((resolve, reject) => {
+              const img = new Image();
+              img.crossOrigin = 'anonymous';
+              
+              img.onload = () => {
+                const detectedAspectRatio = img.width / img.height;
+                setAspectRatio(detectedAspectRatio);
+                console.log(`✅ Detected aspect ratio for ${displayTitle}: ${detectedAspectRatio.toFixed(2)} (${img.width}x${img.height})`);
+                resolve();
+              };
+              
+              img.onerror = (err) => {
+                console.warn(`⚠️ Failed to detect aspect ratio for ${displayTitle}:`, err);
+                setAspectRatio(1.67); // Fallback to 16:9
+                resolve(); // Don't reject, continue with fallback
+              };
+              
+              // Add timeout for mobile performance
+              setTimeout(() => {
+                console.warn(`⏱️ Aspect ratio detection timeout for ${displayTitle}`);
+                setAspectRatio(1.67);
+                resolve();
+              }, isMobile ? 3000 : 5000);
+              
+              img.src = textureUrl;
+            });
+          } catch (err) {
+            console.warn(`Error in aspect ratio detection for ${displayTitle}:`, err);
+            setAspectRatio(1.67);
+          }
+        }
+        
+        // STEP 2: Load texture for display
         if (textureUrl) {
           const loader = new THREE.TextureLoader();
           
-          // If we need to detect aspect ratio from an actual image
-          if (needsAspectRatioDetection && !textureUrl.startsWith('data:')) {
-            // Load image to detect dimensions
-            const img = new Image();
-            img.crossOrigin = 'anonymous';
-            
-            img.onload = () => {
-              const detectedAspectRatio = img.width / img.height;
-              setAspectRatio(detectedAspectRatio);
-              console.log(`Detected aspect ratio for ${displayTitle}: ${detectedAspectRatio} (${img.width}x${img.height})`);
-            };
-            
-            img.onerror = () => {
-              console.warn(`Failed to load image for aspect ratio detection: ${textureUrl}`);
-              setAspectRatio(1.67); // Fallback to 16:9
-            };
-            
-            img.src = textureUrl;
-          }
+          // Add mobile optimization - reduce quality for mobile devices
+          const optimizedUrl = textureUrl;
           
-          // Load the texture
           const loadedTexture = await new Promise<THREE.Texture>((resolve, reject) => {
+            const timeoutId = setTimeout(() => {
+              reject(new Error(`Texture loading timeout for ${displayTitle}`));
+            }, isMobile ? 10000 : 15000);
+            
             loader.load(
-              textureUrl,
-              resolve,
+              optimizedUrl,
+              (texture) => {
+                clearTimeout(timeoutId);
+                resolve(texture);
+              },
               undefined,
-              reject
+              (error) => {
+                clearTimeout(timeoutId);
+                reject(error);
+              }
             );
           });
           
-          // Set texture filtering for good quality
+          // Optimize texture settings for performance
           loadedTexture.minFilter = THREE.LinearMipmapLinearFilter;
           loadedTexture.magFilter = THREE.LinearFilter;
           loadedTexture.generateMipmaps = true;
           
+          // Mobile optimization: reduce texture size
+          if (isMobile) {
+            loadedTexture.format = THREE.RGBFormat;
+          }
+          
           setTexture(loadedTexture);
+          console.log(`✅ Loaded texture for ${displayTitle}`);
         }
       } catch (err) {
-        console.error('Error loading texture for media card:', err);
+        console.error(`❌ Error loading texture for ${displayTitle}:`, err);
         setError(true);
       } finally {
         setIsLoading(false);
       }
     };
     
-    loadTexture();
-  }, [mediaObject, displayTitle]);
+    loadTextureWithAspectRatio();
+  }, [mediaObject, displayTitle, isMobile]);
 
   // Animation with useFrame
   useFrame((state) => {
@@ -164,7 +217,7 @@ const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
       
       // Gentle floating motion
       const baseY = mediaObject.position[1] || 2;
-      const floatAmplitude = 0.2;
+      const floatAmplitude = isMobile ? 0.15 : 0.2; // Slightly less on mobile
       const floatSpeed = 0.6 + (mediaObject.id?.length || 0) * 0.05;
       groupRef.current.position.y = baseY + Math.sin(time * floatSpeed) * floatAmplitude;
       
@@ -180,7 +233,7 @@ const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
       // Enhanced hover effects
       if (hovered && meshRef.current) {
         const pulse = 1 + Math.sin(time * 4) * 0.05;
-        groupRef.current.scale.setScalar(pulse * 1.1);
+        groupRef.current.scale.setScalar(pulse * (isMobile ? 1.05 : 1.1));
       } else if (groupRef.current) {
         const currentScale = groupRef.current.scale.x;
         const targetScale = 1;
@@ -206,13 +259,6 @@ const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
     }
   };
 
-  // Calculate geometry based on aspect ratio
-  const baseWidth = 2.0;
-  const baseHeight = baseWidth / aspectRatio;
-  const maxHeight = 3.0; // Limit maximum height
-  const finalHeight = Math.min(baseHeight, maxHeight);
-  const finalWidth = finalHeight * aspectRatio;
-  
   // Apply custom scale if provided, otherwise use calculated dimensions
   const scale = mediaObject.scale || [1, 1, 0.1];
   const position = mediaObject.position || [0, 2, 0];
@@ -228,97 +274,121 @@ const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
       onPointerOver={() => setHovered(true)}
       onPointerOut={() => setHovered(false)}
     >
-      {/* Main card mesh with aspect ratio-based geometry */}
+      {/* Main card mesh with dynamic aspect ratio-based geometry */}
       <mesh ref={meshRef}>
-        <boxGeometry args={[finalWidth, finalHeight, 0.05]} />
+        <boxGeometry args={[dimensions.width, dimensions.height, 0.05]} />
         <meshStandardMaterial 
           map={texture} 
-          color={error ? "#ff6b6b" : (isLoading ? "#cccccc" : "#ffffff")}
-          emissive={hovered ? "#222222" : "#000000"}
-          emissiveIntensity={hovered ? 0.2 : 0}
+          color={error ? "#ff6b6b" : (isLoading ? "#e9ecef" : "#ffffff")}
+          emissive={hovered ? "#333333" : "#000000"}
+          emissiveIntensity={hovered ? 0.15 : 0}
           metalness={0.1}
-          roughness={0.6}
+          roughness={0.7}
+          transparent={isLoading}
+          opacity={isLoading ? 0.7 : 1.0}
         />
       </mesh>
       
       {/* Enhanced glow effect when hovered */}
       {hovered && (
         <mesh position={[0, 0, -0.01]}>
-          <boxGeometry args={[finalWidth * 1.1, finalHeight * 1.1, 0.02]} />
+          <boxGeometry args={[dimensions.width * 1.1, dimensions.height * 1.1, 0.02]} />
           <meshBasicMaterial 
             color="#4CAF50" 
             transparent 
-            opacity={0.3}
+            opacity={0.4}
           />
         </mesh>
       )}
       
       {/* Loading indicator */}
       {isLoading && (
-        <mesh position={[finalWidth * 0.4, -finalHeight * 0.35, 0.03]}>
-          <boxGeometry args={[0.1, 0.05, 0.01]} />
+        <mesh position={[dimensions.width * 0.35, -dimensions.height * 0.35, 0.03]}>
+          <boxGeometry args={[0.08, 0.04, 0.01]} />
           <meshBasicMaterial color="#4CAF50" />
         </mesh>
       )}
       
-      {/* Title text using filename */}
+      {/* Error indicator */}
+      {error && (
+        <mesh position={[dimensions.width * 0.35, dimensions.height * 0.35, 0.03]}>
+          <boxGeometry args={[0.08, 0.04, 0.01]} />
+          <meshBasicMaterial color="#dc3545" />
+        </mesh>
+      )}
+      
+      {/* Title text using filename - responsive sizing */}
       <Text
-        position={[0, -finalHeight * 0.6, 0.03]}
-        fontSize={Math.min(0.08, finalWidth * 0.04)}
-        color={hovered ? "#ffffff" : "#333333"}
+        position={[0, -dimensions.height * 0.65, 0.03]}
+        fontSize={Math.min(0.08, dimensions.width * 0.035)}
+        color={hovered ? "#ffffff" : "#495057"}
         anchorX="center"
         anchorY="middle"
-        maxWidth={finalWidth * 0.8}
+        maxWidth={dimensions.width * 0.9}
       >
         {displayTitle}
       </Text>
       
-      {/* Type indicator */}
+      {/* Type indicator - responsive positioning */}
       <Text
-        position={[finalWidth * 0.35, finalHeight * 0.35, 0.03]}
-        fontSize={Math.min(0.05, finalWidth * 0.025)}
-        color={hovered ? "#4CAF50" : "#666666"}
+        position={[dimensions.width * 0.38, dimensions.height * 0.38, 0.03]}
+        fontSize={Math.min(0.045, dimensions.width * 0.02)}
+        color={hovered ? "#28a745" : "#6c757d"}
         anchorX="center"
         anchorY="middle"
       >
         {mediaObject.type?.toUpperCase() || 'MEDIA'}
       </Text>
       
-      {/* Floating particles effect when hovered */}
+      {/* Aspect ratio debug info (only in development) */}
+      {process.env.NODE_ENV === 'development' && (
+        <Text
+          position={[-dimensions.width * 0.38, dimensions.height * 0.38, 0.03]}
+          fontSize={0.03}
+          color="#007bff"
+          anchorX="center"
+          anchorY="middle"
+        >
+          {aspectRatio.toFixed(2)}
+        </Text>
+      )}
+      
+      {/* Floating particles effect when hovered - scaled to card */}
       {hovered && (
         <>
-          {Array.from({ length: 3 }, (_, i) => (
+          {Array.from({ length: isMobile ? 2 : 3 }, (_, i) => (
             <mesh key={i} position={[
-              (Math.random() - 0.5) * finalWidth, 
-              (Math.random() - 0.5) * finalHeight, 
+              (Math.random() - 0.5) * dimensions.width * 0.8, 
+              (Math.random() - 0.5) * dimensions.height * 0.8, 
               0.1 + Math.random() * 0.2
             ]}>
-              <sphereGeometry args={[0.015, 6, 6]} />
+              <sphereGeometry args={[0.012, 6, 6]} />
               <meshBasicMaterial 
-                color="#4CAF50" 
+                color="#28a745" 
                 transparent 
-                opacity={0.5}
+                opacity={0.6}
               />
             </mesh>
           ))}
         </>
       )}
       
-      {/* Description on hover */}
+      {/* Description on hover - positioned relative to card size */}
       {hovered && mediaObject.description && (
         <Html
-          position={[0, finalHeight * 0.8, 0.1]}
+          position={[0, dimensions.height * 0.8, 0.1]}
           style={{
-            backgroundColor: 'rgba(0, 0, 0, 0.9)',
-            padding: '12px',
+            backgroundColor: 'rgba(33, 37, 41, 0.95)',
+            padding: isMobile ? '8px' : '12px',
             borderRadius: '8px',
             color: 'white',
-            width: '220px',
-            fontSize: '13px',
+            width: isMobile ? '180px' : '240px',
+            fontSize: isMobile ? '11px' : '13px',
             textAlign: 'center',
             pointerEvents: 'none',
-            border: '1px solid #4CAF50',
-            boxShadow: '0 4px 12px rgba(76, 175, 80, 0.3)',
+            border: '1px solid #28a745',
+            boxShadow: '0 4px 16px rgba(40, 167, 69, 0.3)',
+            fontFamily: 'system-ui, -apple-system, sans-serif',
           }}
         >
           {mediaObject.description}
