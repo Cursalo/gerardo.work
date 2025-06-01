@@ -106,7 +106,7 @@ const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
     return normalizedUrl;
   };
   
-  // Normalize URLs for production
+  // Simple URL normalization for production
   const normalizeUrl = (url: string): string => {
     if (!url) return '';
     
@@ -168,10 +168,13 @@ const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
                 <text x="200" y="320" text-anchor="middle" font-family="Arial" font-size="12" fill="#6c757d">Document</text>
               </svg>
             `);
-            setAspectRatio(400 / 600);
-            // Update dimensions immediately for PDF
+            // CRITICAL: Set proper PDF aspect ratio (A4 portrait)
+            setAspectRatio(400 / 600); // 0.67 aspect ratio for portrait
+            // Update dimensions immediately for PDF - portrait orientation
             const baseWidth = isMobile ? 2.5 : 3.0;
-            setDimensions({ width: baseWidth * 0.67, height: baseWidth });
+            const pdfHeight = baseWidth / 0.67; // Force portrait aspect
+            setDimensions({ width: baseWidth, height: pdfHeight });
+            console.log(`📄 PDF placeholder created for ${displayTitle} with portrait AR: 0.67`);
           }
         } else if (mediaObject.type === 'html') {
           if (mediaObject.thumbnail) {
@@ -423,13 +426,11 @@ const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
         <boxGeometry ref={geometryRef} args={[dimensions.width, dimensions.height, 0.05]} />
         <meshStandardMaterial 
           map={texture} 
-          color={error ? "#ff6b6b" : (isLoading ? "#e9ecef" : "#ffffff")}
+          color={error ? "#ff6b6b" : "#ffffff"}
           emissive={hovered ? "#333333" : "#000000"}
           emissiveIntensity={hovered ? 0.15 : 0}
           metalness={0.1}
           roughness={0.7}
-          transparent={isLoading}
-          opacity={isLoading ? 0.7 : 1.0}
         />
       </mesh>
       
@@ -548,6 +549,9 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
   const [projectData, setProjectData] = useState<ProjectData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Detect mobile device for responsive rendering
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
   useEffect(() => {
     const loadProject = async () => {
@@ -733,7 +737,7 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
         thumbnail: asset.url,
         position,
         rotation: [0, randomRotationY, 0] as [number, number, number], // Only Y rotation, no tilting
-        scale: [5.0 * scaleVariation, 3.5 * scaleVariation, 0.1] as [number, number, number]
+        scale: [4.0 * scaleVariation, 2.5 * scaleVariation, 0.1] as [number, number, number]
       };
     });
     
@@ -834,9 +838,13 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
             enableZoom 
             enablePan 
             enableRotate 
-            minDistance={10}
-            maxDistance={200}
+            minDistance={5}
+            maxDistance={100}
+            minPolarAngle={Math.PI * 0.1}
+            maxPolarAngle={Math.PI * 0.9}
             target={[0, 5, 0]}
+            enableDamping={true}
+            dampingFactor={0.1}
           />
 
         </Suspense>
