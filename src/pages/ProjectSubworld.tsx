@@ -18,9 +18,10 @@ const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
   const [dimensions, setDimensions] = useState({ width: 3.0, height: 2.0 }); // Changed: Larger default size
   const navigate = useNavigate();
   
-  // Add refs for animation
+  // Add refs for animation and geometry updates
   const groupRef = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.Mesh>(null);
+  const geometryRef = useRef<THREE.BoxGeometry>(null);
   
   // Detect mobile device
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -332,7 +333,7 @@ const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
     loadTextureProgressively();
   }, [mediaObject.url, displayTitle, isMobile]);
   
-  // Update dimensions when aspect ratio changes (smooth transition)
+  // Update dimensions when aspect ratio changes AND update the actual geometry
   useEffect(() => {
     const baseWidth = isMobile ? 2.5 : 3.0;
     const baseHeight = baseWidth / aspectRatio;
@@ -340,8 +341,18 @@ const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
     const finalHeight = Math.min(baseHeight, maxHeight);
     const finalWidth = finalHeight * aspectRatio;
     
-    setDimensions({ width: finalWidth, height: finalHeight });
-  }, [aspectRatio, isMobile]);
+    const newDimensions = { width: finalWidth, height: finalHeight };
+    setDimensions(newDimensions);
+    
+    // CRITICAL: Actually update the 3D geometry when dimensions change
+    if (meshRef.current && meshRef.current.geometry) {
+      // Dispose old geometry to prevent memory leaks
+      meshRef.current.geometry.dispose();
+      // Create new geometry with correct dimensions
+      meshRef.current.geometry = new THREE.BoxGeometry(finalWidth, finalHeight, 0.05);
+      console.log(`🔄 Updated 3D geometry for ${displayTitle}: ${finalWidth.toFixed(2)}x${finalHeight.toFixed(2)} (AR: ${aspectRatio.toFixed(2)})`);
+    }
+  }, [aspectRatio, isMobile, displayTitle]);
 
   // Animation with useFrame
   useFrame((state) => {
@@ -407,9 +418,9 @@ const MediaCard: React.FC<{ mediaObject: any; }> = ({ mediaObject }) => {
       onPointerOver={() => setHovered(true)}
       onPointerOut={() => setHovered(false)}
     >
-      {/* Main card mesh with dynamic aspect ratio-based geometry */}
-      <mesh ref={meshRef} key={`${dimensions.width}-${dimensions.height}`}>
-        <boxGeometry args={[dimensions.width, dimensions.height, 0.05]} />
+      {/* Main card mesh with TRULY dynamic aspect ratio-based geometry */}
+      <mesh ref={meshRef}>
+        <boxGeometry ref={geometryRef} args={[dimensions.width, dimensions.height, 0.05]} />
         <meshStandardMaterial 
           map={texture} 
           color={error ? "#ff6b6b" : (isLoading ? "#e9ecef" : "#ffffff")}
@@ -662,24 +673,24 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
         return min + (max - min) * (x - Math.floor(x));
       };
       
-      // Create clusters and organic spacing
-      const clusterCount = Math.max(3, Math.ceil(totalAssets / 8)); // Create clusters of ~8 items each
+      // Create BEAUTIFUL floating gallery with proper spacing
+      const clusterCount = Math.max(4, Math.ceil(totalAssets / 6)); // Create clusters of ~6 items each for better spacing
       const currentCluster = index % clusterCount;
       
-      // Base cluster positions in a rough circle
+      // Base cluster positions in a MUCH LARGER circle for proper gallery feel
       const clusterAngle = (currentCluster / clusterCount) * Math.PI * 2;
-      const clusterRadius = 15 + (clusterCount * 2); // Scale radius with number of clusters
+      const clusterRadius = 40 + (clusterCount * 8); // DRAMATICALLY increased radius for proper spacing
       const clusterX = Math.cos(clusterAngle) * clusterRadius;
       const clusterZ = Math.sin(clusterAngle) * clusterRadius;
       
-      // Add organic randomization within each cluster
+      // Add GENEROUS organic randomization within each cluster
       const inClusterIndex = Math.floor(index / clusterCount);
-      const randomX = seededRandom(index * 7 + 123, -8, 8); // Random spread within cluster
-      const randomZ = seededRandom(index * 11 + 456, -8, 8);
-      const randomY = seededRandom(index * 13 + 789, 1.5, 4.5); // Varied heights for floating effect
+      const randomX = seededRandom(index * 7 + 123, -20, 20); // MUCH larger random spread for breathing room
+      const randomZ = seededRandom(index * 11 + 456, -20, 20);
+      const randomY = seededRandom(index * 13 + 789, 2, 8); // Higher floating heights for dramatic effect
       
-      // Create spiral-like distribution within clusters for more organic feel
-      const spiralRadius = 2 + (inClusterIndex * 0.8);
+      // Create EXPANDED spiral-like distribution within clusters
+      const spiralRadius = 8 + (inClusterIndex * 3); // MUCH larger spiral for proper spacing
       const spiralAngle = inClusterIndex * 2.3; // Golden ratio-ish angle for natural distribution
       const spiralX = Math.cos(spiralAngle) * spiralRadius;
       const spiralZ = Math.sin(spiralAngle) * spiralRadius;
@@ -735,7 +746,7 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
   return (
     <div style={{ width: '100vw', height: '100vh', backgroundColor }}>
       <Canvas 
-        camera={{ position: [0, 5, 15], fov: 80 }}
+        camera={{ position: [0, 15, 60], fov: 90 }}
         style={{ background: backgroundColor }}
       >
         <Suspense fallback={null}>
@@ -823,9 +834,9 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
             enableZoom 
             enablePan 
             enableRotate 
-            minDistance={5}
-            maxDistance={50}
-            target={[0, 2, 0]}
+            minDistance={10}
+            maxDistance={200}
+            target={[0, 5, 0]}
           />
 
         </Suspense>

@@ -313,24 +313,24 @@ export const createProjectWorld = (project: Project, isTouchDevice: boolean): Wo
         return min + (max - min) * (x - Math.floor(x));
       };
       
-      // Create clusters and organic spacing
-      const clusterCount = Math.max(3, Math.ceil(totalAssets / 8)); // Create clusters of ~8 items each
+      // Create BEAUTIFUL floating gallery with proper spacing
+      const clusterCount = Math.max(4, Math.ceil(totalAssets / 6)); // Create clusters of ~6 items each for better spacing
       const currentCluster = index % clusterCount;
       
-      // Base cluster positions in a rough circle
+      // Base cluster positions in a MUCH LARGER circle for proper gallery feel
       const clusterAngle = (currentCluster / clusterCount) * Math.PI * 2;
-      const clusterRadius = 15 + (clusterCount * 2); // Scale radius with number of clusters
+      const clusterRadius = 40 + (clusterCount * 8); // DRAMATICALLY increased radius for proper spacing
       const clusterX = Math.cos(clusterAngle) * clusterRadius;
       const clusterZ = Math.sin(clusterAngle) * clusterRadius;
       
-      // Add organic randomization within each cluster
+      // Add GENEROUS organic randomization within each cluster
       const inClusterIndex = Math.floor(index / clusterCount);
-      const randomX = seededRandom(index * 7 + 123, -8, 8); // Random spread within cluster
-      const randomZ = seededRandom(index * 11 + 456, -8, 8);
-      const randomY = seededRandom(index * 13 + 789, 1.5, 4.5); // Varied heights for floating effect
+      const randomX = seededRandom(index * 7 + 123, -20, 20); // MUCH larger random spread for breathing room
+      const randomZ = seededRandom(index * 11 + 456, -20, 20);
+      const randomY = seededRandom(index * 13 + 789, 2, 8); // Higher floating heights for dramatic effect
       
-      // Create spiral-like distribution within clusters for more organic feel
-      const spiralRadius = 2 + (inClusterIndex * 0.8);
+      // Create EXPANDED spiral-like distribution within clusters
+      const spiralRadius = 8 + (inClusterIndex * 3); // MUCH larger spiral for proper spacing
       const spiralAngle = inClusterIndex * 2.3; // Golden ratio-ish angle for natural distribution
       const spiralX = Math.cos(spiralAngle) * spiralRadius;
       const spiralZ = Math.sin(spiralAngle) * spiralRadius;
