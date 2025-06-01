@@ -80,22 +80,15 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
     return mediaObject.title || mediaObject.name || getFilenameFromUrl(mediaObject.url);
   }, [mediaObject.title, mediaObject.name, mediaObject.url]);
 
-  // Performance: Check visibility and distance (more generous for gallery)
+  // Simplified visibility - always visible for debugging
   useFrame(() => {
-    if (!groupRef.current || !camera) return;
-    
-    const distance = camera.position.distanceTo(groupRef.current.position);
-    const wasVisible = isVisible;
-    const shouldBeVisible = distance < 100; // Increased range for gallery viewing
-    
-    if (shouldBeVisible !== wasVisible) {
-      setIsVisible(shouldBeVisible);
+    if (!isVisible) {
+      setIsVisible(true);
     }
   });
 
-  // Optimized texture loading - only when visible
+  // Simplified texture loading - always load
   useEffect(() => {
-    if (!isVisible) return;
     
     let isActive = true;
     const loader = new THREE.TextureLoader();
@@ -153,7 +146,7 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
         setTimeout(() => currentTexture.dispose(), 100);
       }
     };
-  }, [isVisible, textureQuality, placeholderUrl, fullResUrl]);
+  }, [textureQuality, placeholderUrl, fullResUrl]); // Removed isVisible dependency
 
   // Calculate dimensions based on aspect ratio
   const baseSize = 3.0;
@@ -183,10 +176,10 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
     }
   };
 
-  // Don't render if not visible (performance optimization)
-  if (!isVisible) {
-    return null;
-  }
+  // Always render for debugging
+  // if (!isVisible) {
+  //   return null;
+  // }
 
   return (
     <group 
@@ -272,6 +265,9 @@ const SceneContent: React.FC<{ allMediaObjects: any[], projectData: ProjectData 
   // Register FP interaction hook
   useFirstPersonInteractions();
   
+  // Debug logging
+  console.log(`SceneContent: Rendering ${allMediaObjects.length} media objects`);
+  
   // Create striped floor texture
   const floorTexture = useMemo(() => {
     const canvas = document.createElement('canvas');
@@ -317,7 +313,7 @@ const SceneContent: React.FC<{ allMediaObjects: any[], projectData: ProjectData 
       />
 
       {/* Clean white gallery environment */}
-      <Environment preset="studio" background />
+      <Environment preset="city" background={false} />
       
       {/* Force white background */}
       <color attach="background" args={['#ffffff']} />
@@ -367,7 +363,7 @@ const SceneContent: React.FC<{ allMediaObjects: any[], projectData: ProjectData 
         {allMediaObjects.length} media object{allMediaObjects.length !== 1 ? 's' : ''}
       </Text>
 
-      {/* Render all media objects - progressive loading will handle performance */}
+      {/* Render all media objects - debugging */}
       {allMediaObjects.map((mediaObj, index) => (
         <MediaCard key={mediaObj.id || index} mediaObject={mediaObj} />
       ))}
