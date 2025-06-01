@@ -1,10 +1,17 @@
 import React, { useEffect, useState, Suspense, useRef, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Environment, Html, Text } from '@react-three/drei';
+import { Environment, Html, Text } from '@react-three/drei';
 import { projectDataService, ProjectData } from '../services/projectDataService';
 import { WorldObject } from '../data/worlds';
 import * as THREE from 'three';
+import FirstPersonCamera from '../components/FirstPersonCamera';
+import { MobileControlsProvider } from '../context/MobileControlsContext';
+import { InteractionProvider } from '../context/InteractionContext';
+import MobileControls from '../components/MobileControls';
+import useMobileDetection from '../hooks/useMobileDetection';
+import useFirstPersonInteractions from '../hooks/useFirstPersonInteractions';
+import BackButton from '../components/BackButton';
 
 interface ProjectSubworldProps {}
 
@@ -278,6 +285,94 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
   );
 };
 
+// Scene content component for first-person integration
+const SceneContent: React.FC<{ allMediaObjects: any[], projectData: ProjectData }> = ({ allMediaObjects, projectData }) => {
+  // Register FP interaction hook
+  useFirstPersonInteractions();
+  
+  // Apply world settings from project data
+  const worldSettings = projectData.worldSettings || {};
+  const ambientIntensity = (worldSettings as any).ambientLightIntensity || 0.6;
+  const directionalIntensity = (worldSettings as any).directionalLightIntensity || 1.0;
+
+  return (
+    <>
+      {/* Lighting based on project settings */}
+      <ambientLight 
+        color={(worldSettings as any).ambientLightColor || '#ffffff'} 
+        intensity={ambientIntensity} 
+      />
+      <directionalLight 
+        position={[10, 10, 5]} 
+        intensity={directionalIntensity}
+        color={(worldSettings as any).directionalLightColor || '#ffffff'}
+        castShadow
+      />
+
+      {/* Environment */}
+      <Environment preset="studio" />
+
+      {/* First Person Camera - same as main world */}
+      <FirstPersonCamera 
+        position={new THREE.Vector3(0, 1.7, 15)}
+        height={1.7} 
+        moveSpeed={0.25}
+        rotationSpeed={0.0015}
+        acceleration={0.12}
+        deceleration={0.2}
+      />
+
+      {/* Floor */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -2, 0]} receiveShadow>
+        <planeGeometry args={[200, 200]} />
+        <meshStandardMaterial 
+          color={(worldSettings as any).floorColor || '#333333'} 
+        />
+      </mesh>
+
+      {/* Project title */}
+      <Text
+        position={[0, 4, -5]}
+        fontSize={0.5}
+        color="#ffffff"
+        anchorX="center"
+        anchorY="middle"
+      >
+        {projectData.name}
+      </Text>
+
+      {/* Subtitle with media count */}
+      <Text
+        position={[0, 3.3, -5]}
+        fontSize={0.2}
+        color="#cccccc"
+        anchorX="center"
+        anchorY="middle"
+      >
+        {allMediaObjects.length} media object{allMediaObjects.length !== 1 ? 's' : ''}
+      </Text>
+
+      {/* Render all media objects - progressive loading will handle performance */}
+      {allMediaObjects.map((mediaObj, index) => (
+        <MediaCard key={mediaObj.id || index} mediaObject={mediaObj} />
+      ))}
+
+      {/* Show message if no media objects */}
+      {allMediaObjects.length === 0 && (
+        <Text
+          position={[0, 2, 0]}
+          fontSize={0.3}
+          color="#cccccc"
+          anchorX="center"
+          anchorY="middle"
+        >
+          No media objects found
+        </Text>
+      )}
+    </>
+  );
+};
+
 const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
   const { projectId, projectName } = useParams<{ projectId?: string; projectName?: string }>();
   const navigate = useNavigate();
@@ -285,8 +380,8 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Detect mobile device for responsive rendering
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  // Get mobile detection
+  const { isMobile, isTouchDevice } = useMobileDetection();
 
   useEffect(() => {
     const loadProject = async () => {
@@ -482,128 +577,48 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
   console.log(`ProjectSubworld: Total media objects to render: ${allMediaObjects.length}`);
 
   return (
-    <div style={{ width: '100vw', height: '100vh', backgroundColor }}>
-      <Canvas 
-        camera={{ position: [0, 15, 60], fov: 90 }}
-        style={{ background: backgroundColor }}
-        gl={{
-          antialias: false, // Disable antialiasing to save memory
-          alpha: false,
-          powerPreference: "high-performance",
-          failIfMajorPerformanceCaveat: false,
-          preserveDrawingBuffer: false
-        }}
-        onCreated={(state) => {
-          // WebGL context recovery
-          const gl = state.gl.getContext();
-          const handleContextLost = (event: any) => {
-            event.preventDefault();
-            console.warn('🚨 WebGL context lost - attempting recovery');
-          };
-          
-          const handleContextRestored = () => {
-            console.log('✅ WebGL context restored');
-            // Force reload textures
-            window.location.reload();
-          };
-          
-          gl.canvas.addEventListener('webglcontextlost', handleContextLost);
-          gl.canvas.addEventListener('webglcontextrestored', handleContextRestored);
-        }}
-      >
-        <Suspense fallback={null}>
-          {/* Lighting based on project settings */}
-          <ambientLight 
-            color={(worldSettings as any).ambientLightColor || '#ffffff'} 
-            intensity={ambientIntensity} 
-          />
-          <directionalLight 
-            position={[10, 10, 5]} 
-            intensity={directionalIntensity}
-            color={(worldSettings as any).directionalLightColor || '#ffffff'}
-            castShadow
-          />
-
-          {/* Environment */}
-          <Environment preset="studio" />
-
-          {/* Floor */}
-          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -2, 0]} receiveShadow>
-            <planeGeometry args={[100, 100]} />
-            <meshStandardMaterial 
-              color={(worldSettings as any).floorColor || '#333333'} 
-            />
-          </mesh>
-
-          {/* Project title */}
-          <Text
-            position={[0, 4, -5]}
-            fontSize={0.5}
-            color="#ffffff"
-            anchorX="center"
-            anchorY="middle"
+    <InteractionProvider>
+      <MobileControlsProvider>
+        <div style={{ width: '100vw', height: '100vh', backgroundColor }}>
+          <Canvas 
+            camera={{ position: [0, 1.7, 15], fov: 75 }}
+            style={{ background: backgroundColor }}
+            gl={{
+              antialias: false, // Disable antialiasing to save memory
+              alpha: false,
+              powerPreference: "high-performance",
+              failIfMajorPerformanceCaveat: false,
+              preserveDrawingBuffer: false
+            }}
+            onCreated={(state) => {
+              // WebGL context recovery
+              const gl = state.gl.getContext();
+              const handleContextLost = (event: any) => {
+                event.preventDefault();
+                console.warn('🚨 WebGL context lost - attempting recovery');
+              };
+              
+              const handleContextRestored = () => {
+                console.log('✅ WebGL context restored');
+                // Force reload textures
+                window.location.reload();
+              };
+              
+              gl.canvas.addEventListener('webglcontextlost', handleContextLost);
+              gl.canvas.addEventListener('webglcontextrestored', handleContextRestored);
+            }}
           >
-            {projectData.name}
-          </Text>
+            <Suspense fallback={null}>
+              <SceneContent allMediaObjects={allMediaObjects} projectData={projectData} />
+            </Suspense>
+          </Canvas>
 
-          {/* Subtitle with media count */}
-          <Text
-            position={[0, 3.3, -5]}
-            fontSize={0.2}
-            color="#cccccc"
-            anchorX="center"
-            anchorY="middle"
-          >
-            {allMediaObjects.length} media object{allMediaObjects.length !== 1 ? 's' : ''}
-          </Text>
-
-          {/* Back button */}
-          <group position={[-8, 3, 0]} onClick={() => navigate('/')}>
-            <mesh>
-              <boxGeometry args={[1.5, 0.5, 0.1]} />
-              <meshStandardMaterial color="#ff5555" />
-            </mesh>
-            <Text
-              position={[0, 0, 0.06]}
-              fontSize={0.15}
-              color="#ffffff"
-              anchorX="center"
-              anchorY="middle"
-            >
-              ← Back
-            </Text>
-          </group>
-
-          {/* Render all media objects - progressive loading will handle performance */}
-          {allMediaObjects.map((mediaObj, index) => (
-            <MediaCard key={mediaObj.id || index} mediaObject={mediaObj} />
-          ))}
-
-          {/* Show message if no media objects */}
-          {allMediaObjects.length === 0 && (
-            <Text
-              position={[0, 2, 0]}
-              fontSize={0.3}
-              color="#cccccc"
-              anchorX="center"
-              anchorY="middle"
-            >
-              No media objects found
-            </Text>
-          )}
-
-          <OrbitControls 
-            enableZoom 
-            enablePan 
-            enableRotate 
-            minDistance={10}
-            maxDistance={200}
-            target={[0, 5, 0]}
-          />
-
-        </Suspense>
-      </Canvas>
-    </div>
+          {/* UI Elements Rendered Separately - same as main world */}
+          {isTouchDevice && <MobileControls />}
+          <BackButton />
+        </div>
+      </MobileControlsProvider>
+    </InteractionProvider>
   );
 };
 
