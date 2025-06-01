@@ -1,4 +1,4 @@
-import React, { useEffect, useState, Suspense, useRef } from 'react';
+import React, { useEffect, useState, Suspense, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Environment, Html, Text } from '@react-three/drei';
@@ -27,8 +27,9 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
   const meshRef = useRef<THREE.Mesh>(null);
   const [isVisibleForFullLoad, setIsVisibleForFullLoad] = useState(false);
 
-  const placeholderUrl = mediaObject.thumbnail || mediaObject.url; // Prioritize thumbnail if available
-  const fullResUrl = mediaObject.url;
+  // Memoize placeholderUrl and fullResUrl
+  const placeholderUrl = useMemo(() => mediaObject.thumbnail || mediaObject.url, [mediaObject.thumbnail, mediaObject.url]);
+  const fullResUrl = useMemo(() => mediaObject.url, [mediaObject.url]);
 
   // Detect mobile device
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -62,7 +63,10 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
   };
 
   // Get the display title - use filename if no title is provided
-  const displayTitle = mediaObject.title || mediaObject.name || getFilenameFromUrl(mediaObject.url);
+  // Memoize displayTitle
+  const displayTitle = useMemo(() => {
+    return mediaObject.title || mediaObject.name || getFilenameFromUrl(mediaObject.url);
+  }, [mediaObject.title, mediaObject.name, mediaObject.url]);
 
   // Smart aspect ratio defaults based on content type and filename
   const getDefaultAspectRatio = (url: string, type: string): number => {
@@ -178,7 +182,7 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
         console.log(`🗑️ (${displayTitle}) Disposed texture on unmount/change.`);
       }
     };
-  }, [mediaObject.url, mediaObject.thumbnail, displayTitle, textureQuality, isVisibleForFullLoad, placeholderUrl, fullResUrl, mediaObject.type, mediaObject.id]);
+  }, [mediaObject.type, mediaObject.id, displayTitle, textureQuality, isVisibleForFullLoad, placeholderUrl, fullResUrl, normalizeUrl, getDefaultAspectRatio]); // Added normalizeUrl and getDefaultAspectRatio to dependencies, they are stable due to useCallback or being top-level
   
   // Base dimensions, will be scaled by aspectRatio
   const baseDimension = isMobile ? 2.0 : 2.5; // Smaller base for mobile
