@@ -15,6 +15,10 @@ const CLICK_EVENT = new Event('crosshair:click');
 const MOBILE_INTERACTION_DISTANCE = 25; // More precise range for mobile touch interaction
 const DESKTOP_INTERACTION_DISTANCE = 40; // More precise range for desktop clicks
 
+// INTERACTION COOLDOWN SYSTEM - Prevents immediate re-interaction when returning from external tabs
+const INTERACTION_COOLDOWN_MS = 2000; // 2 second cooldown after clicking any media card
+const TAB_RETURN_COOLDOWN_MS = 1500; // 1.5 second cooldown when returning from external tab
+
 // --- DEBUG --- Add a counter for setHoveredObject calls
 let setHoveredObjectCallCount = 0;
 // --- END DEBUG ---
@@ -41,6 +45,14 @@ function useFirstPersonInteractions() {
   const showDebugRay = false;
   const rayHelper = useRef<THREE.ArrowHelper | null>(null);
 
+  // INTERACTION COOLDOWN STATE - Prevents immediate re-interaction
+  const interactionCooldown = useRef({
+    isInCooldown: false,
+    lastClickTime: 0,
+    lastTabReturnTime: 0,
+    cooldownTimer: null as NodeJS.Timeout | null
+  });
+
   // Flag to track touch interaction state with improved state tracking
   const touchState = useRef({
     isTouching: false,
@@ -60,6 +72,45 @@ function useFirstPersonInteractions() {
     originalSetHoveredObject(obj);
   }, [originalSetHoveredObject]);
   // --- END DEBUG ---
+
+  // INTERACTION COOLDOWN HELPERS
+  const startInteractionCooldown = useCallback((reason: string) => {
+    console.log(`🕒 COOLDOWN: Starting interaction cooldown - ${reason}`);
+    interactionCooldown.current.isInCooldown = true;
+    interactionCooldown.current.lastClickTime = Date.now();
+    
+    // Clear any existing timer
+    if (interactionCooldown.current.cooldownTimer) {
+      clearTimeout(interactionCooldown.current.cooldownTimer);
+    }
+    
+    // Set cooldown timer
+    interactionCooldown.current.cooldownTimer = setTimeout(() => {
+      console.log(`✅ COOLDOWN: Interaction cooldown ended`);
+      interactionCooldown.current.isInCooldown = false;
+      interactionCooldown.current.cooldownTimer = null;
+    }, INTERACTION_COOLDOWN_MS);
+  }, []);
+
+  const startTabReturnCooldown = useCallback(() => {
+    console.log(`🕒 TAB RETURN: Starting tab return cooldown`);
+    interactionCooldown.current.lastTabReturnTime = Date.now();
+    
+    // Temporarily disable interactions when returning from tab
+    const tempDisable = setTimeout(() => {
+      console.log(`✅ TAB RETURN: Tab return cooldown ended`);
+    }, TAB_RETURN_COOLDOWN_MS);
+  }, []);
+
+  const isInCooldown = useCallback(() => {
+    const now = Date.now();
+    const timeSinceClick = now - interactionCooldown.current.lastClickTime;
+    const timeSinceTabReturn = now - interactionCooldown.current.lastTabReturnTime;
+    
+    return interactionCooldown.current.isInCooldown || 
+           timeSinceClick < INTERACTION_COOLDOWN_MS ||
+           timeSinceTabReturn < TAB_RETURN_COOLDOWN_MS;
+  }, []);
   
   // Remove initial scan to prevent lingering hover states on mobile
   
@@ -127,10 +178,15 @@ function useFirstPersonInteractions() {
     
     // WINDOW FOCUS HANDLER - Reset when returning from external tab
     const handleWindowFocus = () => {
-      console.log('🎯 WINDOW FOCUS - Checking and resetting interaction state');
-      // When user returns from external tab, reset interaction state
+      console.log('🎯 WINDOW FOCUS - User returned from external tab');
+      
+      // Start tab return cooldown to prevent immediate re-interaction
+      startTabReturnCooldown();
+      
+      // Reset interaction state when returning from external tab
       setTimeout(() => {
         if (!document.pointerLockElement) {
+          console.log('🎯 WINDOW FOCUS - Resetting interaction state after tab return');
           setHoveredObject(null);
           setClickedObject(null);
           document.dispatchEvent(HOVER_END_EVENT);
@@ -157,8 +213,14 @@ function useFirstPersonInteractions() {
       document.removeEventListener('keydown', handleEscapeKey);
       window.removeEventListener('focus', handleWindowFocus);
       window.removeEventListener('blur', handleWindowBlur);
+      
+      // Cleanup cooldown timer
+      if (interactionCooldown.current.cooldownTimer) {
+        clearTimeout(interactionCooldown.current.cooldownTimer);
+        interactionCooldown.current.cooldownTimer = null;
+      }
     };
-  }, [gl.domElement, isTouchDevice, setHoveredObject, setClickedObject]);
+      }, [gl.domElement, isTouchDevice, setHoveredObject, setClickedObject, startTabReturnCooldown]);
   
   // Direct DOM event handlers for touch interactions
   useEffect(() => {
@@ -319,11 +381,28 @@ function useFirstPersonInteractions() {
         console.log('[FPInteractions Desktop] Click on clickTarget:', clickTarget.name, clickTarget.userData);
         document.dispatchEvent(CLICK_EVENT); // For crosshair feedback
 
+        // CHECK COOLDOWN - Prevent interaction if in cooldown period
+        if (isInCooldown()) {
+          console.log('🚫 CLICK BLOCKED: Still in cooldown period');
+          return;
+        }
+
         if (clickTarget.userData.action === 'chat') {
           console.log(`[FPInteractions Desktop] Opening chat with NPC: ${clickTarget.userData.npcName || clickTarget.userData.npcId || clickTarget.userData.name || clickTarget.name}`);
           openChat();
         } else {
           console.log(`[FPInteractions Desktop] Triggering general interaction for: ${clickTarget.name}`);
+          
+          // Detect if this is a media card interaction that will open external content
+          const isMediaCard = clickTarget.userData.objectType === 'image' || 
+                              clickTarget.userData.objectType === 'pdf' || 
+                              clickTarget.userData.objectType === 'video' ||
+                              clickTarget.userData.type === 'link';
+          
+          if (isMediaCard) {
+            startInteractionCooldown(`Clicked ${clickTarget.userData.objectType || 'media'} card`);
+          }
+          
           triggerInteraction(); // This uses the hoveredObject from InteractionContext
         }
         setClickedObject(clickTarget); // For potential feedback if needed elsewhere
@@ -336,7 +415,7 @@ function useFirstPersonInteractions() {
     return () => {
       gl.domElement.removeEventListener('click', handleClick);
     };
-  }, [isTouchDevice, gl, showChat, hoveredObject, openChat, triggerInteraction, setClickedObject, isPointerLocked]);
+  }, [isTouchDevice, gl, showChat, hoveredObject, openChat, triggerInteraction, setClickedObject, isPointerLocked, isInCooldown, startInteractionCooldown]);
 
   // Update hover state using precise raycasting from exact center (0,0)
   useFrame(() => {
@@ -400,21 +479,43 @@ function useFirstPersonInteractions() {
     if (isTouchDevice) {
       if (touchState.current.isTouching) {
         if (interactiveObject && !touchState.current.processedTouch) {
-          touchState.current.lastTouchedObject = interactiveObject;
-          if (hoveredObject !== interactiveObject) {
-            if (hoveredObject) document.dispatchEvent(HOVER_END_EVENT);
-            document.dispatchEvent(HOVER_START_EVENT);
-            setHoveredObject(interactiveObject);
+          // Check cooldown for mobile media cards too
+          const isMediaCard = interactiveObject.userData.objectType === 'image' || 
+                              interactiveObject.userData.objectType === 'pdf' || 
+                              interactiveObject.userData.objectType === 'video' ||
+                              interactiveObject.userData.type === 'link';
+          
+          if (!(isMediaCard && isInCooldown())) {
+            touchState.current.lastTouchedObject = interactiveObject;
+            if (hoveredObject !== interactiveObject) {
+              if (hoveredObject) document.dispatchEvent(HOVER_END_EVENT);
+              document.dispatchEvent(HOVER_START_EVENT);
+              setHoveredObject(interactiveObject);
+            }
           }
           touchState.current.processedTouch = true; 
         }
       } else {
         // Not touching: immediate hover update based on what's at crosshair center
         if (interactiveObject) {
-          if (hoveredObject !== interactiveObject) {
-            if (hoveredObject) document.dispatchEvent(HOVER_END_EVENT);
-            document.dispatchEvent(HOVER_START_EVENT);
-            setHoveredObject(interactiveObject);
+          // Check cooldown for mobile media cards
+          const isMediaCard = interactiveObject.userData.objectType === 'image' || 
+                              interactiveObject.userData.objectType === 'pdf' || 
+                              interactiveObject.userData.objectType === 'video' ||
+                              interactiveObject.userData.type === 'link';
+          
+          const shouldBlockHover = isMediaCard && isInCooldown();
+          
+          if (!shouldBlockHover) {
+            if (hoveredObject !== interactiveObject) {
+              if (hoveredObject) document.dispatchEvent(HOVER_END_EVENT);
+              document.dispatchEvent(HOVER_START_EVENT);
+              setHoveredObject(interactiveObject);
+            }
+          } else if (hoveredObject) {
+            // Clear hover during cooldown
+            document.dispatchEvent(HOVER_END_EVENT);
+            setHoveredObject(null);
           }
         } else if (hoveredObject) {
           // Immediately clear hover when nothing is at center - makes button disappear instantly
@@ -423,12 +524,29 @@ function useFirstPersonInteractions() {
         }
       }
     } else {
-      // Desktop interaction logic
+      // Desktop interaction logic with cooldown respect
       if (interactiveObject) {
-        if (hoveredObject !== interactiveObject) {
-          if (hoveredObject) document.dispatchEvent(HOVER_END_EVENT);
-          document.dispatchEvent(HOVER_START_EVENT);
-          setHoveredObject(interactiveObject);
+        // Check if we're in cooldown period - if so, don't show hover for media cards
+        const isMediaCard = interactiveObject.userData.objectType === 'image' || 
+                            interactiveObject.userData.objectType === 'pdf' || 
+                            interactiveObject.userData.objectType === 'video' ||
+                            interactiveObject.userData.type === 'link';
+        
+        const shouldBlockHover = isMediaCard && isInCooldown();
+        
+        if (shouldBlockHover) {
+          // Clear hover during cooldown to prevent accidental re-interaction
+          if (hoveredObject) {
+            document.dispatchEvent(HOVER_END_EVENT);
+            setHoveredObject(null);
+          }
+        } else {
+          // Normal hover behavior when not in cooldown
+          if (hoveredObject !== interactiveObject) {
+            if (hoveredObject) document.dispatchEvent(HOVER_END_EVENT);
+            document.dispatchEvent(HOVER_START_EVENT);
+            setHoveredObject(interactiveObject);
+          }
         }
       } else if (hoveredObject) {
         document.dispatchEvent(HOVER_END_EVENT);
