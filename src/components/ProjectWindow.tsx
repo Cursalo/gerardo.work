@@ -6,6 +6,7 @@ import { Project } from '../services/projectService';
 import { VisibilityContext } from './Scene';
 import R3FErrorBoundary from './R3FErrorBoundary';
 import useMobileDetection from '../hooks/useMobileDetection';
+import { createProjectSlug } from '../utils/fileUtils';
 
 interface ProjectWindowProps {
   project: Project;
@@ -126,9 +127,10 @@ const ProjectWindow = React.memo(({ project, position }: ProjectWindowProps) => 
     console.log("🚀 Project data:", { id: project.id, name: project.name });
     console.log("🚀 Current URL:", window.location.href);
     
-    // Use URL navigation instead of world context for consistency between localhost and GitHub
-    console.log(`🚀 Navigating to project: ${project.id} via URL`);
-    const targetUrl = `/project/${project.id}`;
+    // UPDATED: Use project name slug instead of ID for better URLs
+    const projectSlug = createProjectSlug(project.name);
+    console.log(`🚀 Navigating to project: ${project.name} (${projectSlug}) via URL`);
+    const targetUrl = `/projects/${projectSlug}`;
     console.log(`🚀 Target URL: ${targetUrl}`);
     
     // Add a small delay to ensure logging is visible
@@ -140,7 +142,7 @@ const ProjectWindow = React.memo(({ project, position }: ProjectWindowProps) => 
     setTimeout(() => setClicked(false), 300);
     
     return false;
-  }, [project.id]);
+  }, [project.name]);
 
   // 16:9 aspect ratio dimensions, lighter default size
   const width = 320;

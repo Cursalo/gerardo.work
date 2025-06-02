@@ -1,7 +1,8 @@
 import React, { createContext, useState, useContext, ReactNode, useCallback } from 'react';
 import * as THREE from 'three';
 import { useWorld } from './WorldContext'; // Import useWorld to navigate
-import { openFileWithViewer, isExternalUrl } from '../utils/fileUtils'; // Import file utilities
+import { openFileWithViewer, isExternalUrl, createProjectSlug } from '../utils/fileUtils'; // Import file utilities
+import { projectDataService } from '../services/projectDataService'; // Import project data service
 
 // Extend userData to include necessary info for the button
 export interface InteractionData {
@@ -49,7 +50,21 @@ export const InteractionProvider: React.FC<{ children: ReactNode }> = ({ childre
     // Logic moved from InteractionButton/useEffect
     if (data.projectId !== undefined) {
       console.log(`[InteractionContext] Navigating to project ${data.projectId} via URL`);
-      window.location.href = `/project/${data.projectId}`;
+      
+      // UPDATED: Look up project name and use slug-based URL
+      projectDataService.getProjectById(data.projectId).then(project => {
+        if (project) {
+          const projectSlug = createProjectSlug(project.name);
+          console.log(`[InteractionContext] Found project: ${project.name} (${projectSlug})`);
+          window.location.href = `/projects/${projectSlug}`;
+        } else {
+          console.warn(`[InteractionContext] Project ${data.projectId} not found, falling back to ID-based URL`);
+          window.location.href = `/project/${data.projectId}`;
+        }
+      }).catch(error => {
+        console.error(`[InteractionContext] Error looking up project ${data.projectId}:`, error);
+        window.location.href = `/project/${data.projectId}`;
+      });
     } else if (data.type === 'button' && data.action === 'navigate') {
       const { destination, subWorldId } = data;
       if (destination === 'hub' || destination === 'mainWorld') {

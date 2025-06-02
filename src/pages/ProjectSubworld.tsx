@@ -36,6 +36,7 @@ import { VideoCard } from '../components/VideoCard';
 import { ImageCard } from '../components/ImageCard';
 import { PDFCard } from '../components/PDFCard';
 import { WebLinkCard } from '../components/WebLinkCard';
+import { slugToProjectName } from '../utils/fileUtils';
 
 interface ProjectSubworldProps {}
 
@@ -356,7 +357,25 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
         // Try to load by project name first (from /projects/:projectName route)
         if (projectName) {
           console.log(`ProjectSubworld: Loading project by name: ${projectName}`);
+          
+          // First try exact match
           project = await projectDataService.getProjectByName(projectName);
+          
+          // If not found, try converting slug back to project name
+          if (!project) {
+            const convertedName = slugToProjectName(projectName);
+            console.log(`ProjectSubworld: Trying converted name: ${convertedName}`);
+            project = await projectDataService.getProjectByName(convertedName);
+          }
+          
+          // If still not found, try case-insensitive search through all projects
+          if (!project) {
+            console.log(`ProjectSubworld: Trying case-insensitive search for: ${projectName}`);
+            const allProjects = await projectDataService.getAllProjects();
+            project = allProjects.find(p => 
+              p.name.toLowerCase().replace(/[^a-z0-9]/g, '') === projectName.toLowerCase().replace(/[^a-z0-9]/g, '')
+            ) || null;
+          }
         }
         // Then try by project ID
         else if (projectId) {

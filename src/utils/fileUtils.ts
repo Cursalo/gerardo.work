@@ -516,4 +516,37 @@ export async function getFileSize(url: string): Promise<string> {
   } catch {
     return 'Unknown size';
   }
+}
+
+/**
+ * Convert project name to URL-safe slug
+ */
+export function createProjectSlug(projectName: string): string {
+  if (!projectName) return '';
+  
+  return projectName
+    .toLowerCase()
+    .trim()
+    // Replace spaces, dots, and special characters with hyphens
+    .replace(/[\s.]+/g, '-')
+    // Remove apostrophes and quotes
+    .replace(/['"]/g, '')
+    // Remove any remaining non-alphanumeric characters except hyphens
+    .replace(/[^a-z0-9-]/g, '')
+    // Remove multiple consecutive hyphens
+    .replace(/-+/g, '-')
+    // Remove leading/trailing hyphens
+    .replace(/^-+|-+$/g, '');
+}
+
+/**
+ * Convert slug back to project name for lookup (best effort)
+ */
+export function slugToProjectName(slug: string): string {
+  if (!slug) return '';
+  
+  return slug
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 } 
