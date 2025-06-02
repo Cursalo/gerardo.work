@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useCallback } from 'react';
+import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { Mesh, Group, Vector3 } from 'three';
@@ -37,6 +37,13 @@ export const VideoCard: React.FC<VideoCardProps> = ({
   
   // Get camera from three.js context
   const { camera } = useThree();
+  
+  // Set initial position
+  useEffect(() => {
+    if (groupRef.current) {
+      groupRef.current.position.set(position[0], position[1], position[2]);
+    }
+  }, [position]);
   
   // Calculate video dimensions using 16:9 aspect ratio for better video display
   const videoDimensions = useMemo(() => {
@@ -150,38 +157,53 @@ export const VideoCard: React.FC<VideoCardProps> = ({
   useFrame((state) => {
     if (groupRef.current) {
       const time = state.clock.elapsedTime;
+      
+      // FIXED: Keep cards in their assigned positions with only gentle floating
       const baseY = position[1];
-      
-      // Gentle floating animation
       const floatOffset = Math.sin(time * 0.5 + position[0] * 0.2) * 0.1;
-      groupRef.current.position.y = baseY + floatOffset;
       
-      // Face the camera smoothly
+      // Lock to original position coordinates
+      groupRef.current.position.set(
+        position[0], 
+        baseY + floatOffset, 
+        position[2]
+      );
+      
+      // Simple camera facing without affecting position
       if (camera) {
-        const cardPosition = new Vector3(position[0], position[1], position[2]);
-        const cameraPosition = camera.position.clone();
+        const cardWorldPos = new Vector3(position[0], position[1], position[2]);
+        const cameraPos = camera.position.clone();
         
-        // Calculate direction from card to camera
-        const direction = new Vector3().subVectors(cameraPosition, cardPosition);
-        direction.y = 0; // Only rotate on Y axis
+        // Calculate direction for rotation only
+        const direction = new Vector3().subVectors(cameraPos, cardWorldPos);
+        direction.y = 0; // Only Y-axis rotation
         direction.normalize();
         
-        // Calculate target rotation to face camera
+        // Calculate target Y rotation to face camera
         const targetRotationY = Math.atan2(direction.x, direction.z);
         
-        // Smooth interpolation with different speeds for hover state
+        // Smooth rotation interpolation
+        const currentRotation = groupRef.current.rotation.y;
+        const rotationDiff = targetRotationY - currentRotation;
+        
+        // Handle rotation wrapping (shortest path)
+        let adjustedDiff = rotationDiff;
+        if (adjustedDiff > Math.PI) adjustedDiff -= 2 * Math.PI;
+        if (adjustedDiff < -Math.PI) adjustedDiff += 2 * Math.PI;
+        
+        // Apply smooth rotation
+        const rotationSpeed = hovered ? 0.06 : 0.03;
+        groupRef.current.rotation.y += adjustedDiff * rotationSpeed;
+        
+        // Add gentle wobble when hovered (rotation only)
         if (hovered) {
-          // Add slight wobble when hovered
-          const wobble = Math.sin(time * 2) * 0.01;
-          groupRef.current.rotation.y += (targetRotationY + wobble - groupRef.current.rotation.y) * 0.08;
-        } else {
-          // Smoothly face camera
-          groupRef.current.rotation.y += (targetRotationY - groupRef.current.rotation.y) * 0.04;
+          const wobble = Math.sin(time * 2) * 0.005;
+          groupRef.current.rotation.y += wobble;
         }
       }
       
       // Smooth scaling on hover
-      const targetScale = hovered ? 1.05 : 1.0; // Reduced scale effect
+      const targetScale = hovered ? 1.05 : 1.0; 
       const currentScale = groupRef.current.scale.x;
       const newScale = currentScale + (targetScale - currentScale) * 0.1;
       groupRef.current.scale.setScalar(newScale);
@@ -193,7 +215,6 @@ export const VideoCard: React.FC<VideoCardProps> = ({
   return (
     <group 
       ref={groupRef}
-      position={[position[0], position[1], position[2]]}
       rotation={rotation}
 
       onPointerEnter={handlePointerEnter}

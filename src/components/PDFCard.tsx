@@ -45,6 +45,13 @@ export const PDFCard: React.FC<PDFCardProps> = ({
   const [pdfLoadError, setPdfLoadError] = useState(false);
   const [resolvedPdfUrl, setResolvedPdfUrl] = useState<string>('');
 
+  // Set initial position
+  useEffect(() => {
+    if (groupRef.current) {
+      groupRef.current.position.set(position[0], position[1], position[2]);
+    }
+  }, [position]);
+
   // Enhanced PDF URL resolution with proper encoding and fallbacks
   const resolvePdfUrl = (url: string): string => {
     if (!url) return '';
@@ -121,33 +128,48 @@ export const PDFCard: React.FC<PDFCardProps> = ({
   useFrame((state) => {
     if (groupRef.current) {
       const time = state.clock.elapsedTime;
+      
+      // FIXED: Keep cards in their assigned positions with only gentle floating
       const baseY = position[1];
-      
-      // Gentle floating motion
       const floatOffset = Math.sin(time * 0.4 + position[0] * 0.2) * 0.1;
-      groupRef.current.position.y = baseY + floatOffset;
       
-      // Face the camera smoothly
+      // Lock to original position coordinates
+      groupRef.current.position.set(
+        position[0], 
+        baseY + floatOffset, 
+        position[2]
+      );
+      
+      // Simple camera facing without affecting position
       const camera = state.camera;
-      const cardPosition = new THREE.Vector3(position[0], position[1], position[2]);
-      const cameraPosition = camera.position.clone();
+      const cardWorldPos = new THREE.Vector3(position[0], position[1], position[2]);
+      const cameraPos = camera.position.clone();
       
-      // Calculate direction from card to camera
-      const direction = new THREE.Vector3().subVectors(cameraPosition, cardPosition);
-      direction.y = 0; // Only rotate on Y axis
+      // Calculate direction for rotation only
+      const direction = new THREE.Vector3().subVectors(cameraPos, cardWorldPos);
+      direction.y = 0; // Only Y-axis rotation
       direction.normalize();
       
-      // Calculate target rotation to face camera
+      // Calculate target Y rotation to face camera
       const targetRotationY = Math.atan2(direction.x, direction.z);
       
-      // Smooth interpolation to target rotation
+      // Smooth rotation interpolation
+      const currentRotation = groupRef.current.rotation.y;
+      const rotationDiff = targetRotationY - currentRotation;
+      
+      // Handle rotation wrapping (shortest path)
+      let adjustedDiff = rotationDiff;
+      if (adjustedDiff > Math.PI) adjustedDiff -= 2 * Math.PI;
+      if (adjustedDiff < -Math.PI) adjustedDiff += 2 * Math.PI;
+      
+      // Apply smooth rotation
+      const rotationSpeed = hovered ? 0.08 : 0.04;
+      groupRef.current.rotation.y += adjustedDiff * rotationSpeed;
+      
+      // Add gentle wobble when hovered (rotation only)
       if (hovered) {
-        // Add gentle wobble when hovered
-        const wobble = Math.sin(time * 2) * 0.02;
-        groupRef.current.rotation.y += (targetRotationY + wobble - groupRef.current.rotation.y) * 0.1;
-      } else {
-        // Smoothly face camera
-        groupRef.current.rotation.y += (targetRotationY - groupRef.current.rotation.y) * 0.05;
+        const wobble = Math.sin(time * 2) * 0.01;
+        groupRef.current.rotation.y += wobble;
       }
     }
   });
@@ -182,7 +204,6 @@ export const PDFCard: React.FC<PDFCardProps> = ({
   return (
     <group 
       ref={groupRef}
-      position={[position[0], position[1], position[2]]}
       rotation={rotation}
       scale={scale}
       onPointerEnter={handlePointerEnter}

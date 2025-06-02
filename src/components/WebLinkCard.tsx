@@ -47,6 +47,13 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
   const [loadError, setLoadError] = useState(false);
   const { registerObject, unregisterObject, checkOverlap } = useAppContext();
 
+  // Set initial position
+  useEffect(() => {
+    if (groupRef.current) {
+      groupRef.current.position.set(position[0], position[1], position[2]);
+    }
+  }, [position]);
+
   // Handle hover state
   const updateHoverState = (state: boolean) => {
     setHovered(state);
@@ -67,36 +74,56 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
   // Check for overlapping with other objects and handle camera facing
   useFrame((state) => {
     if (groupRef.current) {
-      const worldPosition = new THREE.Vector3();
-      groupRef.current.getWorldPosition(worldPosition);
+      const time = state.clock.elapsedTime;
       
+      // FIXED: Keep cards in their assigned positions with only gentle floating
+      const baseY = position[1];
+      const floatOffset = Math.sin(time * 0.5 + position[0] * 0.25) * 0.08;
+      
+      // Lock to original position coordinates
+      groupRef.current.position.set(
+        position[0], 
+        baseY + floatOffset, 
+        position[2]
+      );
+      
+      // Check for overlaps using the fixed world position
+      const worldPosition = new THREE.Vector3(position[0], position[1], position[2]);
       const isOverlappingNow = checkOverlap(worldPosition);
       if (isOverlappingNow !== isOverlapping) {
         setIsOverlapping(isOverlappingNow);
       }
       
-      // Face the camera smoothly
+      // Simple camera facing without affecting position
       const camera = state.camera;
-      const cardPosition = new THREE.Vector3(position[0], position[1], position[2]);
-      const cameraPosition = camera.position.clone();
+      const cardWorldPos = new THREE.Vector3(position[0], position[1], position[2]);
+      const cameraPos = camera.position.clone();
       
-      // Calculate direction from card to camera
-      const direction = new THREE.Vector3().subVectors(cameraPosition, cardPosition);
-      direction.y = 0; // Only rotate on Y axis
+      // Calculate direction for rotation only
+      const direction = new THREE.Vector3().subVectors(cameraPos, cardWorldPos);
+      direction.y = 0; // Only Y-axis rotation
       direction.normalize();
       
-      // Calculate target rotation to face camera
+      // Calculate target Y rotation to face camera
       const targetRotationY = Math.atan2(direction.x, direction.z);
       
-      // Smooth interpolation to target rotation
+      // Smooth rotation interpolation
+      const currentRotation = groupRef.current.rotation.y;
+      const rotationDiff = targetRotationY - currentRotation;
+      
+      // Handle rotation wrapping (shortest path)
+      let adjustedDiff = rotationDiff;
+      if (adjustedDiff > Math.PI) adjustedDiff -= 2 * Math.PI;
+      if (adjustedDiff < -Math.PI) adjustedDiff += 2 * Math.PI;
+      
+      // Apply smooth rotation
+      const rotationSpeed = hovered ? 0.08 : 0.04;
+      groupRef.current.rotation.y += adjustedDiff * rotationSpeed;
+      
+      // Add gentle wobble when hovered (rotation only)
       if (hovered) {
-        // Add gentle wobble when hovered
-        const time = state.clock.elapsedTime;
-        const wobble = Math.sin(time * 2) * 0.02;
-        groupRef.current.rotation.y += (targetRotationY + wobble - groupRef.current.rotation.y) * 0.1;
-      } else {
-        // Smoothly face camera
-        groupRef.current.rotation.y += (targetRotationY - groupRef.current.rotation.y) * 0.05;
+        const wobble = Math.sin(time * 2) * 0.01;
+        groupRef.current.rotation.y += wobble;
       }
     }
   });
@@ -139,7 +166,6 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
   return (
     <group 
       ref={groupRef}
-      position={[position[0], position[1], position[2]]}
       rotation={rotation}
       scale={scale}
       onPointerOver={() => updateHoverState(true)}
