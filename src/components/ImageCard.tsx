@@ -101,8 +101,8 @@ export const ImageCard: React.FC<ImageCardProps> = ({
     }
   }, [position, title, resolvedImageUrl]);
 
-  // Handle click function - work exactly like VideoCard (which is working fine)
-  const handleClick = useCallback((e?: any) => {
+  // Handle click function - force correct image display with blob URL
+  const handleClick = useCallback(async (e?: any) => {
     if (e) {
       e.stopPropagation();
     }
@@ -114,12 +114,71 @@ export const ImageCard: React.FC<ImageCardProps> = ({
       return;
     }
     
-    // FIXED: Work exactly like VideoCard - open images directly
+    // FIXED: Force correct image display by creating blob with proper MIME type
     if (resolvedImageUrl) {
-      console.log('Image Card: Opening image directly like VideoCard does');
-      window.open(resolvedImageUrl, '_blank', 'noopener,noreferrer');
+      try {
+        console.log('Image Card: Fetching image and creating proper blob URL');
+        
+        // Fetch the image data
+        const response = await fetch(resolvedImageUrl);
+        const blob = await response.blob();
+        
+        // Determine correct MIME type based on file extension
+        let mimeType = 'image/jpeg'; // default
+        const url = resolvedImageUrl.toLowerCase();
+        if (url.includes('.webp')) mimeType = 'image/webp';
+        else if (url.includes('.png')) mimeType = 'image/png';
+        else if (url.includes('.gif')) mimeType = 'image/gif';
+        else if (url.includes('.jpg') || url.includes('.jpeg')) mimeType = 'image/jpeg';
+        
+        // Create blob with correct MIME type
+        const correctBlob = new Blob([blob], { type: mimeType });
+        const blobUrl = URL.createObjectURL(correctBlob);
+        
+        // Open in new window with proper image display
+        const newWindow = window.open('', '_blank');
+        if (newWindow) {
+          newWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <title>${title}</title>
+              <style>
+                body { 
+                  margin: 0; 
+                  padding: 0; 
+                  background: #000; 
+                  display: flex; 
+                  justify-content: center; 
+                  align-items: center;
+                  min-height: 100vh;
+                }
+                img { 
+                  max-width: 100%; 
+                  max-height: 100vh; 
+                  object-fit: contain;
+                }
+              </style>
+            </head>
+            <body>
+              <img src="${blobUrl}" alt="${title}" onload="console.log('Image loaded successfully')" />
+            </body>
+            </html>
+          `);
+        }
+        
+        // Clean up blob URL after a delay
+        setTimeout(() => {
+          URL.revokeObjectURL(blobUrl);
+        }, 60000);
+        
+      } catch (error) {
+        console.error('Error loading image:', error);
+        // Fallback to direct window.open
+        window.open(resolvedImageUrl, '_blank', 'noopener,noreferrer');
+      }
     }
-  }, [resolvedImageUrl, onClick]);
+  }, [resolvedImageUrl, onClick, title]);
 
   // Update userData with onClick function after handleClick is defined
   useEffect(() => {
