@@ -204,14 +204,12 @@ export const VideoCard: React.FC<VideoCardProps> = ({
       onPointerLeave={handlePointerLeave}
       onClick={handleClick}
     >
-      {/* Invisible collision mesh for proper depth testing and raycasting */}
+      {/* Invisible card frame for proper depth testing */}
       <mesh ref={meshRef}>
         <boxGeometry args={[videoDimensions.frameWidth, videoDimensions.frameHeight, 0.05]} />
         <meshBasicMaterial 
           transparent={true}
-          opacity={0}
-          side={2}
-          colorWrite={false}
+          opacity={0.0}
           depthWrite={true}
           depthTest={true}
         />

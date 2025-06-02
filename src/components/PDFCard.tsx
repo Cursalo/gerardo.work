@@ -137,14 +137,12 @@ export const PDFCard: React.FC<PDFCardProps> = ({
       onPointerOut={() => updateHoverState(false)}
       onClick={handleClick}
     >
-      {/* Invisible collision mesh for proper depth testing and raycasting */}
+      {/* Invisible PDF card base for proper depth testing */}
       <mesh ref={meshRef}>
         <boxGeometry args={[2, 2.8, 0.05]} />
         <meshBasicMaterial 
           transparent={true}
-          opacity={0}
-          side={2}
-          colorWrite={false}
+          opacity={0.0}
           depthWrite={true}
           depthTest={true}
         />

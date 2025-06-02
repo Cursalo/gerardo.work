@@ -191,14 +191,13 @@ export const ImageCard: React.FC<ImageCardProps> = ({
       onPointerLeave={handlePointerLeave}
       onClick={handleClick}
     >
-      {/* Invisible collision mesh for proper depth testing and raycasting */}
+      {/* Invisible card base for proper depth testing */}
       <mesh ref={meshRef}>
         <planeGeometry args={[cardDimensions.width, cardDimensions.height]} />
         <meshBasicMaterial 
           transparent={true}
-          opacity={0}
+          opacity={0.0}
           side={THREE.DoubleSide}
-          colorWrite={false}
           depthWrite={true}
           depthTest={true}
         />
