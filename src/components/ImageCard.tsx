@@ -48,7 +48,7 @@ export const ImageCard: React.FC<ImageCardProps> = ({
   
   const groupRef = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.Mesh>(null);
-  const { hoveredObject, triggerInteraction } = useInteraction();
+  const { hoveredObject } = useInteraction();
 
   // Add mobile detection
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
@@ -102,7 +102,7 @@ export const ImageCard: React.FC<ImageCardProps> = ({
     }
   }, [position, title, resolvedImageUrl]);
 
-  // Handle click function - use same path as interaction button
+  // Handle click function - use file utility for proper image handling
   const handleClick = useCallback((e?: any) => {
     if (e) {
       e.stopPropagation();
@@ -115,13 +115,12 @@ export const ImageCard: React.FC<ImageCardProps> = ({
       return;
     }
     
-    // FIXED: Use the same interaction path as the interaction button
-    // This ensures mobile touches go through the same system as button interactions
+    // FIXED: Use openFileWithViewer instead of direct window.open to prevent binary data issues
     if (resolvedImageUrl) {
-      console.log('Image Card: Using triggerInteraction() for consistent handling');
-      triggerInteraction();
+      console.log('Image Card: Using openFileWithViewer for proper image handling');
+      openFileWithViewer(resolvedImageUrl, title);
     }
-  }, [resolvedImageUrl, onClick, triggerInteraction]);
+  }, [resolvedImageUrl, onClick, title]);
 
   // Update userData with onClick function after handleClick is defined
   useEffect(() => {

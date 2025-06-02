@@ -129,7 +129,7 @@ export const PDFCard: React.FC<PDFCardProps> = ({
   }>({});
   const [loadProgress, setLoadProgress] = useState(0);
   const { registerObject, unregisterObject, checkOverlap } = useAppContext();
-  const { hoveredObject, triggerInteraction } = useInteraction();
+  const { hoveredObject } = useInteraction();
   const { isMobile: detectedMobile } = useMobileDetection();
 
   // Check if this card is currently hovered via the raycasting system
@@ -160,26 +160,22 @@ export const PDFCard: React.FC<PDFCardProps> = ({
     }
   }, [position, title, pdfUrl]);
 
-  // Handle click function - use same path as interaction button
+  // Handle click function using the new file utility
   const handleClick = useCallback((e?: any) => {
     if (e) {
       e.stopPropagation();
     }
     console.log('PDF Card clicked!', pdfUrl);
     
-    // Use external onClick if provided
-    if (onClick) {
-      onClick();
-      return;
+    if (pdfUrl) {
+      // Use the new file utility for proper handling
+      openFileWithViewer(pdfUrl, title);
     }
     
-    // FIXED: Use the same interaction path as the interaction button
-    // This ensures mobile touches go through the same system as button interactions
-    if (pdfUrl) {
-      console.log('PDF Card: Using triggerInteraction() for consistent handling');
-      triggerInteraction();
+    if (onClick) {
+      onClick();
     }
-  }, [pdfUrl, onClick, triggerInteraction]);
+  }, [pdfUrl, onClick, title]);
 
   // Update userData with onClick function after handleClick is defined
   useEffect(() => {

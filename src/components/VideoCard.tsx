@@ -36,7 +36,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({
   const groupRef = useRef<Group>(null);
   const meshRef = useRef<Mesh>(null);
   const videoRef = useRef<HTMLIFrameElement>(null);
-  const { hoveredObject, triggerInteraction } = useInteraction();
+  const { hoveredObject } = useInteraction();
   
   // Get camera from three.js context
   const { camera } = useThree();
@@ -145,20 +145,24 @@ export const VideoCard: React.FC<VideoCardProps> = ({
     }
   }, [title, resolvedVideoUrl]);
 
-  // Handle click function - use same path as interaction button
+  // Handle click function using the new file utility
   const handleClick = useCallback((e?: any) => {
     if (e) {
       e.stopPropagation();
     }
     console.log('Video Card clicked!', resolvedVideoUrl);
     
-    // FIXED: Use the same interaction path as the interaction button
-    // This ensures mobile touches go through the same system as button interactions
     if (resolvedVideoUrl) {
-      console.log('Video Card: Using triggerInteraction() for consistent handling');
-      triggerInteraction();
+      // Check if it's an external URL (YouTube, etc.)
+      if (isExternalUrl(resolvedVideoUrl) || resolvedVideoUrl.includes('youtube.com') || resolvedVideoUrl.includes('youtu.be')) {
+        // External URLs - open directly
+        window.open(resolvedVideoUrl, '_blank');
+      } else {
+        // Use file utility for local video files
+        openFileWithViewer(resolvedVideoUrl, title);
+      }
     }
-  }, [resolvedVideoUrl, triggerInteraction]);
+  }, [resolvedVideoUrl, title]);
 
   // Update userData with onClick function after handleClick is defined
   useEffect(() => {
