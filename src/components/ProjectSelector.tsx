@@ -1,8 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { projectDataService } from '../services/projectDataService';
-import { useWorld } from '../context/WorldContext';
-import { createProjectWorld } from '../data/worlds';
-import { useMobileDetection } from '../hooks/useMobileDetection';
 
 interface ProjectSelectorProps {
   isVisible: boolean;
@@ -17,8 +14,6 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({ isVisible, onC
   const [isLoading, setIsLoading] = useState(false);
   const [projects, setProjects] = useState<any[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>('');
-  const { setCurrentWorldId, worldService, refreshWorlds } = useWorld();
-  const { isTouchDevice } = useMobileDetection();
 
   useEffect(() => {
     // Load available projects
@@ -46,56 +41,22 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({ isVisible, onC
     try {
       const project = projects.find(p => p.id.toString() === selectedProject);
       if (project) {
-        // Define the world ID
-        const worldId = `project-world-${project.id}`;
-        console.log(`ProjectSelector: Navigating to world ID ${worldId}`);
+        console.log(`ProjectSelector: Navigating to project: ${project.name}`);
         
-        // Check if the world exists, if not create it
-        let world = worldService.getWorld(worldId);
-        if (!world) {
-          console.log(`World ${worldId} does not exist, creating it`);
-          
-          // Convert ProjectData to Project format for world creation
-          const projectForWorld = {
-            id: project.id,
-            name: project.name,
-            description: project.description,
-            link: project.link,
-            thumbnail: project.thumbnail,
-            status: project.status as 'completed' | 'in-progress',
-            type: project.type as 'standard' | 'video',
-            videoUrl: project.videoUrl,
-            customLink: project.customLink,
-            mediaObjects: project.mediaObjects?.map((mediaObj: any) => ({
-              ...mediaObj,
-              type: mediaObj.type as 'video' | 'image' | 'pdf' | 'project' | 'link' | 'button'
-            })),
-            worldSettings: project.worldSettings,
-            // Preserve assetGallery for project world creation
-            ...(project.assetGallery && { assetGallery: project.assetGallery })
-          };
-          
-          world = createProjectWorld(projectForWorld, isTouchDevice);
-          worldService.updateWorld(world);
-          console.log(`Created world: ${worldId}`);
-        } else {
-          console.log(`World ${worldId} already exists`);
-        }
+        // FIXED: Navigate to project URL instead of just setting internal state
+        // Use the same URL pattern as other components
+        const projectSlug = project.customLink || project.name.toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '');
         
-        // Store the target world ID in localStorage so it persists across page loads
-        localStorage.setItem('target_world_id', worldId);
-        localStorage.setItem('target_project_id', project.id.toString());
+        const targetUrl = `/project/${projectSlug}`;
+        console.log(`ProjectSelector: Navigating to URL: ${targetUrl}`);
         
-        // Set the current world ID in the context
-        setCurrentWorldId(worldId);
-        
-        // Refresh worlds to ensure they're up to date
-        await refreshWorlds();
-        
-        // Close the selector
+        // Close the selector first
         onClose();
         
-        console.log(`ProjectSelector: Successfully navigated to ${project.name}`);
+        // Navigate to the project URL
+        window.location.href = targetUrl;
       }
     } catch (error) {
       console.error('ProjectSelector: Navigation failed:', error);
