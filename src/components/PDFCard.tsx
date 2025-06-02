@@ -2,7 +2,6 @@ import React, { useRef, useState, useEffect } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
-import { useAppContext } from '../hooks/useAppContext';
 
 interface PDFCardProps {
   title: string;
@@ -14,10 +13,23 @@ interface PDFCardProps {
   onClick?: () => void;
 }
 
+// Add CSS for loading spinner
+const pdfSpinnerStyle = document.createElement('style');
+pdfSpinnerStyle.textContent = `
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+`;
+if (!document.head.querySelector('[data-pdf-spinner]')) {
+  pdfSpinnerStyle.setAttribute('data-pdf-spinner', 'true');
+  document.head.appendChild(pdfSpinnerStyle);
+}
+
 /**
  * PDFCard component
  * 
- * Displays PDF content in 3D space with hover effects and rounded corners.
+ * Displays PDF content in 3D space with proper fallbacks and mobile compatibility.
  */
 export const PDFCard: React.FC<PDFCardProps> = ({
   title,
@@ -29,39 +41,95 @@ export const PDFCard: React.FC<PDFCardProps> = ({
   onClick,
 }) => {
   const groupRef = useRef<THREE.Group>(null);
-  const meshRef = useRef<THREE.Mesh>(null);
   const [hovered, setHovered] = useState(false);
-  const [isOverlapping, setIsOverlapping] = useState(false);
-  const [pdfReady, setPdfReady] = useState(false);
-  const { raycaster, camera, registerObject, unregisterObject, checkOverlap } = useAppContext();
+  const [pdfLoadError, setPdfLoadError] = useState(false);
+  const [resolvedPdfUrl, setResolvedPdfUrl] = useState<string>('');
 
-  // Handle hover state
-  const updateHoverState = (state: boolean) => {
-    setHovered(state);
+  // Enhanced PDF URL resolution with proper encoding and fallbacks
+  const resolvePdfUrl = (url: string): string => {
+    if (!url) return '';
+    
+    // If it's already a full URL, return as-is
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    
+    // Handle file:// URLs from localStorage
+    if (url.startsWith('file://')) {
+      try {
+        const filename = url.replace('file://', '');
+        const storedFilesStr = localStorage.getItem('portfolio_files');
+        
+        if (storedFilesStr) {
+          const storedFiles = JSON.parse(storedFilesStr);
+          const fileData = storedFiles[filename];
+          
+          if (fileData && fileData.dataUrl) {
+            console.log(`PDFCard: Resolved localStorage file URL for ${filename}`);
+            return fileData.dataUrl;
+          }
+        }
+      } catch (error) {
+        console.error('PDFCard: Error resolving localStorage file URL:', error);
+      }
+      
+      // Fallback: treat as relative path without file://
+      const filename = url.replace('file://', '');
+      url = filename;
+    }
+    
+    // If it's a relative URL from public directory, encode spaces and special characters
+    if (url.startsWith('/projects/') || url.startsWith('/assets/') || url.startsWith('/')) {
+      return url.split('/').map(segment => segment ? encodeURIComponent(segment) : segment).join('/');
+    }
+    
+    // If it's just a path without leading /, add it and encode
+    if (!url.startsWith('/') && !url.includes('://')) {
+      return `/${url}`.split('/').map(segment => segment ? encodeURIComponent(segment) : segment).join('/');
+    }
+    
+    return url;
   };
 
-  // Register this component's position and check for overlaps
+  // Process PDF URL on mount and when pdfUrl changes
   useEffect(() => {
-    if (groupRef.current) {
-      const id = `pdf-${title}-${position.join(',')}`;
-      registerObject(id, groupRef);
-      
-      return () => {
-        unregisterObject(id);
-      };
-    }
-  }, [title, position, registerObject, unregisterObject]);
+    const resolved = resolvePdfUrl(pdfUrl);
+    setResolvedPdfUrl(resolved);
+    setPdfLoadError(false);
+    
+    console.log(`PDFCard: Resolved URL for "${title}": ${resolved}`);
+  }, [pdfUrl, title]);
 
-  // Check for overlapping with other objects and handle camera facing
+  // Check if PDF can be embedded (basic heuristic)
+  const canEmbedPdf = (url: string): boolean => {
+    if (!url) return false;
+    
+    // Data URLs from localStorage should work
+    if (url.startsWith('data:application/pdf')) return true;
+    
+    // Local files should work
+    if (url.startsWith('/')) return true;
+    
+    // Known problematic domains
+    const problematicDomains = ['drive.google.com', 'dropbox.com', 'onedrive.com'];
+    const urlLower = url.toLowerCase();
+    
+    return !problematicDomains.some(domain => urlLower.includes(domain));
+  };
+
+  // Camera facing animation
   useFrame((state) => {
     if (groupRef.current) {
-      const worldPosition = new THREE.Vector3();
-      groupRef.current.getWorldPosition(worldPosition);
+      const time = state.clock.elapsedTime;
+      const baseY = position[1];
       
-      const isOverlappingNow = checkOverlap(worldPosition);
-      if (isOverlappingNow !== isOverlapping) {
-        setIsOverlapping(isOverlappingNow);
-      }
+      // Gentle floating motion
+      const floatOffset = Math.sin(time * 0.4 + position[0] * 0.2) * 0.1;
+      groupRef.current.position.y = baseY + floatOffset;
+      
+      // Keep other positions stable
+      groupRef.current.position.x = position[0];
+      groupRef.current.position.z = position[2];
       
       // Face the camera smoothly
       const camera = state.camera;
@@ -79,7 +147,6 @@ export const PDFCard: React.FC<PDFCardProps> = ({
       // Smooth interpolation to target rotation
       if (hovered) {
         // Add gentle wobble when hovered
-        const time = state.clock.elapsedTime;
         const wobble = Math.sin(time * 2) * 0.02;
         groupRef.current.rotation.y += (targetRotationY + wobble - groupRef.current.rotation.y) * 0.1;
       } else {
@@ -89,43 +156,32 @@ export const PDFCard: React.FC<PDFCardProps> = ({
     }
   });
 
+  // Handle hover events
+  const handlePointerEnter = () => {
+    setHovered(true);
+    document.body.style.cursor = 'pointer';
+  };
+
+  const handlePointerLeave = () => {
+    setHovered(false);
+    document.body.style.cursor = 'default';
+  };
+
   // Handle click event
   const handleClick = () => {
     if (onClick) {
       onClick();
     } else {
       // Default action: Open PDF in a new tab
-      window.open(pdfUrl, '_blank');
+      window.open(resolvedPdfUrl, '_blank');
     }
   };
 
-  // Process PDF URL for potential localStorage files
-  useEffect(() => {
-    let urlToUse = pdfUrl;
-    
-    // Handle localStorage file URLs
-    if (urlToUse.startsWith('file://')) {
-      try {
-        const filename = urlToUse.replace('file://', '');
-        const storedFilesStr = localStorage.getItem('portfolio_files');
-        
-        if (storedFilesStr) {
-          const storedFiles = JSON.parse(storedFilesStr);
-          const fileData = storedFiles[filename];
-          
-          if (fileData && fileData.dataUrl) {
-            console.log(`PDFCard: Resolved file URL for ${filename}`);
-            urlToUse = fileData.dataUrl;
-          }
-        }
-      } catch (error) {
-        console.error('PDFCard: Error resolving file URL:', error);
-      }
-    }
-    
-    // Verify PDF is accessible
-    setPdfReady(!!urlToUse);
-  }, [pdfUrl]);
+  // Handle iframe load error
+  const handleIframeError = () => {
+    console.warn(`PDFCard: Failed to load PDF in iframe: ${resolvedPdfUrl}`);
+    setPdfLoadError(true);
+  };
 
   return (
     <group 
@@ -133,8 +189,8 @@ export const PDFCard: React.FC<PDFCardProps> = ({
       position={[position[0], position[1], position[2]]}
       rotation={rotation}
       scale={scale}
-      onPointerOver={() => updateHoverState(true)}
-      onPointerOut={() => updateHoverState(false)}
+      onPointerEnter={handlePointerEnter}
+      onPointerLeave={handlePointerLeave}
       onClick={handleClick}
     >
       {/* PDF Thumbnail and Viewer */}
@@ -169,18 +225,8 @@ export const PDFCard: React.FC<PDFCardProps> = ({
             alignItems: 'center',
           }}
         >
-          {pdfReady ? (
-            <iframe
-              src={`${pdfUrl}#toolbar=0&navpanes=0`}
-              style={{
-                width: '100%',
-                height: '100%',
-                border: 'none',
-                pointerEvents: 'none',
-              }}
-              title={title}
-            />
-          ) : (
+          {pdfLoadError || !canEmbedPdf(resolvedPdfUrl) ? (
+            // Error state or non-embeddable PDF
             <div
               style={{
                 padding: '20px',
@@ -199,8 +245,52 @@ export const PDFCard: React.FC<PDFCardProps> = ({
                   <path d="M12 9H16V10H12V9Z" fill="white"/>
                 </svg>
               </div>
-              PDF Viewer
-              <div style={{ fontSize: '10px', marginTop: '5px' }}>Click to open PDF</div>
+              PDF Document
+              <div style={{ fontSize: '10px', marginTop: '5px', fontWeight: 'bold' }}>Click to open in new tab</div>
+              {resolvedPdfUrl && (
+                <div style={{ fontSize: '9px', marginTop: '8px', color: '#aaa', wordBreak: 'break-all' }}>
+                  {resolvedPdfUrl.length > 50 ? `${resolvedPdfUrl.substring(0, 50)}...` : resolvedPdfUrl}
+                </div>
+              )}
+            </div>
+          ) : resolvedPdfUrl ? (
+            // Try to embed PDF
+            <iframe
+              src={`${resolvedPdfUrl}#toolbar=0&navpanes=0&view=FitH`}
+              style={{
+                width: '100%',
+                height: '100%',
+                border: 'none',
+                pointerEvents: 'none',
+                backgroundColor: '#f5f5f5',
+              }}
+              title={title}
+              onError={handleIframeError}
+              onLoad={() => console.log(`PDFCard: Successfully loaded PDF iframe for ${title}`)}
+            />
+          ) : (
+            // Loading state
+            <div
+              style={{
+                padding: '20px',
+                textAlign: 'center',
+                color: '#888',
+                fontSize: '12px',
+                fontFamily: 'Arial, sans-serif',
+              }}
+            >
+              <div style={{ marginBottom: '10px' }}>
+                <div style={{
+                  width: '20px',
+                  height: '20px',
+                  border: '2px solid #eee',
+                  borderTop: '2px solid #666',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite',
+                  margin: '0 auto'
+                }} />
+              </div>
+              Loading PDF...
             </div>
           )}
         </div>
