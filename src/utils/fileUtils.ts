@@ -126,160 +126,18 @@ export function openFileWithViewer(url: string, title?: string): void {
       break;
       
     case 'image':
-      // Create an image viewer HTML page to force proper display
-      const imageViewerHtml = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>${title || 'Image Viewer'}</title>
-          <style>
-            body { 
-              margin: 0; 
-              padding: 20px; 
-              background: #000; 
-              display: flex; 
-              justify-content: center; 
-              align-items: center;
-              min-height: 100vh;
-              font-family: Arial, sans-serif;
-            }
-            img { 
-              max-width: 100%; 
-              max-height: 100vh; 
-              object-fit: contain;
-              box-shadow: 0 4px 20px rgba(255,255,255,0.1);
-            }
-            .error {
-              color: white;
-              text-align: center;
-            }
-            .download-link {
-              color: #4CAF50;
-              text-decoration: none;
-              margin-top: 20px;
-              display: inline-block;
-            }
-          </style>
-        </head>
-        <body>
-          <div>
-            <img src="${fullUrl}" alt="${title || 'Image'}" onerror="this.style.display='none'; document.querySelector('.error').style.display='block';" />
-            <div class="error" style="display: none;">
-              <h2>Unable to display image</h2>
-              <p>This might be due to server MIME type issues.</p>
-              <a href="${fullUrl}" class="download-link" target="_blank">Download Image</a>
-            </div>
-          </div>
-        </body>
-        </html>
-      `;
-      
-      const imageBlob = new Blob([imageViewerHtml], { type: 'text/html' });
-      const imageViewerUrl = URL.createObjectURL(imageBlob);
-      window.open(imageViewerUrl, '_blank');
+      // Fetch the image as raw data and serve with correct MIME type
+      fetchAndViewImage(fullUrl, title || 'Image');
       break;
       
     case 'video':
-      // Create a video player HTML page to force proper playback
-      const videoViewerHtml = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>${title || 'Video Player'}</title>
-          <style>
-            body { 
-              margin: 0; 
-              padding: 20px; 
-              background: #000; 
-              display: flex; 
-              justify-content: center; 
-              align-items: center;
-              min-height: 100vh;
-              font-family: Arial, sans-serif;
-            }
-            video { 
-              max-width: 100%; 
-              max-height: 100vh; 
-              box-shadow: 0 4px 20px rgba(255,255,255,0.1);
-            }
-            .error {
-              color: white;
-              text-align: center;
-            }
-            .download-link {
-              color: #4CAF50;
-              text-decoration: none;
-              margin-top: 20px;
-              display: inline-block;
-            }
-          </style>
-        </head>
-        <body>
-          <div>
-            <video controls preload="metadata" onerror="this.style.display='none'; document.querySelector('.error').style.display='block';">
-              <source src="${fullUrl}" type="video/${fileInfo.extension}">
-              <source src="${fullUrl}" type="video/mp4">
-              <source src="${fullUrl}">
-              Your browser does not support the video tag.
-            </video>
-            <div class="error" style="display: none;">
-              <h2>Unable to play video</h2>
-              <p>This might be due to server MIME type issues or unsupported format.</p>
-              <a href="${fullUrl}" class="download-link" target="_blank">Download Video</a>
-            </div>
-          </div>
-        </body>
-        </html>
-      `;
-      
-      const videoBlob = new Blob([videoViewerHtml], { type: 'text/html' });
-      const videoViewerUrl = URL.createObjectURL(videoBlob);
-      window.open(videoViewerUrl, '_blank');
+      // Fetch the video as raw data and serve with correct MIME type
+      fetchAndViewVideo(fullUrl, title || 'Video', fileInfo.mimeType);
       break;
       
     case 'html':
-      // Create an iframe viewer for HTML files to avoid MIME type issues
-      const htmlViewerHtml = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>${title || 'HTML Viewer'}</title>
-          <style>
-            body { 
-              margin: 0; 
-              padding: 0; 
-              font-family: Arial, sans-serif;
-            }
-            iframe { 
-              width: 100vw; 
-              height: 100vh; 
-              border: none;
-            }
-            .error {
-              padding: 20px;
-              text-align: center;
-              color: #666;
-            }
-            .download-link {
-              color: #4CAF50;
-              text-decoration: none;
-            }
-          </style>
-        </head>
-        <body>
-          <iframe src="${fullUrl}" onload="console.log('HTML loaded successfully')" onerror="this.style.display='none'; document.querySelector('.error').style.display='block';"></iframe>
-          <div class="error" style="display: none;">
-            <h2>Unable to display HTML</h2>
-            <p>This might be due to server MIME type issues.</p>
-            <a href="${fullUrl}" class="download-link" target="_blank">View Source</a>
-          </div>
-        </body>
-        </html>
-      `;
-      
-      const htmlBlob = new Blob([htmlViewerHtml], { type: 'text/html' });
-      const htmlViewerUrl = URL.createObjectURL(htmlBlob);
-      window.open(htmlViewerUrl, '_blank');
+      // Fetch HTML content and display it properly
+      fetchAndViewHtml(fullUrl, title || 'HTML Document');
       break;
       
     default:
@@ -293,6 +151,324 @@ export function openFileWithViewer(url: string, title?: string): void {
         }
       }, 1000);
       break;
+  }
+}
+
+/**
+ * Fetch image content and display with correct MIME type
+ */
+async function fetchAndViewImage(url: string, title: string): Promise<void> {
+  try {
+    console.log('🖼️ Fetching image content:', url);
+    
+    // Show loading indicator
+    const loadingWindow = window.open('', '_blank');
+    if (loadingWindow) {
+      loadingWindow.document.write(`
+        <html>
+          <head><title>Loading ${title}...</title></head>
+          <body style="background: #000; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: Arial;">
+            <div style="text-align: center;">
+              <div style="border: 3px solid #4CAF50; border-radius: 50%; border-top: 3px solid transparent; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
+              <p>Loading ${title}...</p>
+            </div>
+            <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+          </body>
+        </html>
+      `);
+    }
+    
+    // Fetch the image content
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Failed to fetch: ${response.status}`);
+    
+    const blob = await response.blob();
+    const fileInfo = detectFileType(url);
+    
+    // Create blob with correct MIME type
+    const correctBlob = new Blob([blob], { type: fileInfo.mimeType });
+    const blobUrl = URL.createObjectURL(correctBlob);
+    
+    // Create image viewer with corrected blob URL
+    const imageViewerHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>${title}</title>
+        <style>
+          body { 
+            margin: 0; 
+            padding: 20px; 
+            background: #000; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+          }
+          img { 
+            max-width: 100%; 
+            max-height: 100vh; 
+            object-fit: contain;
+            box-shadow: 0 4px 20px rgba(255,255,255,0.1);
+          }
+          .controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border-radius: 5px;
+          }
+          .download-btn {
+            color: #4CAF50;
+            text-decoration: none;
+            padding: 5px 10px;
+            border: 1px solid #4CAF50;
+            border-radius: 3px;
+            font-size: 12px;
+          }
+          .download-btn:hover {
+            background: #4CAF50;
+            color: white;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="controls">
+          <a href="${url}" class="download-btn" download="${title}">Download Original</a>
+        </div>
+        <img src="${blobUrl}" alt="${title}" />
+        <script>
+          // Cleanup blob URL when page unloads
+          window.addEventListener('beforeunload', () => {
+            URL.revokeObjectURL('${blobUrl}');
+          });
+        </script>
+      </body>
+      </html>
+    `;
+    
+    if (loadingWindow) {
+      loadingWindow.document.open();
+      loadingWindow.document.write(imageViewerHtml);
+      loadingWindow.document.close();
+    }
+    
+  } catch (error) {
+    console.error('Error fetching image:', error);
+    
+    // Fallback to simple viewer with download option
+    const fallbackHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head><title>Error - ${title}</title></head>
+      <body style="background: #000; color: white; text-align: center; padding: 50px; font-family: Arial;">
+        <h2>Unable to load image</h2>
+        <p>The image couldn't be loaded due to server issues.</p>
+        <a href="${url}" style="color: #4CAF50; text-decoration: none; padding: 10px 20px; border: 1px solid #4CAF50; border-radius: 5px;" download="${title}">Download Image</a>
+      </body>
+      </html>
+    `;
+    
+    const errorWindow = window.open('', '_blank');
+    if (errorWindow) {
+      errorWindow.document.write(fallbackHtml);
+    }
+  }
+}
+
+/**
+ * Fetch video content and display with correct MIME type
+ */
+async function fetchAndViewVideo(url: string, title: string, mimeType: string): Promise<void> {
+  try {
+    console.log('🎥 Fetching video content:', url);
+    
+    // Show loading indicator
+    const loadingWindow = window.open('', '_blank');
+    if (loadingWindow) {
+      loadingWindow.document.write(`
+        <html>
+          <head><title>Loading ${title}...</title></head>
+          <body style="background: #000; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: Arial;">
+            <div style="text-align: center;">
+              <div style="border: 3px solid #4CAF50; border-radius: 50%; border-top: 3px solid transparent; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
+              <p>Loading ${title}...</p>
+            </div>
+            <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+          </body>
+        </html>
+      `);
+    }
+    
+    // Fetch the video content
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Failed to fetch: ${response.status}`);
+    
+    const blob = await response.blob();
+    
+    // Create blob with correct MIME type
+    const correctBlob = new Blob([blob], { type: mimeType });
+    const blobUrl = URL.createObjectURL(correctBlob);
+    
+    // Create video player with corrected blob URL
+    const videoViewerHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>${title}</title>
+        <style>
+          body { 
+            margin: 0; 
+            padding: 20px; 
+            background: #000; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+          }
+          video { 
+            max-width: 100%; 
+            max-height: 100vh; 
+            box-shadow: 0 4px 20px rgba(255,255,255,0.1);
+          }
+          .controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border-radius: 5px;
+          }
+          .download-btn {
+            color: #4CAF50;
+            text-decoration: none;
+            padding: 5px 10px;
+            border: 1px solid #4CAF50;
+            border-radius: 3px;
+            font-size: 12px;
+          }
+          .download-btn:hover {
+            background: #4CAF50;
+            color: white;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="controls">
+          <a href="${url}" class="download-btn" download="${title}">Download Original</a>
+        </div>
+        <video controls preload="metadata">
+          <source src="${blobUrl}" type="${mimeType}">
+          Your browser does not support the video tag.
+        </video>
+        <script>
+          // Cleanup blob URL when page unloads
+          window.addEventListener('beforeunload', () => {
+            URL.revokeObjectURL('${blobUrl}');
+          });
+        </script>
+      </body>
+      </html>
+    `;
+    
+    if (loadingWindow) {
+      loadingWindow.document.open();
+      loadingWindow.document.write(videoViewerHtml);
+      loadingWindow.document.close();
+    }
+    
+  } catch (error) {
+    console.error('Error fetching video:', error);
+    
+    // Fallback to download option
+    const fallbackHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head><title>Error - ${title}</title></head>
+      <body style="background: #000; color: white; text-align: center; padding: 50px; font-family: Arial;">
+        <h2>Unable to load video</h2>
+        <p>The video couldn't be loaded due to server issues.</p>
+        <a href="${url}" style="color: #4CAF50; text-decoration: none; padding: 10px 20px; border: 1px solid #4CAF50; border-radius: 5px;" download="${title}">Download Video</a>
+      </body>
+      </html>
+    `;
+    
+    const errorWindow = window.open('', '_blank');
+    if (errorWindow) {
+      errorWindow.document.write(fallbackHtml);
+    }
+  }
+}
+
+/**
+ * Fetch HTML content and display it properly
+ */
+async function fetchAndViewHtml(url: string, title: string): Promise<void> {
+  try {
+    console.log('📄 Fetching HTML content:', url);
+    
+    // Show loading indicator
+    const loadingWindow = window.open('', '_blank');
+    if (loadingWindow) {
+      loadingWindow.document.write(`
+        <html>
+          <head><title>Loading ${title}...</title></head>
+          <body style="background: #f5f5f5; color: #333; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: Arial;">
+            <div style="text-align: center;">
+              <div style="border: 3px solid #4CAF50; border-radius: 50%; border-top: 3px solid transparent; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
+              <p>Loading ${title}...</p>
+            </div>
+            <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+          </body>
+        </html>
+      `);
+    }
+    
+    // Fetch the HTML content
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Failed to fetch: ${response.status}`);
+    
+    const htmlContent = await response.text();
+    
+    if (loadingWindow) {
+      loadingWindow.document.open();
+      loadingWindow.document.write(htmlContent);
+      loadingWindow.document.close();
+    }
+    
+  } catch (error) {
+    console.error('Error fetching HTML:', error);
+    
+    // Fallback to iframe with download option
+    const fallbackHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>${title}</title>
+        <style>
+          body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+          .header { background: #333; color: white; padding: 10px; text-align: center; }
+          iframe { width: 100%; height: calc(100vh - 50px); border: none; }
+          .download-btn { color: #4CAF50; text-decoration: none; margin-left: 20px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          ${title}
+          <a href="${url}" class="download-btn" download="${title}">Download Source</a>
+        </div>
+        <iframe src="${url}"></iframe>
+      </body>
+      </html>
+    `;
+    
+    const errorWindow = window.open('', '_blank');
+    if (errorWindow) {
+      errorWindow.document.write(fallbackHtml);
+    }
   }
 }
 
