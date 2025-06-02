@@ -97,7 +97,7 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
   const isMobile = useMobileDetection();
 
   // Check if this card is currently hovered via the raycasting system
-  const hovered = hoveredObject?.userData?.url === url && hoveredObject?.userData?.type === 'link';
+  const hovered = hoveredObject?.userData?.url === url;
 
   // Set initial position and register for 3D interactions
   useEffect(() => {
@@ -105,13 +105,17 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
       groupRef.current.position.set(position[0], position[1], position[2]);
       
       // Set up 3D interaction data for the crosshair system (EXACTLY like WorldObject.tsx)
+      // Detect file type to set proper interaction type
+      const fileInfo = detectFileType(url);
+      const isExternal = isExternalUrl(url);
+      
       const interactionData = {
         interactive: true,
-        action: 'open_url',
-        objectType: 'link',
+        action: isExternal ? 'open_url' : 'view_media',
+        objectType: isExternal ? 'link' : fileInfo.type,
         title: title,
         url: url,
-        type: 'link'
+        type: isExternal ? 'link' : fileInfo.type // Set type based on file detection
       };
       
       // CRITICAL FIX: Set userData on BOTH group and mesh for raycasting detection

@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, ReactNode, useCallback } from 'react';
 import * as THREE from 'three';
 import { useWorld } from './WorldContext'; // Import useWorld to navigate
+import { openFileWithViewer, isExternalUrl } from '../utils/fileUtils'; // Import file utilities
 
 // Extend userData to include necessary info for the button
 export interface InteractionData {
@@ -63,8 +64,9 @@ export const InteractionProvider: React.FC<{ children: ReactNode }> = ({ childre
       setCurrentWorldId(data.subWorldId);
     } else if (data.type === 'link' && data.url) {
       console.log(`[InteractionContext] Opening URL ${data.url}`);
-      // Handle special actions if defined along with URL
-      if (data.action === 'externalLink' || data.url.includes('soundcloud.com')) {
+      
+      // CRITICAL FIX: Use file utilities for proper MIME type handling
+      if (isExternalUrl(data.url) || data.action === 'externalLink' || data.url.includes('soundcloud.com')) {
         console.log(`[InteractionContext] Opening external link: ${data.url}`);
         window.open(data.url, '_blank', 'noopener,noreferrer');
         // Call the object's onClick handler if available (for additional functionality)
@@ -72,19 +74,22 @@ export const InteractionProvider: React.FC<{ children: ReactNode }> = ({ childre
           data.onClick();
         }
       } else {
-        // Standard URL opening
-        window.open(data.url, '_blank', 'noopener,noreferrer');
+        // Local file - use file utilities for proper MIME type handling
+        console.log(`[InteractionContext] Opening local file with proper viewer: ${data.url}`);
+        openFileWithViewer(data.url, data.title || 'File');
       }
-    } else if (data.type === 'video' || data.type === 'image' || data.type === 'pdf') {
+    } else if (data.type === 'video' || data.type === 'image' || data.type === 'pdf' || data.type === 'html') {
       console.log(`[InteractionContext] Triggering view for ${data.type}`);
-      // Here you might want to call a function to open a modal or similar
-      // For now, just logging. If the original card click works, maybe it calls a function stored elsewhere?
-      // Consider if the original data.onClick should be called if available:
-      if (typeof data.onClick === 'function') {
-         console.log('[InteractionContext] Calling onClick from userData');
-         data.onClick();
+      
+      // CRITICAL FIX: Use file utilities for proper media handling
+      if (data.url) {
+        console.log(`[InteractionContext] Opening ${data.type} with proper viewer: ${data.url}`);
+        openFileWithViewer(data.url, data.title || `${data.type} file`);
+      } else if (typeof data.onClick === 'function') {
+        console.log('[InteractionContext] Calling onClick from userData (fallback)');
+        data.onClick();
       } else {
-         console.warn('[InteractionContext] No specific action defined for media view besides logging/userData.onClick.');
+        console.warn('[InteractionContext] No URL or onClick handler available for media view.');
       }
     } else {
       console.log("[InteractionContext] Generic interaction triggered");
