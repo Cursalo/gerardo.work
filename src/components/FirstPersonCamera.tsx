@@ -2,10 +2,12 @@ import { useRef, useEffect, useState, useCallback } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import { Vector3, Euler } from 'three';
 import * as THREE from 'three';
+import { Html } from '@react-three/drei';
 import { useChat } from '../context/ChatContext';
 import useMobileDetection from '../hooks/useMobileDetection';
 import { useMobileControls } from '../context/MobileControlsContext';
 import { useGamepad } from '../hooks/useGamepad';
+import { useWorld } from '../context/WorldContext';
 
 interface FirstPersonCameraProps {
   position?: Vector3;
@@ -59,6 +61,9 @@ const FirstPersonCamera = ({
   // Get gamepad state
   const { gamepad, isConnected: gamepadConnected } = useGamepad();
   
+  // Get world context
+  const { currentWorld, setCurrentWorldId } = useWorld();
+  
   // Current camera position and rotation
   const currentPosition = useRef(position.clone());
   const euler = useRef(new Euler(0, 0, 0, 'YXZ')); // YXZ order is important for FPS controls
@@ -71,6 +76,13 @@ const FirstPersonCamera = ({
   const isLooking = useRef(false);
   const lastTouchX = useRef(0);
   const lastTouchY = useRef(0);
+  
+  // B button hold timer
+  const bButtonHoldRef = useRef<number | null>(null);
+  const [bButtonHoldProgress, setBButtonHoldProgress] = useState(0); // Progress from 0 to 1
+  
+  // Define required hold time (2 seconds) outside effects/callbacks
+  const requiredHoldTime = 2000; // milliseconds
   
   // Pointer lock state
   const [isPointerLocked, setIsPointerLocked] = useState(false);
@@ -522,23 +534,118 @@ const FirstPersonCamera = ({
     };
   }, [currentWorld, setCurrentWorldId]);
 
-  // Handle gamepad B button press to return to main world
-  useEffect(() => {
-    // Skip if gamepad isn't connected
-    if (!gamepadConnected || !gamepad) return;
-    
-    // Check for B button press
-    if (gamepad.buttons.B) {
-      // Check if we're in a project world by looking at the world ID pattern
-      if (currentWorld && currentWorld.id.startsWith('project-world-')) {
-        setCurrentWorldId('mainWorld');
+  // Check B button state and handle long press (Memoized callback)
+  const checkBButtonHold = useCallback(() => {
+    if (gamepad?.buttons?.B) { // Use optional chaining for safety
+      // Button is pressed
+      if (bButtonHoldRef.current === null) {
+        // Start tracking press time
+        bButtonHoldRef.current = Date.now();
+        setBButtonHoldProgress(0.01); // Start progress
+        console.log('Gamepad: B button press started, tracking hold time');
+      } else {
+        // Check if we've held long enough
+        const holdTime = Date.now() - bButtonHoldRef.current;
+        // Update progress (capped at 1.0)
+        const progress = Math.min(holdTime / requiredHoldTime, 1.0);
+        setBButtonHoldProgress(progress);
+
+        if (holdTime >= requiredHoldTime) {
+          console.log('Gamepad: B button held long enough. Checking current world...');
+          // 2 seconds have passed, navigate back if in a project world
+          if (currentWorld && currentWorld.id.startsWith('project-world-')) {
+            console.log(`Gamepad: Current world ${currentWorld.id} is a project world. Navigating back to mainWorld.`);
+            setCurrentWorldId('mainWorld');
+            console.log('Gamepad: B button held for 2 seconds - returning to main world triggered');
+            // Reset hold timer and progress
+            bButtonHoldRef.current = null;
+            setBButtonHoldProgress(0);
+          } else if (currentWorld) {
+             console.log(`Gamepad: Current world ${currentWorld.id} is NOT a project world. B button hold ignored.`);
+             // Reset hold timer if we reach the required time but aren't in a project world
+             bButtonHoldRef.current = null;
+             setBButtonHoldProgress(0);
+          }
+        }
+      }
+    } else {
+      // Button released, reset timer and progress
+      if (bButtonHoldRef.current !== null) {
+        console.log('Gamepad: B button released, resetting hold timer and progress');
+        bButtonHoldRef.current = null;
+        setBButtonHoldProgress(0);
       }
     }
-  }, [gamepadConnected, gamepad, currentWorld, setCurrentWorldId]);
+  }, [gamepad, currentWorld, setCurrentWorldId, requiredHoldTime]);
+
+  // Handle gamepad B button press to return to main world (Effect stabilized)
+  useEffect(() => {
+    // Skip if gamepad isn't connected
+    if (!gamepadConnected || !gamepad) {
+      // Ensure timer is cleared if gamepad disconnects
+      if (bButtonHoldRef.current !== null) {
+        bButtonHoldRef.current = null;
+        setBButtonHoldProgress(0);
+      }
+      return;
+    }
+
+    // Set up interval to check button state
+    const intervalId = setInterval(checkBButtonHold, 100); // Check every 100ms
+
+    return () => {
+      clearInterval(intervalId);
+      // Also reset state on cleanup
+      bButtonHoldRef.current = null;
+      setBButtonHoldProgress(0);
+    };
+  // Only include gamepad state and the callback in dependencies to prevent unnecessary re-renders
+  }, [gamepadConnected, gamepad, checkBButtonHold]);
   
-  // Return null as this component only manages the camera state via hooks
-  // The actual MobileControls UI is now rendered in Scene.tsx
-  return null; // Or <></> if you prefer
+  // Return a progress indicator if the B button is being held
+  return (
+    <>
+      {bButtonHoldProgress > 0 && (
+        <Html fullscreen>
+          <div style={{
+            position: 'absolute',
+            bottom: '20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            padding: '5px 10px',
+            borderRadius: '5px',
+            color: 'white',
+            fontFamily: 'Arial, sans-serif',
+            fontSize: '14px',
+            zIndex: 1000,
+            pointerEvents: 'none',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            width: '200px',
+          }}>
+            <div>Returning to Main World</div>
+            <div style={{
+              width: '100%',
+              height: '5px',
+              backgroundColor: 'rgba(255, 255, 255, 0.3)',
+              borderRadius: '2px',
+              marginTop: '5px',
+            }}>
+              <div style={{
+                width: `${bButtonHoldProgress * 100}%`,
+                height: '100%',
+                backgroundColor: bButtonHoldProgress >= 1 ? '#4caf50' : 'white',
+                borderRadius: '2px',
+                transition: 'width 0.1s ease-out',
+              }} />
+            </div>
+          </div>
+        </Html>
+      )}
+    </>
+  );
 };
 
 export default FirstPersonCamera; 
