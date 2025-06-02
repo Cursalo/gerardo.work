@@ -5,7 +5,7 @@
       "destination": "/index.html"
     },
     {
-      "source": "/((?!api|_next|_static|_vercel|favicon.ico|public|projects|project).*)",
+      "source": "/((?!api|_next|_static|_vercel|favicon.ico|public|projects).*)",
       "destination": "/index.html"
     }
   ],
