@@ -367,7 +367,7 @@ export const PDFCard: React.FC<PDFCardProps> = ({
         style={{
           width: isMobile ? '340px' : '320px',
           height: isMobile ? '260px' : '240px',
-          pointerEvents: 'none',
+          pointerEvents: isMobile ? 'auto' : 'none', // Enable touch on mobile
           transform: hovered ? 'scale(1.05)' : 'scale(1)',
           transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
@@ -385,8 +385,10 @@ export const PDFCard: React.FC<PDFCardProps> = ({
             cursor: 'pointer',
             border: '1px solid rgba(255,255,255,0.2)',
             backdropFilter: 'blur(10px)',
-            pointerEvents: 'none',
+            pointerEvents: isMobile ? 'auto' : 'none', // Enable touch on mobile
           }}
+          onClick={isMobile ? handleClick : undefined} // Direct click handler for mobile
+          onTouchStart={isMobile ? (e) => e.stopPropagation() : undefined} // Prevent event bubbling
         >
           {/* Background Pattern */}
           <div
@@ -411,7 +413,7 @@ export const PDFCard: React.FC<PDFCardProps> = ({
               flexDirection: 'column',
               padding: '20px',
               color: '#ffffff',
-              pointerEvents: 'none',
+              pointerEvents: 'none', // Keep none for inner content to avoid event conflicts
             }}
           >
             {/* Header with PDF Icon and Info */}

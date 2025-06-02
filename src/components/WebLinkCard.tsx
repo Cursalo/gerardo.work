@@ -281,7 +281,7 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
         style={{
           width: isMobile ? '300px' : '280px',
           height: isMobile ? '220px' : '200px',
-          pointerEvents: 'none',
+          pointerEvents: isMobile ? 'auto' : 'none', // Enable touch on mobile
           transform: hovered ? 'scale(1.05)' : 'scale(1)',
           transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
@@ -299,8 +299,10 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
             cursor: 'pointer',
             border: '1px solid rgba(255,255,255,0.1)',
             backdropFilter: 'blur(10px)',
-            pointerEvents: 'none',
+            pointerEvents: isMobile ? 'auto' : 'none', // Enable touch on mobile
           }}
+          onClick={isMobile ? handleClick : undefined} // Direct click handler for mobile
+          onTouchStart={isMobile ? (e) => e.stopPropagation() : undefined} // Prevent event bubbling
         >
           {/* Background Pattern */}
           <div
@@ -325,7 +327,7 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
               flexDirection: 'column',
               padding: '20px',
               color: '#ffffff',
-              pointerEvents: 'none',
+              pointerEvents: 'none', // Keep none for inner content to avoid event conflicts
             }}
           >
             {/* Header with Favicon and Domain */}

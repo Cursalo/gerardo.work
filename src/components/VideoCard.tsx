@@ -63,7 +63,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({
     };
   }, []);
 
-  // Enhanced URL resolution for mobile compatibility with proper encoding
+  // Simple URL resolution - let browser handle encoding
   const resolvedVideoUrl = useMemo(() => {
     if (!videoUrl) return '';
     
@@ -72,16 +72,12 @@ export const VideoCard: React.FC<VideoCardProps> = ({
       return videoUrl;
     }
     
-    // If it's a relative URL from public directory, encode spaces and special characters
-    if (videoUrl.startsWith('/projects/') || videoUrl.startsWith('/assets/') || videoUrl.startsWith('/')) {
-      return videoUrl.split('/').map(segment => segment ? encodeURIComponent(segment) : segment).join('/');
+    // If it's a relative path, ensure it starts with /
+    if (!videoUrl.startsWith('/')) {
+      return `/${videoUrl}`;
     }
     
-    // If it's just a path without leading /, add it and encode
-    if (!videoUrl.startsWith('/') && !videoUrl.includes('://')) {
-      return `/${videoUrl}`.split('/').map(segment => segment ? encodeURIComponent(segment) : segment).join('/');
-    }
-    
+    // Return the URL as-is, browser will handle proper encoding
     return videoUrl;
   }, [videoUrl]);
 
@@ -285,7 +281,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({
           justifyContent: 'center',
           overflow: 'hidden',
           transition: 'all 0.3s ease',
-          pointerEvents: 'none',
+          pointerEvents: isMobile ? 'auto' : 'none', // Enable touch on mobile
           borderRadius: '12px',
         }}
       >
@@ -300,8 +296,10 @@ export const VideoCard: React.FC<VideoCardProps> = ({
             overflow: 'hidden',
             backgroundColor: '#000',
             cursor: 'pointer',
-            pointerEvents: 'none',
+            pointerEvents: isMobile ? 'auto' : 'none', // Enable touch on mobile
           }}
+          onClick={isMobile ? handleClick : undefined} // Direct click handler for mobile
+          onTouchStart={isMobile ? (e) => e.stopPropagation() : undefined} // Prevent event bubbling
         >
           {/* Clean floating title */}
           <div 

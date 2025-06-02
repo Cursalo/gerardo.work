@@ -54,7 +54,7 @@ export const ImageCard: React.FC<ImageCardProps> = ({
                    ('ontouchstart' in window) || 
                    (navigator.maxTouchPoints > 0);
 
-  // Enhanced URL resolution for mobile compatibility with proper encoding
+  // Simple URL resolution - let browser handle encoding
   const resolvedImageUrl = useMemo(() => {
     if (!imageUrl) return '';
     
@@ -63,16 +63,12 @@ export const ImageCard: React.FC<ImageCardProps> = ({
       return imageUrl;
     }
     
-    // If it's a relative URL from public directory, encode spaces and special characters
-    if (imageUrl.startsWith('/projects/') || imageUrl.startsWith('/assets/') || imageUrl.startsWith('/')) {
-      return imageUrl.split('/').map(segment => segment ? encodeURIComponent(segment) : segment).join('/');
+    // If it's a relative path, ensure it starts with /
+    if (!imageUrl.startsWith('/')) {
+      return `/${imageUrl}`;
     }
     
-    // If it's just a path without leading /, add it and encode
-    if (!imageUrl.startsWith('/') && !imageUrl.includes('://')) {
-      return `/${imageUrl}`.split('/').map(segment => segment ? encodeURIComponent(segment) : segment).join('/');
-    }
-    
+    // Return the URL as-is, browser will handle proper encoding
     return imageUrl;
   }, [imageUrl]);
 
@@ -271,24 +267,27 @@ export const ImageCard: React.FC<ImageCardProps> = ({
           height: `${cardDimensions.height * (isMobile ? 100 : 90)}px`,
           borderRadius: '12px',
           overflow: 'hidden',
-          pointerEvents: 'none',
+          pointerEvents: isMobile ? 'auto' : 'none', // Enable touch on mobile
           transform: hovered ? 'scale(1.05)' : 'scale(1)',
           transition: 'transform 0.3s ease',
         }}
       >
-        <div style={{ 
-          width: '100%', 
-          height: '100%', 
-          position: 'relative',
-          borderRadius: '12px',
-          overflow: 'hidden',
-          backgroundColor: '#f0f0f0',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          pointerEvents: 'none',
-        }}
+        <div 
+          style={{ 
+            width: '100%', 
+            height: '100%', 
+            position: 'relative',
+            borderRadius: '12px',
+            overflow: 'hidden',
+            backgroundColor: '#f0f0f0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            pointerEvents: isMobile ? 'auto' : 'none', // Enable touch on mobile
+          }}
+          onClick={isMobile ? handleClick : undefined} // Direct click handler for mobile
+          onTouchStart={isMobile ? (e) => e.stopPropagation() : undefined} // Prevent event bubbling
         >
           {/* Title above image */}
           <div style={{
