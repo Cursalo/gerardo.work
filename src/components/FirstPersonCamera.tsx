@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { useChat } from '../context/ChatContext';
 import useMobileDetection from '../hooks/useMobileDetection';
 import { useMobileControls } from '../context/MobileControlsContext';
+import { useGamepad } from '../hooks/useGamepad';
 
 interface FirstPersonCameraProps {
   position?: Vector3;
@@ -54,6 +55,9 @@ const FirstPersonCamera = ({
   // Check if we're on a mobile device
   const { isMobile, isTouchDevice } = useMobileDetection();
   const { moveVector, lookVector } = useMobileControls();
+  
+  // Get gamepad state
+  const { gamepad, isConnected: gamepadConnected } = useGamepad();
   
   // Current camera position and rotation
   const currentPosition = useRef(position.clone());
@@ -377,11 +381,29 @@ const FirstPersonCamera = ({
     // Skip updates when chat is open
     if (showChat) return;
     
-    // Calculate movement direction vector based on keyboard/context
+    // Calculate movement direction vector based on keyboard/context/gamepad
     let moveDirX = 0;
     let moveDirZ = 0;
+    // const gamepadStickThreshold = 0.01; // Relying on useGamepad.ts for clean zero values
 
-    if (isTouchDevice) {
+    if (gamepadConnected && gamepad) {
+      // Gamepad takes priority when connected
+      moveDirX = gamepad.leftStick.x;
+      moveDirZ = gamepad.leftStick.y;
+      
+      // Apply gamepad look controls (right stick)
+      if (gamepad.rightStick.x !== 0 || gamepad.rightStick.y !== 0) {
+        const lookSensitivity = 0.03; // Sensitivity for gamepad look
+
+        euler.current.y -= gamepad.rightStick.x * lookSensitivity; // Horizontal look (Yaw)
+        euler.current.x += gamepad.rightStick.y * lookSensitivity; // Vertical look (Pitch) - INVERTED: Stick Up = Look Down
+        
+        // Clamp vertical rotation (tighter range, approx +/- 75 degrees)
+        const maxPitch = 1.3; // Radians for ~75 degrees
+        euler.current.x = Math.max(-maxPitch, Math.min(maxPitch, euler.current.x));
+        camera.quaternion.setFromEuler(euler.current);
+      }
+    } else if (isTouchDevice) {
         moveDirX = moveVector.x; // Use context value for X
         moveDirZ = moveVector.y; // Use context value for Y (NO negation)
     } else {
@@ -431,9 +453,26 @@ const FirstPersonCamera = ({
       targetVelocityVec.add(tempRight.multiplyScalar(tempDirectionVec.x));
     }
     
-    // Scale by movement speed
+    // Scale by movement speed with gamepad trigger modulation
     if (targetVelocityVec.length() > 0) {
-      targetVelocityVec.normalize().multiplyScalar(moveSpeed);
+      let finalMoveSpeed = moveSpeed;
+      
+      // Apply gamepad trigger speed modulation
+      if (gamepadConnected && gamepad) {
+        const leftTrigger = gamepad.triggers.left;
+        const rightTrigger = gamepad.triggers.right;
+        
+        // Left trigger = slow down (0.3x speed)
+        // Right trigger = speed up (2x speed)
+        // No triggers = normal speed
+        if (leftTrigger > 0.1) {
+          finalMoveSpeed *= (0.3 + (1 - leftTrigger) * 0.7); // Gradual slowdown
+        } else if (rightTrigger > 0.1) {
+          finalMoveSpeed *= (1 + rightTrigger * 1.5); // Gradual speedup up to 2.5x
+        }
+      }
+      
+      targetVelocityVec.normalize().multiplyScalar(finalMoveSpeed);
     }
     
     // Apply acceleration/deceleration
@@ -463,6 +502,39 @@ const FirstPersonCamera = ({
     // Update camera position
     camera.position.copy(currentPosition.current);
   });
+  
+  // Handle "B" key press to return to main world
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === 'b') {
+        // Check if we're in a project world by looking at the world ID pattern
+        if (currentWorld && currentWorld.id.startsWith('project-world-')) {
+          setCurrentWorldId('mainWorld');
+          // Prevent any other keyboard handlers from activating
+          e.preventDefault();
+        }
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [currentWorld, setCurrentWorldId]);
+
+  // Handle gamepad B button press to return to main world
+  useEffect(() => {
+    // Skip if gamepad isn't connected
+    if (!gamepadConnected || !gamepad) return;
+    
+    // Check for B button press
+    if (gamepad.buttons.B) {
+      // Check if we're in a project world by looking at the world ID pattern
+      if (currentWorld && currentWorld.id.startsWith('project-world-')) {
+        setCurrentWorldId('mainWorld');
+      }
+    }
+  }, [gamepadConnected, gamepad, currentWorld, setCurrentWorldId]);
   
   // Return null as this component only manages the camera state via hooks
   // The actual MobileControls UI is now rendered in Scene.tsx
