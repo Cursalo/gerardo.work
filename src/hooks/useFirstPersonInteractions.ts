@@ -563,19 +563,23 @@ function useFirstPersonInteractions() {
       // Check for B button press (back/escape)
       const bPressed = gamepad.buttons.B && !previousGamepadButtons.current.B;
       
-      // Add debug logging for button states
-      if (gamepad.buttons.A) {
-        console.log('🎮 Gamepad A button is pressed', { 
-          current: gamepad.buttons.A, 
-          previous: previousGamepadButtons.current.A,
-          aPressed: aPressed
-        });
-      }
+      // Update previous button states BEFORE any action to prevent double-triggers
+      const prevA = previousGamepadButtons.current.A;
+      const prevX = previousGamepadButtons.current.X;
+      const prevB = previousGamepadButtons.current.B;
       
-      // Update previous button states
       previousGamepadButtons.current.A = gamepad.buttons.A;
       previousGamepadButtons.current.X = gamepad.buttons.X;
       previousGamepadButtons.current.B = gamepad.buttons.B;
+      
+      // Log button state only when transitioning for debugging
+      if (gamepad.buttons.A && !prevA) {
+        console.log('🎮 Gamepad A button PRESSED', { 
+          current: gamepad.buttons.A, 
+          previous: prevA,
+          hoveredObject: hoveredObject ? hoveredObject.name : 'none'
+        });
+      }
       
       // Handle B button for back navigation (like escape key)
       if (bPressed) {
@@ -584,7 +588,7 @@ function useFirstPersonInteractions() {
         }
       }
       
-      // Handle A or X button for interaction
+      // Handle A or X button for interaction - ensure we check against the prev values we cached
       if ((aPressed || xPressed) && hoveredObject && !isInCooldown()) {
         console.log(`[FPInteractions Gamepad] ${aPressed ? 'A' : 'X'} button pressed on:`, hoveredObject.name);
         document.dispatchEvent(CLICK_EVENT);
@@ -596,15 +600,20 @@ function useFirstPersonInteractions() {
           console.log('[FPInteractions Gamepad] Triggering interaction');
           
           // Detect if this is a media card interaction
-          const isMediaCard = hoveredObject.userData.objectType === 'image' || 
-                              hoveredObject.userData.objectType === 'pdf' || 
-                              hoveredObject.userData.objectType === 'video' ||
-                              hoveredObject.userData.type === 'link';
+          const isMediaCard = 
+            hoveredObject.userData.objectType === 'image' || 
+            hoveredObject.userData.objectType === 'pdf' || 
+            hoveredObject.userData.objectType === 'video' ||
+            hoveredObject.userData.type === 'image' || 
+            hoveredObject.userData.type === 'pdf' || 
+            hoveredObject.userData.type === 'video' ||
+            hoveredObject.userData.type === 'link';
           
           if (isMediaCard) {
-            startInteractionCooldown(`Gamepad ${aPressed ? 'A' : 'X'} button on ${hoveredObject.userData.objectType || 'media'} card`);
+            startInteractionCooldown(`Gamepad ${aPressed ? 'A' : 'X'} button on ${hoveredObject.userData.objectType || hoveredObject.userData.type || 'media'} card`);
           }
           
+          // This will use the updated InteractionContext.triggerInteraction
           triggerInteraction();
         }
         setClickedObject(hoveredObject);

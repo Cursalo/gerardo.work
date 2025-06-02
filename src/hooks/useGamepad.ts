@@ -62,8 +62,17 @@ const applyDeadzone = (value: number, deadzone: number = DEADZONE): number => {
 };
 
 // Smooth analog stick input with easing
-const smoothInput = (current: number, target: number, smoothing: number = 0.8): number => {
-  return current + (target - current) * smoothing;
+const smoothInput = (currentX: number, currentY: number, targetX: number, targetY: number, smoothing: number = 0.8): { x: number; y: number } => {
+  // Apply smoothing to both X and Y values
+  const x = currentX + (targetX - currentX) * (1 - smoothing);
+  const y = currentY + (targetY - currentY) * (1 - smoothing);
+  
+  // Aggressive drift elimination
+  const driftThreshold = 0.005;
+  return {
+    x: Math.abs(x) < driftThreshold ? 0 : x,
+    y: Math.abs(y) < driftThreshold ? 0 : y
+  };
 };
 
 // Helper function to safely check button press state
@@ -77,10 +86,12 @@ const getButtonPressed = (gamepad: Gamepad, buttonIndex: number): boolean => {
   
   // Different browsers implement buttons differently
   if (typeof button === 'object') {
-    return button.pressed || button.value > 0.5;
+    // Lower threshold (0.3) for button detection to improve reliability
+    return button.pressed || button.value > 0.3;
   }
   
-  return button === 1.0;
+  // For number value implementations
+  return button === 1.0 || (typeof button === 'number' && button > 0.3);
 };
 
 export const useGamepad = () => {
@@ -118,45 +129,67 @@ export const useGamepad = () => {
 
   // Update gamepad state
   const updateGamepadState = useCallback(() => {
-    const gamepads = navigator.getGamepads();
-    const gamepad = gamepads[0]; // Use first connected gamepad
-
-    if (!gamepad) {
-      setGamepadState(prev => ({ ...prev, connected: false }));
+    // Check if gamepad API is available
+    if (!navigator.getGamepads) {
       return;
     }
 
-    // Process gamepad input directly
+    // Get all connected gamepads
+    const gamepads = navigator.getGamepads();
+    
+    // Find first connected gamepad
+    let activeGamepad: Gamepad | null = null;
+    for (let i = 0; i < gamepads.length; i++) {
+      if (gamepads[i]) {
+        activeGamepad = gamepads[i];
+        break;
+      }
+    }
 
-    // Process analog sticks with deadzone and smoothing
-    const rawLeftX = gamepad.axes[0] || 0;
-    const rawLeftY = gamepad.axes[1] || 0;
+    // If no gamepad found, set disconnected state
+    if (!activeGamepad) {
+      if (gamepadState.connected) {
+        setGamepadState({
+          ...gamepadState,
+          connected: false
+        });
+      }
+      return;
+    }
+
+    const gamepad = activeGamepad;
+    
+    // Handle left stick input
+    const rawLeftX = gamepad.axes[0];
+    const rawLeftY = gamepad.axes[1];
+    const leftX = applyDeadzone(rawLeftX);
+    const leftY = applyDeadzone(rawLeftY);
+    
+    // Handle right stick input
     const rawRightX = gamepad.axes[2] || 0;
     const rawRightY = gamepad.axes[3] || 0;
-
-    // Apply deadzone
-    const leftX = applyDeadzone(rawLeftX);
-    const leftY = applyDeadzone(-rawLeftY); // Invert Y for standard FPS controls
     const rightX = applyDeadzone(rawRightX);
-    const rightY = applyDeadzone(-rawRightY); // Invert Y for standard FPS controls
-
-    // Apply smoothing
-    smoothedLeftStick.current.x = smoothInput(smoothedLeftStick.current.x, leftX);
-    smoothedLeftStick.current.y = smoothInput(smoothedLeftStick.current.y, leftY);
-    smoothedRightStick.current.x = smoothInput(smoothedRightStick.current.x, rightX);
-    smoothedRightStick.current.y = smoothInput(smoothedRightStick.current.y, rightY);
-
-    // Aggressive drift elimination: clamp tiny smoothed values to zero
-    const driftThreshold = 0.005;
-    if (Math.abs(smoothedLeftStick.current.x) < driftThreshold) smoothedLeftStick.current.x = 0;
-    if (Math.abs(smoothedLeftStick.current.y) < driftThreshold) smoothedLeftStick.current.y = 0;
-    if (Math.abs(smoothedRightStick.current.x) < driftThreshold) smoothedRightStick.current.x = 0;
-    if (Math.abs(smoothedRightStick.current.y) < driftThreshold) smoothedRightStick.current.y = 0;
-
-    // Process triggers (they might be buttons or axes depending on browser)
+    const rightY = applyDeadzone(rawRightY);
+    
+    // Smooth stick input to reduce jitter
+    smoothedLeftStick.current = smoothInput(
+      smoothedLeftStick.current.x,
+      smoothedLeftStick.current.y,
+      leftX,
+      leftY
+    );
+    
+    smoothedRightStick.current = smoothInput(
+      smoothedRightStick.current.x,
+      smoothedRightStick.current.y,
+      rightX,
+      rightY
+    );
+    
+    // Get trigger values
     let leftTrigger = 0;
     let rightTrigger = 0;
-
+    
     // Try to get trigger values from axes first (more accurate)
     if (gamepad.axes.length > 4) {
       leftTrigger = Math.max(0, (gamepad.axes[4] + 1) / 2); // Convert from -1,1 to 0,1
@@ -166,20 +199,24 @@ export const useGamepad = () => {
       leftTrigger = gamepad.buttons[BUTTON_MAP.LT]?.value || 0;
       rightTrigger = gamepad.buttons[BUTTON_MAP.RT]?.value || 0;
     }
-
+    
     // Apply trigger deadzone
     leftTrigger = leftTrigger > TRIGGER_DEADZONE ? leftTrigger : 0;
     rightTrigger = rightTrigger > TRIGGER_DEADZONE ? rightTrigger : 0;
-
-    // Log button state for debugging if the A button is pressed
-    if (gamepad.buttons[BUTTON_MAP.A]?.pressed) {
-      console.log('🎮 Raw A button state:', {
-        pressed: gamepad.buttons[BUTTON_MAP.A]?.pressed,
-        value: gamepad.buttons[BUTTON_MAP.A]?.value,
-        touched: gamepad.buttons[BUTTON_MAP.A]?.touched
-      });
+    
+    // Enhanced button detection with debug logging for A button
+    const aButtonPressed = getButtonPressed(gamepad, BUTTON_MAP.A);
+    if (aButtonPressed) {
+      // Only log when it changes to avoid console spam
+      if (!gamepadState.buttons.A) {
+        console.log('🎮 Gamepad: A button detected', {
+          raw: gamepad.buttons[BUTTON_MAP.A],
+          processed: aButtonPressed,
+          index: BUTTON_MAP.A
+        });
+      }
     }
-
+    
     const newState: GamepadState = {
       connected: true,
       leftStick: {
@@ -191,7 +228,7 @@ export const useGamepad = () => {
         y: smoothedRightStick.current.y,
       },
       buttons: {
-        A: getButtonPressed(gamepad, BUTTON_MAP.A),
+        A: aButtonPressed,
         B: getButtonPressed(gamepad, BUTTON_MAP.B),
         X: getButtonPressed(gamepad, BUTTON_MAP.X),
         Y: getButtonPressed(gamepad, BUTTON_MAP.Y),
@@ -213,9 +250,9 @@ export const useGamepad = () => {
         right: rightTrigger,
       },
     };
-
+    
     setGamepadState(newState);
-  }, []);
+  }, [gamepadState]);
 
   // Polling loop for gamepad state
   const pollGamepad = useCallback(() => {
