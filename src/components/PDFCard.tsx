@@ -1,9 +1,11 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { useAppContext } from '../hooks/useAppContext';
 import { useInteraction } from '../context/InteractionContext';
+import useMobileDetection from '../hooks/useMobileDetection';
+import { openFileWithViewer } from '../utils/fileUtils';
 
 // Import PDF.js with proper worker configuration
 declare global {
@@ -128,6 +130,7 @@ export const PDFCard: React.FC<PDFCardProps> = ({
   const [loadProgress, setLoadProgress] = useState(0);
   const { registerObject, unregisterObject, checkOverlap } = useAppContext();
   const { hoveredObject } = useInteraction();
+  const { isMobile: detectedMobile } = useMobileDetection();
 
   // Check if this card is currently hovered via the raycasting system
   const hovered = hoveredObject?.userData?.url === pdfUrl && hoveredObject?.userData?.type === 'pdf';
@@ -157,19 +160,22 @@ export const PDFCard: React.FC<PDFCardProps> = ({
     }
   }, [position, title, pdfUrl]);
 
-  // Handle click function (EXACTLY like WorldObject.tsx)
+  // Handle click function using the new file utility
   const handleClick = useCallback((e?: any) => {
     if (e) {
       e.stopPropagation();
     }
     console.log('PDF Card clicked!', pdfUrl);
+    
     if (pdfUrl) {
-      window.open(pdfUrl, '_blank');
+      // Use the new file utility for proper handling
+      openFileWithViewer(pdfUrl, title);
     }
+    
     if (onClick) {
       onClick();
     }
-  }, [pdfUrl, onClick]);
+  }, [pdfUrl, onClick, title]);
 
   // Update userData with onClick function after handleClick is defined
   useEffect(() => {
@@ -355,7 +361,7 @@ export const PDFCard: React.FC<PDFCardProps> = ({
         ref={meshRef}
         position={[0, 0, 0]}
       >
-        <planeGeometry args={[(isMobile ? 3.4 : 3.2) * 1.2, (isMobile ? 2.6 : 2.4) * 1.2]} />
+        <planeGeometry args={[(detectedMobile ? 3.4 : 3.2) * 1.2, (detectedMobile ? 2.6 : 2.4) * 1.2]} />
         <meshBasicMaterial transparent opacity={0} />
       </mesh>
 
@@ -365,9 +371,9 @@ export const PDFCard: React.FC<PDFCardProps> = ({
         distanceFactor={5}
         position={[0, 0, 0.1]}
         style={{
-          width: isMobile ? '340px' : '320px',
-          height: isMobile ? '260px' : '240px',
-          pointerEvents: isMobile ? 'auto' : 'none', // Enable touch on mobile
+          width: detectedMobile ? '340px' : '320px',
+          height: detectedMobile ? '260px' : '240px',
+          pointerEvents: detectedMobile ? 'auto' : 'none', // Enable touch on mobile
           transform: hovered ? 'scale(1.05)' : 'scale(1)',
           transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
@@ -385,10 +391,10 @@ export const PDFCard: React.FC<PDFCardProps> = ({
             cursor: 'pointer',
             border: '1px solid rgba(255,255,255,0.2)',
             backdropFilter: 'blur(10px)',
-            pointerEvents: isMobile ? 'auto' : 'none', // Enable touch on mobile
+            pointerEvents: detectedMobile ? 'auto' : 'none', // Enable touch on mobile
           }}
-          onClick={isMobile ? handleClick : undefined} // Direct click handler for mobile
-          onTouchStart={isMobile ? (e) => e.stopPropagation() : undefined} // Prevent event bubbling
+          onClick={detectedMobile ? handleClick : undefined} // Direct click handler for mobile
+          onTouchStart={detectedMobile ? (e) => e.stopPropagation() : undefined} // Prevent event bubbling
         >
           {/* Background Pattern */}
           <div

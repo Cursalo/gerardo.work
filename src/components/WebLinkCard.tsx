@@ -1,9 +1,11 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { useAppContext } from '../hooks/useAppContext';
 import { useInteraction } from '../context/InteractionContext';
+import useMobileDetection from '../hooks/useMobileDetection';
+import { openFileWithViewer, isExternalUrl, detectFileType } from '../utils/fileUtils';
 
 // Add CSS for beautiful animations
 const weblinkStyles = document.createElement('style');
@@ -92,14 +94,10 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
   }>({});
   const { registerObject, unregisterObject, checkOverlap } = useAppContext();
   const { hoveredObject } = useInteraction();
+  const isMobile = useMobileDetection();
 
   // Check if this card is currently hovered via the raycasting system
   const hovered = hoveredObject?.userData?.url === url && hoveredObject?.userData?.type === 'link';
-
-  // Add mobile detection
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
-                   ('ontouchstart' in window) || 
-                   (navigator.maxTouchPoints > 0);
 
   // Set initial position and register for 3D interactions
   useEffect(() => {
@@ -126,19 +124,30 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
     }
   }, [position, title, url]);
 
-  // Handle click function (EXACTLY like WorldObject.tsx)
+  // Handle click function with smart file/URL detection
   const handleClick = useCallback((e?: any) => {
     if (e) {
       e.stopPropagation();
     }
     console.log('WebLink Card clicked!', url);
+    
     if (url) {
-      window.open(url, '_blank');
+      // Detect if this is an external URL or a local file
+      if (isExternalUrl(url) || url.startsWith('http://') || url.startsWith('https://')) {
+        // External URL - open directly
+        window.open(url, '_blank');
+      } else {
+        // Local file - use file viewer utility
+        const fileInfo = detectFileType(url);
+        console.log('Detected file type:', fileInfo.type, 'for URL:', url);
+        openFileWithViewer(url, title);
+      }
     }
+    
     if (onClick) {
       onClick();
     }
-  }, [url, onClick]);
+  }, [url, onClick, title]);
 
   // Update userData with onClick function after handleClick is defined
   useEffect(() => {

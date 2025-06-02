@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { Mesh, Group, Vector3 } from 'three';
 import { useInteraction } from '../context/InteractionContext';
+import { openFileWithViewer, isExternalUrl } from '../utils/fileUtils';
 
 interface VideoCardProps {
   id: number;
@@ -143,16 +144,24 @@ export const VideoCard: React.FC<VideoCardProps> = ({
     }
   }, [title, resolvedVideoUrl]);
 
-  // Handle click function (EXACTLY like WorldObject.tsx)
+  // Handle click function using the new file utility
   const handleClick = useCallback((e?: any) => {
     if (e) {
       e.stopPropagation();
     }
     console.log('Video Card clicked!', resolvedVideoUrl);
+    
     if (resolvedVideoUrl) {
-      window.open(resolvedVideoUrl, '_blank');
+      // Check if it's an external URL (YouTube, etc.)
+      if (isExternalUrl(resolvedVideoUrl) || resolvedVideoUrl.includes('youtube.com') || resolvedVideoUrl.includes('youtu.be')) {
+        // External URLs - open directly
+        window.open(resolvedVideoUrl, '_blank');
+      } else {
+        // Use file utility for local video files
+        openFileWithViewer(resolvedVideoUrl, title);
+      }
     }
-  }, [resolvedVideoUrl]);
+  }, [resolvedVideoUrl, title]);
 
   // Update userData with onClick function after handleClick is defined
   useEffect(() => {

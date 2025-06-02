@@ -3,6 +3,7 @@ import { Html } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useInteraction } from '../context/InteractionContext';
+import { openFileWithViewer } from '../utils/fileUtils';
 
 // Add CSS for loading spinner outside of React component
 const spinnerStyle = document.createElement('style');
@@ -101,20 +102,20 @@ export const ImageCard: React.FC<ImageCardProps> = ({
     }
   }, [position, title, resolvedImageUrl]);
 
-  // Handle click function (EXACTLY like WorldObject.tsx)
+  // Handle click function using the new file utility
   const handleClick = useCallback((e?: any) => {
     if (e) {
       e.stopPropagation();
     }
     console.log('Image Card clicked!', resolvedImageUrl);
     
-    // Use external onClick if provided, otherwise default behavior
+    // Use external onClick if provided, otherwise use file utility
     if (onClick) {
       onClick();
     } else if (resolvedImageUrl) {
-      window.open(resolvedImageUrl, '_blank');
+      openFileWithViewer(resolvedImageUrl, title);
     }
-  }, [resolvedImageUrl, onClick]);
+  }, [resolvedImageUrl, onClick, title]);
 
   // Update userData with onClick function after handleClick is defined
   useEffect(() => {
