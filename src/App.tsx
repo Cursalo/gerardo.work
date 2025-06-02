@@ -291,7 +291,7 @@ const AppContent = () => {
   const [fadeInstructions, setFadeInstructions] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showUI, setShowUI] = useState(true);
-  const [showResetInfo, setShowResetInfo] = useState(false);
+
   const [showProjectSelector, setShowProjectSelector] = useState(false);
   
   const { isMobile, isTouchDevice } = useMobileDetection();
@@ -345,19 +345,7 @@ const AppContent = () => {
     };
   }, []);
 
-  useEffect(() => {
-    // Show reset info after a few seconds if not dismissed before
-    const timer = setTimeout(() => {
-      // Check if this is the first time visiting
-      const hasVisitedBefore = localStorage.getItem('has_visited_before');
-      if (!hasVisitedBefore) {
-        setShowResetInfo(true);
-        localStorage.setItem('has_visited_before', 'true');
-      }
-    }, 5000);
-    
-    return () => clearTimeout(timer);
-  }, []);
+
 
   const toggleInstructions = () => {
     setFadeInstructions(false);
@@ -494,39 +482,7 @@ const AppContent = () => {
         isVisible={showProjectSelector} 
         onClose={() => setShowProjectSelector(false)} 
       />
-      {showResetInfo && showUI && (
-        <div style={{
-          position: 'fixed',
-          bottom: '20px',
-          left: '20px',
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          color: '#4dffa9',
-          padding: '15px',
-          borderRadius: '8px',
-          maxWidth: '300px',
-          zIndex: 1000,
-          fontSize: '14px',
-          boxShadow: '0 2px 10px rgba(0, 0, 0, 0.3)',
-          border: '1px solid #4dffa9'
-        }}>
-          <div style={{ marginBottom: '10px' }}>
-            If you're seeing different worlds on mobile vs desktop, try adding <b>?force_reset=true</b> to the URL and reload.
-          </div>
-          <button 
-            onClick={() => setShowResetInfo(false)}
-            style={{
-              backgroundColor: '#4dffa9',
-              color: 'black',
-              border: 'none',
-              padding: '5px 10px',
-              borderRadius: '4px',
-              cursor: 'pointer'
-            }}
-          >
-            Got it
-          </button>
-        </div>
-      )}
+
     </div>
   );
 };
