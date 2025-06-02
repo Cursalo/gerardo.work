@@ -367,32 +367,22 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
           
           // If not found or not numeric, try as project name/slug
           if (!project) {
-            console.log(`ProjectSubworld: Trying as project name: ${projectId}`);
+            console.log(`ProjectSubworld: Trying as project name/slug: ${projectId}`);
             
-            // Try exact name match first
-            project = await projectDataService.getProjectByName(projectId);
+            // Get all projects for comprehensive search
+            const allProjects = await projectDataService.getAllProjects();
+            console.log(`ProjectSubworld: Searching through ${allProjects.length} projects for: ${projectId}`);
             
-            // If not found, try converting slug back to project name
-            if (!project) {
-              const convertedName = slugToProjectName(projectId);
-              console.log(`ProjectSubworld: Trying converted name: ${convertedName}`);
-              project = await projectDataService.getProjectByName(convertedName);
-            }
-            
-            // If still not found, try case-insensitive search through all projects
-            if (!project) {
-              console.log(`ProjectSubworld: Trying case-insensitive search for: ${projectId}`);
-              const allProjects = await projectDataService.getAllProjects();
-              project = allProjects.find(p => 
-                p.name.toLowerCase().replace(/[^a-z0-9]/g, '') === projectId.toLowerCase().replace(/[^a-z0-9]/g, '')
-              ) || null;
-            }
-            
-            // Last resort: try slug comparison
-            if (!project) {
-              console.log(`ProjectSubworld: Trying slug comparison for: ${projectId}`);
-              const allProjects = await projectDataService.getAllProjects();
-              project = allProjects.find(p => {
+            // Try multiple search strategies
+            const searchStrategies = [
+              // 1. Exact name match (case sensitive)
+              (p: any) => p.name === projectId,
+              // 2. Exact name match (case insensitive)
+              (p: any) => p.name.toLowerCase() === projectId.toLowerCase(),
+              // 3. CustomLink match
+              (p: any) => p.customLink && p.customLink.toLowerCase() === projectId.toLowerCase(),
+              // 4. Slug generation match - convert project name to slug and compare
+              (p: any) => {
                 const projectSlug = p.name.toLowerCase().trim()
                   .replace(/[\s.]+/g, '-')
                   .replace(/['"]/g, '')
@@ -400,7 +390,31 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
                   .replace(/-+/g, '-')
                   .replace(/^-+|-+$/g, '');
                 return projectSlug === projectId.toLowerCase();
-              }) || null;
+              },
+              // 5. Reverse slug conversion - convert input back to possible name
+              (p: any) => {
+                const convertedName = slugToProjectName(projectId);
+                return p.name.toLowerCase() === convertedName.toLowerCase();
+              },
+              // 6. Alphanumeric only comparison
+              (p: any) => p.name.toLowerCase().replace(/[^a-z0-9]/g, '') === projectId.toLowerCase().replace(/[^a-z0-9]/g, ''),
+              // 7. Partial name match
+              (p: any) => p.name.toLowerCase().includes(projectId.toLowerCase()) || projectId.toLowerCase().includes(p.name.toLowerCase())
+            ];
+            
+            for (let i = 0; i < searchStrategies.length; i++) {
+              const strategy = searchStrategies[i];
+              const found = allProjects.find(strategy);
+              if (found) {
+                console.log(`ProjectSubworld: Found project using strategy ${i + 1}: "${found.name}" (ID: ${found.id})`);
+                project = found;
+                break;
+              }
+            }
+            
+            if (!project) {
+              console.log(`ProjectSubworld: No project found for "${projectId}"`);
+              console.log('ProjectSubworld: Available projects:', allProjects.slice(0, 10).map(p => ({ id: p.id, name: p.name })));
             }
           }
         }
