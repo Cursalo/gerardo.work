@@ -4,6 +4,7 @@ import { Html } from '@react-three/drei';
 import { Mesh, Group, Vector3 } from 'three';
 import { useInteraction } from '../context/InteractionContext';
 import { openFileWithViewer, isExternalUrl } from '../utils/fileUtils';
+import * as THREE from 'three';
 
 interface VideoCardProps {
   id: number;
@@ -35,7 +36,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({
   const groupRef = useRef<Group>(null);
   const meshRef = useRef<Mesh>(null);
   const videoRef = useRef<HTMLIFrameElement>(null);
-  const { hoveredObject } = useInteraction();
+  const { hoveredObject, triggerInteraction } = useInteraction();
   
   // Get camera from three.js context
   const { camera } = useThree();
@@ -144,24 +145,20 @@ export const VideoCard: React.FC<VideoCardProps> = ({
     }
   }, [title, resolvedVideoUrl]);
 
-  // Handle click function using the new file utility
+  // Handle click function - use same path as interaction button
   const handleClick = useCallback((e?: any) => {
     if (e) {
       e.stopPropagation();
     }
     console.log('Video Card clicked!', resolvedVideoUrl);
     
+    // FIXED: Use the same interaction path as the interaction button
+    // This ensures mobile touches go through the same system as button interactions
     if (resolvedVideoUrl) {
-      // Check if it's an external URL (YouTube, etc.)
-      if (isExternalUrl(resolvedVideoUrl) || resolvedVideoUrl.includes('youtube.com') || resolvedVideoUrl.includes('youtu.be')) {
-        // External URLs - open directly
-        window.open(resolvedVideoUrl, '_blank');
-      } else {
-        // Use file utility for local video files
-        openFileWithViewer(resolvedVideoUrl, title);
-      }
+      console.log('Video Card: Using triggerInteraction() for consistent handling');
+      triggerInteraction();
     }
-  }, [resolvedVideoUrl, title]);
+  }, [resolvedVideoUrl, triggerInteraction]);
 
   // Update userData with onClick function after handleClick is defined
   useEffect(() => {

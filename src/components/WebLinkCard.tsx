@@ -93,7 +93,7 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
     image?: string;
   }>({});
   const { registerObject, unregisterObject, checkOverlap } = useAppContext();
-  const { hoveredObject } = useInteraction();
+  const { hoveredObject, triggerInteraction } = useInteraction();
   const isMobile = useMobileDetection();
 
   // Check if this card is currently hovered via the raycasting system
@@ -128,30 +128,26 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
     }
   }, [position, title, url]);
 
-  // Handle click function with smart file/URL detection
+  // Handle click function - use same path as interaction button
   const handleClick = useCallback((e?: any) => {
     if (e) {
       e.stopPropagation();
     }
     console.log('WebLink Card clicked!', url);
     
-    if (url) {
-      // Detect if this is an external URL or a local file
-      if (isExternalUrl(url) || url.startsWith('http://') || url.startsWith('https://')) {
-        // External URL - open directly
-        window.open(url, '_blank');
-      } else {
-        // Local file - use file viewer utility
-        const fileInfo = detectFileType(url);
-        console.log('Detected file type:', fileInfo.type, 'for URL:', url);
-        openFileWithViewer(url, title);
-      }
-    }
-    
+    // Use external onClick if provided
     if (onClick) {
       onClick();
+      return;
     }
-  }, [url, onClick, title]);
+    
+    // FIXED: Use the same interaction path as the interaction button
+    // This ensures mobile touches go through the same system as button interactions
+    if (url) {
+      console.log('WebLink Card: Using triggerInteraction() for consistent handling');
+      triggerInteraction();
+    }
+  }, [url, onClick, triggerInteraction]);
 
   // Update userData with onClick function after handleClick is defined
   useEffect(() => {

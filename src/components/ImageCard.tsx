@@ -48,7 +48,7 @@ export const ImageCard: React.FC<ImageCardProps> = ({
   
   const groupRef = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.Mesh>(null);
-  const { hoveredObject } = useInteraction();
+  const { hoveredObject, triggerInteraction } = useInteraction();
 
   // Add mobile detection
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
@@ -102,22 +102,26 @@ export const ImageCard: React.FC<ImageCardProps> = ({
     }
   }, [position, title, resolvedImageUrl]);
 
-  // Handle click function - for images, open directly in new tab
+  // Handle click function - use same path as interaction button
   const handleClick = useCallback((e?: any) => {
     if (e) {
       e.stopPropagation();
     }
     console.log('Image Card clicked!', resolvedImageUrl);
     
-    // Use external onClick if provided, otherwise open image directly
+    // Use external onClick if provided
     if (onClick) {
       onClick();
-    } else if (resolvedImageUrl) {
-      // For images, open directly in new tab instead of using file utility
-      // This prevents the raw binary data issue
-      window.open(resolvedImageUrl, '_blank');
+      return;
     }
-  }, [resolvedImageUrl, onClick, title]);
+    
+    // FIXED: Use the same interaction path as the interaction button
+    // This ensures mobile touches go through the same system as button interactions
+    if (resolvedImageUrl) {
+      console.log('Image Card: Using triggerInteraction() for consistent handling');
+      triggerInteraction();
+    }
+  }, [resolvedImageUrl, onClick, triggerInteraction]);
 
   // Update userData with onClick function after handleClick is defined
   useEffect(() => {
