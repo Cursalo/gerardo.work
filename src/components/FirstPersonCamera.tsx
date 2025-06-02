@@ -2,12 +2,9 @@ import { useRef, useEffect, useState, useCallback } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import { Vector3, Euler } from 'three';
 import * as THREE from 'three';
-import { Html } from '@react-three/drei';
 import { useChat } from '../context/ChatContext';
 import useMobileDetection from '../hooks/useMobileDetection';
 import { useMobileControls } from '../context/MobileControlsContext';
-import { useGamepad } from '../hooks/useGamepad';
-import { useWorld } from '../context/WorldContext';
 
 interface FirstPersonCameraProps {
   position?: Vector3;
@@ -35,7 +32,6 @@ const tempDirectionVec = new THREE.Vector3(); // For storing direction before no
  * - Camera always looks exactly where the centered crosshair points
  * - Smooth acceleration and deceleration for movement
  * - Mobile touch controls for touch devices
- * - Gamepad LT/RT trigger zoom in subworlds
  */
 const FirstPersonCamera = ({
   position = new Vector3(0, 0, 15),
@@ -59,12 +55,6 @@ const FirstPersonCamera = ({
   const { isMobile, isTouchDevice } = useMobileDetection();
   const { moveVector, lookVector } = useMobileControls();
   
-  // Get gamepad state
-  const { gamepad, isConnected: gamepadConnected } = useGamepad();
-  
-  // Get world context
-  const { currentWorld, setCurrentWorldId } = useWorld();
-  
   // Current camera position and rotation
   const currentPosition = useRef(position.clone());
   const euler = useRef(new Euler(0, 0, 0, 'YXZ')); // YXZ order is important for FPS controls
@@ -78,20 +68,8 @@ const FirstPersonCamera = ({
   const lastTouchX = useRef(0);
   const lastTouchY = useRef(0);
   
-  // B button hold timer
-  const bButtonHoldRef = useRef<number | null>(null);
-  const [bButtonHoldProgress, setBButtonHoldProgress] = useState(0); // Progress from 0 to 1
-  
-  // Define required hold time (2 seconds) outside effects/callbacks
-  const requiredHoldTime = 2000; // milliseconds
-  
   // Pointer lock state
   const [isPointerLocked, setIsPointerLocked] = useState(false);
-  
-  // Camera FOV state for zoom
-  const [baseFOV] = useState(75); // Store initial FOV
-  const [currentFOV, setCurrentFOV] = useState(baseFOV); // Current FOV with zoom applied
-  const [isZooming, setIsZooming] = useState(false); // Track if zoom is active
   
   // Last time we tried to request pointer lock, to prevent spam
   const lastPointerLockRequestRef = useRef(0);
@@ -399,29 +377,11 @@ const FirstPersonCamera = ({
     // Skip updates when chat is open
     if (showChat) return;
     
-    // Calculate movement direction vector based on keyboard/context/gamepad
+    // Calculate movement direction vector based on keyboard/context
     let moveDirX = 0;
     let moveDirZ = 0;
-    // const gamepadStickThreshold = 0.01; // Relying on useGamepad.ts for clean zero values
 
-    if (gamepadConnected && gamepad) {
-      // Gamepad takes priority when connected
-      moveDirX = gamepad.leftStick.x;
-      moveDirZ = gamepad.leftStick.y;
-      
-      // Apply gamepad look controls (right stick)
-      if (gamepad.rightStick.x !== 0 || gamepad.rightStick.y !== 0) {
-        const lookSensitivity = 0.03; // Sensitivity for gamepad look
-
-        euler.current.y -= gamepad.rightStick.x * lookSensitivity; // Horizontal look (Yaw)
-        euler.current.x += gamepad.rightStick.y * lookSensitivity; // Vertical look (Pitch) - INVERTED: Stick Up = Look Down
-        
-        // Clamp vertical rotation (tighter range, approx +/- 75 degrees)
-        const maxPitch = 1.3; // Radians for ~75 degrees
-        euler.current.x = Math.max(-maxPitch, Math.min(maxPitch, euler.current.x));
-        camera.quaternion.setFromEuler(euler.current);
-      }
-    } else if (isTouchDevice) {
+    if (isTouchDevice) {
         moveDirX = moveVector.x; // Use context value for X
         moveDirZ = moveVector.y; // Use context value for Y (NO negation)
     } else {
@@ -471,26 +431,9 @@ const FirstPersonCamera = ({
       targetVelocityVec.add(tempRight.multiplyScalar(tempDirectionVec.x));
     }
     
-    // Scale by movement speed with gamepad trigger modulation
+    // Scale by movement speed
     if (targetVelocityVec.length() > 0) {
-      let finalMoveSpeed = moveSpeed;
-      
-      // Apply gamepad trigger speed modulation
-      if (gamepadConnected && gamepad) {
-        const leftTrigger = gamepad.triggers.left;
-        const rightTrigger = gamepad.triggers.right;
-        
-        // Left trigger = slow down (0.3x speed)
-        // Right trigger = speed up (2x speed)
-        // No triggers = normal speed
-        if (leftTrigger > 0.1) {
-          finalMoveSpeed *= (0.3 + (1 - leftTrigger) * 0.7); // Gradual slowdown
-        } else if (rightTrigger > 0.1) {
-          finalMoveSpeed *= (1 + rightTrigger * 1.5); // Gradual speedup up to 2.5x
-        }
-      }
-      
-      targetVelocityVec.normalize().multiplyScalar(finalMoveSpeed);
+      targetVelocityVec.normalize().multiplyScalar(moveSpeed);
     }
     
     // Apply acceleration/deceleration
@@ -521,233 +464,9 @@ const FirstPersonCamera = ({
     camera.position.copy(currentPosition.current);
   });
   
-  // Handle "B" key press to return to main world
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === 'b') {
-        // Check if we're in a project world by looking at the world ID pattern
-        if (currentWorld && currentWorld.id.startsWith('project-world-')) {
-          setCurrentWorldId('mainWorld');
-          // Prevent any other keyboard handlers from activating
-          e.preventDefault();
-        }
-      }
-    };
-    
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [currentWorld, setCurrentWorldId]);
-
-  // Check B button state and handle long press (Memoized callback)
-  const checkBButtonHold = useCallback(() => {
-    if (gamepad?.buttons?.B) { // Use optional chaining for safety
-      // Button is pressed
-      if (bButtonHoldRef.current === null) {
-        // Start tracking press time
-        bButtonHoldRef.current = Date.now();
-        setBButtonHoldProgress(0.01); // Start progress
-        console.log('Gamepad: B button press started, tracking hold time');
-      } else {
-        // Check if we've held long enough
-        const holdTime = Date.now() - bButtonHoldRef.current;
-        // Update progress (capped at 1.0)
-        const progress = Math.min(holdTime / requiredHoldTime, 1.0);
-        setBButtonHoldProgress(progress);
-
-        if (holdTime >= requiredHoldTime) {
-          console.log('Gamepad: B button held long enough. Checking current world...');
-          // 2 seconds have passed, navigate back if in a project world
-          if (currentWorld && currentWorld.id.startsWith('project-world-')) {
-            console.log(`Gamepad: Current world ${currentWorld.id} is a project world. Navigating back to mainWorld.`);
-            setCurrentWorldId('mainWorld');
-            console.log('Gamepad: B button held for 2 seconds - returning to main world triggered');
-            // Reset hold timer and progress
-            bButtonHoldRef.current = null;
-            setBButtonHoldProgress(0);
-          } else if (currentWorld) {
-             console.log(`Gamepad: Current world ${currentWorld.id} is NOT a project world. B button hold ignored.`);
-             // Reset hold timer if we reach the required time but aren't in a project world
-             bButtonHoldRef.current = null;
-             setBButtonHoldProgress(0);
-          }
-        }
-      }
-    } else {
-      // Button released, reset timer and progress
-      if (bButtonHoldRef.current !== null) {
-        console.log('Gamepad: B button released, resetting hold timer and progress');
-        bButtonHoldRef.current = null;
-        setBButtonHoldProgress(0);
-      }
-    }
-  }, [gamepad, currentWorld, setCurrentWorldId, requiredHoldTime]);
-
-  // Handle gamepad B button press to return to main world (Effect stabilized)
-  useEffect(() => {
-    // Skip if gamepad isn't connected
-    if (!gamepadConnected || !gamepad) {
-      // Ensure timer is cleared if gamepad disconnects
-      if (bButtonHoldRef.current !== null) {
-        bButtonHoldRef.current = null;
-        setBButtonHoldProgress(0);
-      }
-      return;
-    }
-
-    // Set up interval to check button state
-    const intervalId = setInterval(checkBButtonHold, 100); // Check every 100ms
-
-    return () => {
-      clearInterval(intervalId);
-      // Also reset state on cleanup
-      bButtonHoldRef.current = null;
-      setBButtonHoldProgress(0);
-    };
-  // Only include gamepad state and the callback in dependencies to prevent unnecessary re-renders
-  }, [gamepadConnected, gamepad, checkBButtonHold]);
-  
-  // Handle gamepad zoom triggers (LT/RT) for subworlds
-  const handleGamepadZoom = useCallback(() => {
-    // Only enable zoom in subworlds
-    if (!gamepadConnected || !gamepad || !currentWorld || !currentWorld.id.startsWith('project-world-')) {
-      // Reset FOV if we're not in a subworld or gamepad disconnected
-      if (currentFOV !== baseFOV) {
-        setCurrentFOV(baseFOV);
-        setIsZooming(false);
-        
-        // Update camera FOV
-        if (camera instanceof THREE.PerspectiveCamera) {
-          camera.fov = baseFOV;
-          camera.updateProjectionMatrix();
-        }
-      }
-      return;
-    }
-    
-    const leftTrigger = gamepad.triggers.left;
-    const rightTrigger = gamepad.triggers.right;
-    
-    // Calculate new FOV based on trigger values
-    let newFOV = baseFOV;
-    let zoomActive = false;
-    
-    // LT zooms in (decreases FOV)
-    if (leftTrigger > 0.1) {
-      // Map 0.1-1.0 trigger to 75-35 FOV (zoom in)
-      newFOV = baseFOV - (leftTrigger * 40);
-      zoomActive = true;
-    }
-    // RT zooms out (increases FOV) - only if LT not pressed
-    else if (rightTrigger > 0.1) {
-      // Map 0.1-1.0 trigger to 75-100 FOV (zoom out)
-      newFOV = baseFOV + (rightTrigger * 25);
-      zoomActive = true;
-    }
-    
-    // Update FOV if changed
-    if (newFOV !== currentFOV) {
-      setCurrentFOV(newFOV);
-      setIsZooming(zoomActive);
-      
-      // Apply to camera
-      if (camera instanceof THREE.PerspectiveCamera) {
-        camera.fov = newFOV;
-        camera.updateProjectionMatrix();
-      }
-    } else if (zoomActive !== isZooming) {
-      // Update zoom state if needed
-      setIsZooming(zoomActive);
-    }
-  }, [gamepadConnected, gamepad, currentWorld, camera, baseFOV, currentFOV, isZooming]);
-  
-  // Setup interval for zoom checking
-  useEffect(() => {
-    // Only enable for gamepad users
-    if (!gamepadConnected) return;
-    
-    // Check zoom triggers every frame via an interval
-    const zoomIntervalId = setInterval(handleGamepadZoom, 16); // ~60fps
-    
-    return () => {
-      clearInterval(zoomIntervalId);
-      
-      // Reset FOV on cleanup
-      if (camera instanceof THREE.PerspectiveCamera && currentFOV !== baseFOV) {
-        camera.fov = baseFOV;
-        camera.updateProjectionMatrix();
-        setCurrentFOV(baseFOV);
-        setIsZooming(false);
-      }
-    };
-  }, [gamepadConnected, camera, handleGamepadZoom, currentFOV, baseFOV]);
-  
-  // Return component with zoom indicator
-  return (
-    <>
-      {bButtonHoldProgress > 0 && (
-        <Html fullscreen>
-          <div style={{
-            position: 'absolute',
-            bottom: '20px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            padding: '5px 10px',
-            borderRadius: '5px',
-            color: 'white',
-            fontFamily: 'Arial, sans-serif',
-            fontSize: '14px',
-            zIndex: 1000,
-            pointerEvents: 'none',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            width: '200px',
-          }}>
-            <div>Returning to Main World</div>
-            <div style={{
-              width: '100%',
-              height: '5px',
-              backgroundColor: 'rgba(255, 255, 255, 0.3)',
-              borderRadius: '2px',
-              marginTop: '5px',
-            }}>
-              <div style={{
-                width: `${bButtonHoldProgress * 100}%`,
-                height: '100%',
-                backgroundColor: bButtonHoldProgress >= 1 ? '#4caf50' : 'white',
-                borderRadius: '2px',
-                transition: 'width 0.1s ease-out',
-              }} />
-            </div>
-          </div>
-        </Html>
-      )}
-      
-      {/* Display zoom indicator when active */}
-      {isZooming && (
-        <Html fullscreen>
-          <div style={{
-            position: 'absolute',
-            bottom: '60px',
-            right: '20px',
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            padding: '5px 10px',
-            borderRadius: '5px',
-            color: 'white',
-            fontFamily: 'Arial, sans-serif',
-            fontSize: '14px',
-            zIndex: 1000,
-            pointerEvents: 'none',
-          }}>
-            {currentFOV < baseFOV ? '🔍 Zooming In' : '🔎 Zooming Out'} ({Math.round(currentFOV)}°)
-          </div>
-        </Html>
-      )}
-    </>
-  );
+  // Return null as this component only manages the camera state via hooks
+  // The actual MobileControls UI is now rendered in Scene.tsx
+  return null; // Or <></> if you prefer
 };
 
 export default FirstPersonCamera; 

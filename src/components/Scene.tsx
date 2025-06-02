@@ -18,8 +18,6 @@ import InteractionButton from './InteractionButton';
 import DesktopBackHint from './DesktopBackHint';
 import { SpeakerExperience } from './SpeakerExperience';
 import PerformanceMonitor from './PerformanceMonitor';
-import GamepadIndicator from './GamepadIndicator';
-import useGamepad from '../hooks/useGamepad';
 import * as THREE from 'three';
 
 // Maximum distance for full quality rendering
@@ -141,7 +139,6 @@ const SceneContent = React.memo(({ worldId }: SceneContentProps) => {
   const { currentWorld, isLoading, setCurrentWorldId } = useWorld();
   const { isMobile } = useMobileDetection();
   const { camera } = useThree();
-  const { gamepad, isConnected: gamepadConnected } = useGamepad();
   
   // Get filtered objects based on distance and performance
   const visibleObjects = useObjectFiltering(
@@ -188,24 +185,6 @@ const SceneContent = React.memo(({ worldId }: SceneContentProps) => {
     };
   }, [currentWorld, setCurrentWorldId]);
 
-  // Handle gamepad B button press to return to main world
-  useEffect(() => {
-    // Skip if no gamepad connected
-    if (!gamepadConnected || !gamepad) return;
-
-    // Setup an interval to check the B button (since this is event-based not continuous)
-    const gamepadInterval = setInterval(() => {
-      if (gamepad.buttons.B) {
-        // Check if we're in a project world by looking at the world ID pattern
-        if (currentWorld && currentWorld.id.startsWith('project-world-')) {
-          setCurrentWorldId('mainWorld');
-        }
-      }
-    }, 200); // Check every 200ms to avoid excessive state updates
-
-    return () => clearInterval(gamepadInterval);
-  }, [gamepadConnected, gamepad, currentWorld, setCurrentWorldId]);
-
   // Memoize camera position to prevent unnecessary Vector3 creation
   const cameraPosition = useMemo(() => {
     if (currentWorld?.cameraPosition) {
@@ -232,8 +211,8 @@ const SceneContent = React.memo(({ worldId }: SceneContentProps) => {
         height={1.7} 
         moveSpeed={0.25}
         rotationSpeed={0.0015}
-        acceleration={0.5}
-        deceleration={0.6}
+        acceleration={0.12}
+        deceleration={0.2}
       />
       
       {/* World Objects - only render optimized visible objects */}
@@ -404,7 +383,6 @@ const Scene = ({ worldId }: SceneProps) => {
           <BackButton />
           <DesktopBackHint />
           <InteractionButton />
-          <GamepadIndicator />
         </>
       </MobileControlsProvider>
     </InteractionProvider>

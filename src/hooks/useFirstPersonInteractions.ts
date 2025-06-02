@@ -5,7 +5,6 @@ import { useChat } from '../context/ChatContext';
 import { useInteraction, type HoveredObject } from '../context/InteractionContext';
 import type { InteractionData } from '../context/InteractionContext';
 import useMobileDetection from './useMobileDetection';
-import { useGamepad } from './useGamepad';
 
 // Custom events for crosshair feedback
 const HOVER_START_EVENT = new Event('crosshair:hover:start');
@@ -43,10 +42,6 @@ function useFirstPersonInteractions() {
   const { isTouchDevice, isIOS } = useMobileDetection();
   
   const { showChat, openChat } = useChat();
-  
-  // Get gamepad state
-  const { gamepad, isConnected: gamepadConnected } = useGamepad();
-  const previousGamepadButtons = useRef({ A: false, X: false, B: false });
   
   // Store the original materials for objects to restore when no longer hovered
   const originalMaterials = useRef<Map<THREE.Object3D, THREE.Material | THREE.Material[]>>(new Map());
@@ -552,146 +547,6 @@ function useFirstPersonInteractions() {
     const frameCount = Math.floor(state.clock.elapsedTime * 60); // Approximate frame count
     if (frameCount % 3 !== 0) {
       return;
-    }
-
-    // Get delta time
-    const delta = state.clock.getDelta();
-
-    // Gamepad Movement (Left Stick)
-    let moveX = 0;
-    let moveZ = 0;
-    if (gamepadConnected && gamepad) {
-      // Invert vertical axis for left stick (movement)
-      moveX = gamepad.leftStick.x;
-      moveZ = -gamepad.leftStick.y; // Negate Y for inverted control
-    }
-
-    // Apply movement based on camera orientation
-    const forward = new THREE.Vector3();
-    camera.getWorldDirection(forward);
-    forward.y = 0; // Keep movement strictly horizontal
-    forward.normalize();
-
-    const right = new THREE.Vector3().crossVectors(camera.up, forward);
-
-    // Determine movement direction
-    const moveDirection = new THREE.Vector3();
-    if (moveZ !== 0) {
-      moveDirection.addScaledVector(forward, moveZ);
-    }
-    if (moveX !== 0) {
-      moveDirection.addScaledVector(right, moveX);
-    }
-
-    // Normalize movement direction if moving diagonally
-    if (moveDirection.length() > 1) {
-      moveDirection.normalize();
-    }
-
-    // Apply movement speed
-    const speed = 5; // Adjust movement speed as needed
-    const velocity = useRef(new THREE.Vector3());
-    const currentPosition = useRef(new THREE.Vector3().copy(camera.position));
-    const euler = useRef(new THREE.Euler());
-
-    velocity.current.copy(moveDirection).multiplyScalar(speed * delta);
-
-    // Apply velocity to camera position
-    currentPosition.current.add(velocity.current);
-
-    // Apply updated position to camera
-    camera.position.copy(currentPosition.current);
-
-    // Gamepad Look (Right Stick)
-    if (gamepadConnected && gamepad) {
-      // Invert vertical axis for right stick (look)
-      const lookX = gamepad.rightStick.x;
-      const lookY = -gamepad.rightStick.y; // Negate Y for inverted control
-
-      // Sensitivity for gamepad look
-      const lookSensitivity = 0.02;
-
-      // Apply look sensitivity
-      const finalLookX = lookX * lookSensitivity;
-      const finalLookY = lookY * lookSensitivity;
-
-      // Update euler rotation
-      euler.current.setFromQuaternion(camera.quaternion);
-      euler.current.y -= finalLookX;
-      euler.current.x -= finalLookY; // Apply vertical look
-
-      // Clamp vertical look (prevent looking straight up or down)
-      const PI_2 = Math.PI / 2;
-      euler.current.x = Math.max(-PI_2 + 0.1, Math.min(PI_2 - 0.1, euler.current.x));
-
-      // Apply updated rotation to camera
-      camera.quaternion.setFromEuler(euler.current);
-    }
-
-    // Handle gamepad button presses for interaction
-    if (gamepadConnected && gamepad && !showChat) {
-      // Check for A button press (primary interaction)
-      const aPressed = gamepad.buttons.A && !previousGamepadButtons.current.A;
-      // Check for X button press (secondary interaction)
-      const xPressed = gamepad.buttons.X && !previousGamepadButtons.current.X;
-      // Check for B button press (back/escape)
-      const bPressed = gamepad.buttons.B && !previousGamepadButtons.current.B;
-      
-      // Update previous button states BEFORE any action to prevent double-triggers
-      const prevA = previousGamepadButtons.current.A;
-      const prevX = previousGamepadButtons.current.X;
-      const prevB = previousGamepadButtons.current.B;
-      
-      previousGamepadButtons.current.A = gamepad.buttons.A;
-      previousGamepadButtons.current.X = gamepad.buttons.X;
-      previousGamepadButtons.current.B = gamepad.buttons.B;
-      
-      // Log button state only when transitioning for debugging
-      if (gamepad.buttons.A && !prevA) {
-        console.log('🎮 Gamepad A button PRESSED', { 
-          current: gamepad.buttons.A, 
-          previous: prevA,
-          hoveredObject: hoveredObject ? hoveredObject.name : 'none'
-        });
-      }
-      
-      // Handle B button for back navigation (like escape key)
-      if (bPressed) {
-        if (document.pointerLockElement) {
-          document.exitPointerLock();
-        }
-      }
-      
-      // Handle A or X button for interaction - ensure we check against the prev values we cached
-      if ((aPressed || xPressed) && hoveredObject && !isInCooldown()) {
-        console.log(`[FPInteractions Gamepad] ${aPressed ? 'A' : 'X'} button pressed on:`, hoveredObject.name);
-        document.dispatchEvent(CLICK_EVENT);
-        
-        if (hoveredObject.userData.action === 'chat') {
-          console.log('[FPInteractions Gamepad] Opening chat with NPC');
-          openChat();
-        } else {
-          console.log('[FPInteractions Gamepad] Triggering interaction');
-          
-          // Detect if this is a media card interaction
-          const isMediaCard = 
-            hoveredObject.userData.objectType === 'image' || 
-            hoveredObject.userData.objectType === 'pdf' || 
-            hoveredObject.userData.objectType === 'video' ||
-            hoveredObject.userData.type === 'image' || 
-            hoveredObject.userData.type === 'pdf' || 
-            hoveredObject.userData.type === 'video' ||
-            hoveredObject.userData.type === 'link';
-          
-          if (isMediaCard) {
-            startInteractionCooldown(`Gamepad ${aPressed ? 'A' : 'X'} button on ${hoveredObject.userData.objectType || hoveredObject.userData.type || 'media'} card`);
-          }
-          
-          // This will use the updated InteractionContext.triggerInteraction
-          triggerInteraction();
-        }
-        setClickedObject(hoveredObject);
-      }
     }
     
     // Skip interaction checks when chat is open

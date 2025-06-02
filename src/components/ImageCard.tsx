@@ -272,7 +272,7 @@ export const ImageCard: React.FC<ImageCardProps> = ({
           height: `${cardDimensions.height * (isMobile ? 100 : 90)}px`,
           borderRadius: '12px',
           overflow: 'hidden',
-          pointerEvents: 'none', // FIXED: Always set to none to let raycaster handle events
+          pointerEvents: isMobile ? 'auto' : 'none', // Conditional pointerEvents for Html
           transform: hovered ? 'scale(1.05)' : 'scale(1)',
           transition: 'transform 0.3s ease',
         }}
@@ -289,10 +289,14 @@ export const ImageCard: React.FC<ImageCardProps> = ({
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
-            pointerEvents: 'none', // FIXED: Always set to none to let raycaster handle events
+            pointerEvents: isMobile ? 'auto' : 'none', // Conditional pointerEvents for inner div
           }}
           onClick={isMobile ? handleClick : undefined} // Direct click handler for mobile only
-          onTouchStart={isMobile ? (e) => e.stopPropagation() : undefined} // Prevent event bubbling
+          onTouchStart={isMobile ? (e) => {
+            e.stopPropagation(); // Prevent event bubbling that might interfere
+            // Potentially call handleClick directly on touch start for responsiveness if needed
+            // handleClick(); 
+          } : undefined}
         >
           {/* Title above image */}
           <div style={{
