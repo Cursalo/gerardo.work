@@ -5,10 +5,10 @@ import Crosshair from './components/Crosshair'
 import DraggableChatUI from './components/DraggableChatUI'
 import { ChatProvider, useChat } from './context/ChatContext'
 import ErrorBoundary from './components/ErrorBoundary'
-import useMobileDetection from './hooks/useMobileDetection'
+import { useMobileDetection } from './hooks/useMobileDetection'
 import { AudioProvider } from './context/AudioContext'
 import { MusicPlayer } from './components/MusicPlayer'
-import { MediaDebugPanel } from './components/MediaDebugPanel'
+import ProjectSelector from './components/ProjectSelector'
 
 // Define the style object with proper TypeScript types
 const styles = {
@@ -157,6 +157,10 @@ const styles = {
     top: '20px',
     right: '20px',
   },
+  toggleProjectSelector: {
+    top: '20px',
+    left: '20px',
+  },
   mobileToggleInstructions: {
     top: '10px',
     right: '10px',
@@ -252,7 +256,7 @@ const styles = {
     color: '#333',
     borderRadius: '10px',
     padding: '15px',
-    width: '200px', // Slightly wider for new button
+    width: '220px', // Wider for project navigator button
     display: 'flex',
     flexDirection: 'column' as const,
     gap: '10px',
@@ -288,6 +292,7 @@ const AppContent = () => {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showUI, setShowUI] = useState(true);
   const [showResetInfo, setShowResetInfo] = useState(false);
+  const [showProjectSelector, setShowProjectSelector] = useState(false);
   
   const { isMobile, isTouchDevice } = useMobileDetection();
   const { openChat, showChat: isChatOpen, isNearNPC } = useChat();
@@ -390,6 +395,11 @@ const AppContent = () => {
     setShowMobileMenu(false);
   };
 
+  const handleOpenProjectSelector = () => {
+    setShowProjectSelector(true);
+    setShowMobileMenu(false);
+  };
+
   const renderInstructions = () => {
     if (!showInstructions) return null;
     const instructionsStyle = {
@@ -427,6 +437,9 @@ const AppContent = () => {
         <button onClick={toggleInstructions} style={styles.mobileMenuOption}>
           {showInstructions ? 'Hide Instructions' : 'Show Instructions'}
         </button>
+        <button onClick={handleOpenProjectSelector} style={styles.mobileMenuOption}>
+          🚀 Project Navigator
+        </button>
         {isNearNPC && (
           <button 
             onClick={handleOpenChatFromMenu}
@@ -462,9 +475,14 @@ const AppContent = () => {
           )}
           {renderMobileMenu()}
           {!isMobile && (
-            <button onClick={toggleInstructions} style={{...styles.toggleButton, ...styles.toggleInstructions}} className="toggle-instructions">
-              {showInstructions ? 'Hide Instructions' : 'Show Instructions'}
-            </button>
+            <>
+              <button onClick={toggleInstructions} style={{...styles.toggleButton, ...styles.toggleInstructions}} className="toggle-instructions">
+                {showInstructions ? 'Hide Instructions' : 'Show Instructions'}
+              </button>
+              <button onClick={handleOpenProjectSelector} style={{...styles.toggleButton, ...styles.toggleProjectSelector}} className="toggle-project-selector">
+                🚀 Project Navigator
+              </button>
+            </>
           )}
           {renderInstructions()}
           <div style={styles.crosshairContainer} id="crosshair-container"><Crosshair /></div>
@@ -472,6 +490,10 @@ const AppContent = () => {
       )}
       <div style={styles.sceneContainer} id="scene-container"><Scene /></div>
       <DraggableChatUI />
+      <ProjectSelector 
+        isVisible={showProjectSelector} 
+        onClose={() => setShowProjectSelector(false)} 
+      />
       {showResetInfo && showUI && (
         <div style={{
           position: 'fixed',
@@ -516,7 +538,6 @@ function App() {
         <AudioProvider>
           <AppContent />
           <MusicPlayer />
-          <MediaDebugPanel enabled={true} />
         </AudioProvider>
       </ChatProvider>
     </ErrorBoundary>
