@@ -12,6 +12,7 @@ import MobileControls from '../components/MobileControls';
 import useMobileDetection from '../hooks/useMobileDetection';
 import useFirstPersonInteractions from '../hooks/useFirstPersonInteractions';
 import BackButton from '../components/BackButton';
+import Crosshair from '../components/Crosshair';
 
 interface ProjectSubworldProps {}
 
@@ -124,38 +125,59 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
         video.src = normalizeUrl(videoUrl);
         video.crossOrigin = 'anonymous';
         video.muted = true;
+        video.autoplay = true;
+        video.loop = true;
         video.playsInline = true;
-        video.preload = 'metadata';
-        
-        // Create canvas for video texture
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d')!;
+        video.preload = 'auto';
+        video.controls = false;
         
         return new Promise<THREE.VideoTexture>((resolve, reject) => {
+          const timeoutId = setTimeout(() => {
+            reject(new Error('Video loading timeout'));
+          }, 10000); // 10 second timeout
+          
           video.addEventListener('loadedmetadata', () => {
-            canvas.width = video.videoWidth || 1920;
-            canvas.height = video.videoHeight || 1080;
-            
-            const videoTexture = new THREE.VideoTexture(video);
-            videoTexture.minFilter = THREE.LinearFilter;
-            videoTexture.magFilter = THREE.LinearFilter;
-            videoTexture.generateMipmaps = false;
-            videoTexture.flipY = true;
-            
-            // Store video element for later playback control
-            (videoTexture as any).videoElement = video;
-            
-            resolve(videoTexture);
+            clearTimeout(timeoutId);
+            try {
+              const videoTexture = new THREE.VideoTexture(video);
+              videoTexture.minFilter = THREE.LinearFilter;
+              videoTexture.magFilter = THREE.LinearFilter;
+              videoTexture.generateMipmaps = false;
+              videoTexture.flipY = true;
+              videoTexture.wrapS = THREE.ClampToEdgeWrapping;
+              videoTexture.wrapT = THREE.ClampToEdgeWrapping;
+              videoTexture.needsUpdate = true;
+              
+              // Store video element for later playback control
+              (videoTexture as any).videoElement = video;
+              
+              // Start playing immediately
+              video.play().catch(err => {
+                console.warn('Video autoplay failed:', err);
+                // Create a play button overlay if autoplay fails
+              });
+              
+              resolve(videoTexture);
+            } catch (err) {
+              clearTimeout(timeoutId);
+              reject(err);
+            }
           });
           
-          video.addEventListener('error', () => {
-            reject(new Error('Video failed to load'));
+          video.addEventListener('error', (e) => {
+            clearTimeout(timeoutId);
+            reject(new Error(`Video failed to load: ${e.message || 'Unknown error'}`));
+          });
+          
+          video.addEventListener('canplaythrough', () => {
+            // Ensure video starts playing when ready
+            video.play().catch(console.warn);
           });
           
           video.load();
         });
       } catch (err) {
-        throw err;
+        throw new Error(`Failed to create video texture: ${err instanceof Error ? err.message : 'Unknown error'}`);
       }
     };
 
@@ -214,10 +236,11 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
         loadedTex.minFilter = THREE.LinearFilter;
         loadedTex.magFilter = THREE.LinearFilter;
         loadedTex.generateMipmaps = false;
-        loadedTex.flipY = true; // Fix image inversion
+        loadedTex.flipY = true; // Fix for correct image orientation
         loadedTex.wrapS = THREE.ClampToEdgeWrapping;
         loadedTex.wrapT = THREE.ClampToEdgeWrapping;
         loadedTex.format = THREE.RGBAFormat;
+        loadedTex.needsUpdate = true;
 
         // Update aspect ratio from actual image dimensions
         if (loadedTex.image && loadedTex.image.width && loadedTex.image.height) {
@@ -411,7 +434,9 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
       texture.needsUpdate = true;
       texture.minFilter = THREE.LinearFilter;
       texture.magFilter = THREE.LinearFilter;
-      texture.flipY = true;
+      texture.flipY = true; // Keep consistent with other textures
+      texture.wrapS = THREE.ClampToEdgeWrapping;
+      texture.wrapT = THREE.ClampToEdgeWrapping;
       return texture;
     };
 
@@ -419,7 +444,13 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
     if (mediaType === 'image') {
       // For images, try to load directly first
       if (placeholderUrl) {
+        setTextureQuality('loading_placeholder');
         loadImageTexture(placeholderUrl, true);
+      } else {
+        // Create fallback texture if no URL
+        const fallbackTex = createPlaceholderTexture(mediaType, displayTitle);
+        setCurrentTexture(fallbackTex);
+        setTextureQuality('loaded_full');
       }
     } else {
       // For non-images (video, pdf), create placeholder immediately
@@ -427,9 +458,17 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
       setCurrentTexture(placeholderTex);
       setTextureQuality('loaded_full');
       
-      // For videos, also try to load thumbnail
-      if (mediaType === 'video' && placeholderUrl && (placeholderUrl.includes('youtube') || placeholderUrl.includes('youtu.be'))) {
-        setTimeout(() => loadImageTexture(placeholderUrl, false), 100);
+      // For videos, also try to load actual video texture
+      if (mediaType === 'video' && placeholderUrl) {
+        // Small delay to prevent overwhelming the browser
+        setTimeout(() => {
+          if (placeholderUrl.includes('youtube') || placeholderUrl.includes('youtu.be')) {
+            loadImageTexture(placeholderUrl, false);
+          } else {
+            // Try to create actual video texture for local videos
+            loadImageTexture(placeholderUrl, false);
+          }
+        }, 100);
       }
     }
     
@@ -442,27 +481,22 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
   }, [mediaType, placeholderUrl, displayTitle]); // Simplified dependencies
 
   // Calculate dimensions based on aspect ratio with better proportions
-  const maxSize = 4;
-  const minSize = 2;
-  let cardWidth = Math.min(maxSize, Math.max(minSize, aspectRatio * 3));
-  let cardHeight = Math.min(maxSize, Math.max(minSize, 3 / aspectRatio));
+  const maxSize = 5.5; // Increased from 4
+  const minSize = 2.5; // Increased from 2
+  let cardWidth = Math.min(maxSize, Math.max(minSize, aspectRatio * 4)); // Increased multiplier
+  let cardHeight = Math.min(maxSize, Math.max(minSize, 4 / aspectRatio)); // Increased multiplier
   
-  // Scale down for better gallery feel
-  cardWidth *= 0.8;
-  cardHeight *= 0.8;
+  // Scale for better gallery feel - less reduction
+  cardWidth *= 0.95; // Increased from 0.8
+  cardHeight *= 0.95; // Increased from 0.8
 
-  // Smooth floating animation
-  useFrame((state) => {
+  // Simple hover animation only
+  useFrame(() => {
     if (groupRef.current) {
-      const time = state.clock.elapsedTime;
-      const baseY = mediaObject.position[1] || 3;
-      const floatOffset = Math.sin(time * 0.4 + (mediaObject.id?.length || 0) * 0.3) * 0.15;
-      groupRef.current.position.y = baseY + floatOffset;
-      
-      // Smooth scale on hover
-      const targetScale = hovered ? 1.05 : 1.0;
+      // Simple scale on hover
+      const targetScale = hovered ? 1.1 : 1.0;
       const currentScale = groupRef.current.scale.x;
-      const newScale = currentScale + (targetScale - currentScale) * 0.12;
+      const newScale = currentScale + (targetScale - currentScale) * 0.1;
       groupRef.current.scale.setScalar(newScale);
     }
   });
@@ -495,16 +529,11 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
     return null;
   }
 
-  // Add subtle floating animation
-  const floatY = Math.sin(Date.now() * 0.001 + (mediaObject.position?.[0] || 0)) * 0.1;
-  const hoverY = hovered ? 0.2 : 0;
-
   return (
-    <group ref={groupRef} position={mediaObject.position || [0, 3, 0]} rotation={mediaObject.rotation || [0, 0, 0]} visible={isVisible}>
-      {/* Main card mesh with proper geometry and clean materials */}
+    <group ref={groupRef} position={mediaObject.position || [0, 2, 0]} rotation={mediaObject.rotation || [0, 0, 0]} visible={isVisible}>
+      {/* Simple flat card mesh - no weird 3D effects */}
       <mesh 
         ref={meshRef}
-        position={[0, floatY + hoverY, 0]}
         onPointerEnter={(e) => {
           e.stopPropagation();
           setHovered(true);
@@ -522,40 +551,34 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
         castShadow
         receiveShadow
       >
-        {/* Use BoxGeometry for better reliability */}
-        <boxGeometry args={[cardWidth, cardHeight, 0.05]} />
-        <meshStandardMaterial 
+        {/* Simple plane geometry - completely flat */}
+        <planeGeometry args={[cardWidth, cardHeight]} />
+        <meshBasicMaterial 
           map={currentTexture}
           side={THREE.FrontSide}
           transparent={false}
-          opacity={1}
-          metalness={0}
-          roughness={1}
-          color="#ffffff"
           toneMapped={false}
         />
       </mesh>
 
-      {/* Loading spinner overlay for loading states */}
-      {textureQuality.includes('loading') && (
-        <group position={[0, floatY + hoverY, 0.03]}>
-          <mesh>
-            <ringGeometry args={[0.3, 0.4, 16]} />
-            <meshBasicMaterial color="#007bff" transparent opacity={0.8} />
-          </mesh>
-          <mesh rotation={[0, 0, Date.now() * 0.005]}>
-            <ringGeometry args={[0.32, 0.38, 8]} />
-            <meshBasicMaterial color="#0056b3" />
-          </mesh>
-        </group>
-      )}
+      {/* Simple title below the card */}
+      <Text
+        position={[0, -cardHeight/2 - 0.3, 0]}
+        fontSize={0.2}
+        color="#333333"
+        anchorX="center"
+        anchorY="top"
+        maxWidth={cardWidth * 1.2}
+      >
+        {displayTitle}
+      </Text>
 
-      {/* Video play indicator */}
+      {/* Video play indicator if needed */}
       {mediaType === 'video' && currentTexture && (currentTexture as any).videoElement && (
-        <mesh position={[0, floatY + hoverY, 0.03]}>
+        <mesh position={[0, 0, 0.01]}>
           <circleGeometry args={[0.3, 16]} />
           <meshBasicMaterial 
-            color="rgba(0,0,0,0.7)" 
+            color="rgba(0,0,0,0.6)" 
             transparent 
             opacity={hovered ? 0.8 : 0.5}
           />
@@ -563,35 +586,11 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
       )}
       
       {mediaType === 'video' && currentTexture && (currentTexture as any).videoElement && (
-        <mesh position={[0, floatY + hoverY, 0.031]}>
-          <coneGeometry args={[0.1, 0.15, 3]} />
+        <mesh position={[0.05, 0, 0.02]} rotation={[0, 0, Math.PI / 2]}>
+          <coneGeometry args={[0.08, 0.12, 3]} />
           <meshBasicMaterial color="#ffffff" />
         </mesh>
       )}
-
-      {/* Clean title with better spacing and visibility */}
-      <Text
-        position={[0, floatY + hoverY - cardHeight/2 - 0.3, 0]}
-        fontSize={Math.min(0.2, cardWidth * 0.06)}
-        color="#2c3e50"
-        anchorX="center"
-        anchorY="top"
-        maxWidth={cardWidth * 1.2}
-        lineHeight={1.2}
-      >
-        {displayTitle}
-      </Text>
-
-      {/* Media type indicator */}
-      <Text
-        position={[cardWidth/2 - 0.1, floatY + hoverY + cardHeight/2 - 0.1, 0.03]}
-        fontSize={0.15}
-        color={hovered ? "#007bff" : "#6c757d"}
-        anchorX="right"
-        anchorY="top"
-      >
-        {mediaType === 'pdf' ? '📄' : mediaType === 'video' ? '▶' : '🖼'}
-      </Text>
     </group>
   );
 };
@@ -599,6 +598,9 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
 // Scene content component for first-person integration
 const SceneContent: React.FC<{ allMediaObjects: any[], projectData: ProjectData }> = ({ allMediaObjects, projectData }) => {
   console.log('SceneContent: Rendering', allMediaObjects.length, 'media objects');
+
+  // Enable first person interactions for walking and interaction (same as main world)
+  useFirstPersonInteractions();
 
   // Create floor texture with subtle stripes
   const floorTexture = useMemo(() => {
@@ -659,39 +661,6 @@ const SceneContent: React.FC<{ allMediaObjects: any[], projectData: ProjectData 
         acceleration={0.12}
         deceleration={0.2}
       />
-
-      {/* Crosshair cursor for interaction */}
-      <Html fullscreen pointerEvents="none">
-        <div style={{
-          position: 'fixed',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          zIndex: 1000,
-          pointerEvents: 'none'
-        }}>
-          <div style={{
-            width: '20px',
-            height: '20px',
-            border: '2px solid rgba(255, 255, 255, 0.8)',
-            borderRadius: '50%',
-            position: 'relative',
-            background: 'rgba(0, 0, 0, 0.3)',
-            boxShadow: '0 0 10px rgba(0, 0, 0, 0.5)'
-          }}>
-            <div style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              width: '4px',
-              height: '4px',
-              background: '#ffffff',
-              borderRadius: '50%'
-            }} />
-          </div>
-        </div>
-      </Html>
 
       {/* Clean white floor with subtle stripes */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]} receiveShadow>
@@ -892,7 +861,7 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
       const inClusterIndex = Math.floor(index / clusterCount);
       const randomX = seededRandom(index * 7 + 123, -20, 20); // MUCH larger random spread for breathing room
       const randomZ = seededRandom(index * 11 + 456, -20, 20);
-      const randomY = seededRandom(index * 13 + 789, 2, 8); // Higher floating heights for dramatic effect
+      const randomY = seededRandom(index * 13 + 789, 1, 3); // Lowered heights - was 2, 8
       
       // Create EXPANDED spiral-like distribution within clusters
       const spiralRadius = 8 + (inClusterIndex * 3); // MUCH larger spiral for proper spacing
@@ -955,31 +924,45 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
             camera={{ position: [0, 1.7, 15], fov: 75 }}
             style={{ background: backgroundColor }}
             gl={{
-              antialias: false, // Disable antialiasing to save memory
+              antialias: false,
               alpha: false,
               powerPreference: "high-performance",
               failIfMajorPerformanceCaveat: false,
-              preserveDrawingBuffer: false
+              preserveDrawingBuffer: false,
+              stencil: false
             }}
             onCreated={(state) => {
               // Set white background
               state.scene.background = new THREE.Color('#ffffff');
               
-              // WebGL context recovery
+              // Improved WebGL context recovery
               const gl = state.gl.getContext();
-              const handleContextLost = (event: any) => {
+              
+              const handleContextLost = (event: Event) => {
                 event.preventDefault();
                 console.warn('🚨 WebGL context lost - attempting recovery');
+                // Clear any textures to free memory
+                state.scene.traverse((child) => {
+                  if (child instanceof THREE.Mesh && child.material instanceof THREE.Material) {
+                    if ('map' in child.material && child.material.map instanceof THREE.Texture) {
+                      child.material.map.dispose();
+                    }
+                  }
+                });
               };
               
               const handleContextRestored = () => {
                 console.log('✅ WebGL context restored');
-                // Force reload textures
-                window.location.reload();
+                // Force reload textures after a delay
+                setTimeout(() => {
+                  window.location.reload();
+                }, 100);
               };
               
-              gl.canvas.addEventListener('webglcontextlost', handleContextLost);
-              gl.canvas.addEventListener('webglcontextrestored', handleContextRestored);
+              if (gl.canvas) {
+                gl.canvas.addEventListener('webglcontextlost', handleContextLost);
+                gl.canvas.addEventListener('webglcontextrestored', handleContextRestored);
+              }
             }}
           >
             <Suspense fallback={null}>
@@ -990,6 +973,20 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
           {/* UI Elements Rendered Separately - same as main world */}
           {isTouchDevice && <MobileControls />}
           <BackButton />
+          
+          {/* Crosshair for consistent interaction like main world */}
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            pointerEvents: 'none',
+            zIndex: 10000,
+            display: 'block'
+          }}>
+            <Crosshair />
+          </div>
         </div>
       </MobileControlsProvider>
     </InteractionProvider>
