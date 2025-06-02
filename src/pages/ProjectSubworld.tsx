@@ -354,36 +354,60 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
       try {
         let project: ProjectData | null = null;
         
-        // Try to load by project name first (from /projects/:projectName route)
-        if (projectName) {
-          console.log(`ProjectSubworld: Loading project by name: ${projectName}`);
+        // UNIFIED APPROACH: Handle both ID and name in the projectId parameter
+        if (projectId) {
+          console.log(`ProjectSubworld: Loading project by ID/name: ${projectId}`);
           
-          // First try exact match
-          project = await projectDataService.getProjectByName(projectName);
-          
-          // If not found, try converting slug back to project name
-          if (!project) {
-            const convertedName = slugToProjectName(projectName);
-            console.log(`ProjectSubworld: Trying converted name: ${convertedName}`);
-            project = await projectDataService.getProjectByName(convertedName);
+          // First, try to parse as numeric ID
+          const numericId = parseInt(projectId, 10);
+          if (!isNaN(numericId)) {
+            console.log(`ProjectSubworld: Trying as numeric ID: ${numericId}`);
+            project = await projectDataService.getProjectById(numericId);
           }
           
-          // If still not found, try case-insensitive search through all projects
+          // If not found or not numeric, try as project name/slug
           if (!project) {
-            console.log(`ProjectSubworld: Trying case-insensitive search for: ${projectName}`);
-            const allProjects = await projectDataService.getAllProjects();
-            project = allProjects.find(p => 
-              p.name.toLowerCase().replace(/[^a-z0-9]/g, '') === projectName.toLowerCase().replace(/[^a-z0-9]/g, '')
-            ) || null;
+            console.log(`ProjectSubworld: Trying as project name: ${projectId}`);
+            
+            // Try exact name match first
+            project = await projectDataService.getProjectByName(projectId);
+            
+            // If not found, try converting slug back to project name
+            if (!project) {
+              const convertedName = slugToProjectName(projectId);
+              console.log(`ProjectSubworld: Trying converted name: ${convertedName}`);
+              project = await projectDataService.getProjectByName(convertedName);
+            }
+            
+            // If still not found, try case-insensitive search through all projects
+            if (!project) {
+              console.log(`ProjectSubworld: Trying case-insensitive search for: ${projectId}`);
+              const allProjects = await projectDataService.getAllProjects();
+              project = allProjects.find(p => 
+                p.name.toLowerCase().replace(/[^a-z0-9]/g, '') === projectId.toLowerCase().replace(/[^a-z0-9]/g, '')
+              ) || null;
+            }
+            
+            // Last resort: try slug comparison
+            if (!project) {
+              console.log(`ProjectSubworld: Trying slug comparison for: ${projectId}`);
+              const allProjects = await projectDataService.getAllProjects();
+              project = allProjects.find(p => {
+                const projectSlug = p.name.toLowerCase().trim()
+                  .replace(/[\s.]+/g, '-')
+                  .replace(/['"]/g, '')
+                  .replace(/[^a-z0-9-]/g, '')
+                  .replace(/-+/g, '-')
+                  .replace(/^-+|-+$/g, '');
+                return projectSlug === projectId.toLowerCase();
+              }) || null;
+            }
           }
         }
-        // Then try by project ID
-        else if (projectId) {
-          console.log(`ProjectSubworld: Loading project by ID: ${projectId}`);
-          const id = parseInt(projectId, 10);
-          if (!isNaN(id)) {
-            project = await projectDataService.getProjectById(id);
-          }
+        // Legacy: Handle projectName parameter from old routes
+        else if (projectName) {
+          console.log(`ProjectSubworld: Loading project by name parameter: ${projectName}`);
+          project = await projectDataService.getProjectByName(projectName);
         }
         
         if (project) {

@@ -137,24 +137,7 @@
         }
       })();
     </script>
-    
-    <!-- GitHub Pages client-side routing handler -->
-    <script>
-      (function() {
-        // Check if we were redirected from a 404 page (GitHub Pages SPA routing)
-        var redirect = sessionStorage.getItem('redirect');
-        if (redirect) {
-          sessionStorage.removeItem('redirect');
-          console.log('GitHub Pages redirect detected:', redirect);
-          
-          // Replace the current history entry with the intended path
-          window.history.replaceState(null, null, redirect);
-          
-          // Also store it for the React Router to pick up after initialization
-          sessionStorage.setItem('initialRoute', redirect);
-        }
-      })();
-    </script>
+
   </head>
   <body>
     <div class="loading-screen" id="loading">

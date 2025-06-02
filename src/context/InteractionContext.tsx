@@ -51,12 +51,12 @@ export const InteractionProvider: React.FC<{ children: ReactNode }> = ({ childre
     if (data.projectId !== undefined) {
       console.log(`[InteractionContext] Navigating to project ${data.projectId} via URL`);
       
-      // UPDATED: Look up project name and use slug-based URL
+      // UPDATED: Look up project name and use slug with existing working route
       projectDataService.getProjectById(data.projectId).then(project => {
         if (project) {
           const projectSlug = createProjectSlug(project.name);
           console.log(`[InteractionContext] Found project: ${project.name} (${projectSlug})`);
-          window.location.href = `/projects/${projectSlug}`;
+          window.location.href = `/project/${projectSlug}`;
         } else {
           console.warn(`[InteractionContext] Project ${data.projectId} not found, falling back to ID-based URL`);
           window.location.href = `/project/${data.projectId}`;

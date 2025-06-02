@@ -14,13 +14,6 @@ import './index.css'
 import { WorldProvider } from './context/WorldContext.tsx'
 import ErrorBoundary from './components/ErrorBoundary.tsx';
 
-// Handle GitHub Pages redirects
-const initialRoute = sessionStorage.getItem('initialRoute');
-if (initialRoute) {
-  sessionStorage.removeItem('initialRoute');
-  console.log('React Router: Handling GitHub Pages redirect to:', initialRoute);
-}
-
 // Define routes
 const router = createBrowserRouter([
   {
@@ -45,16 +38,6 @@ const router = createBrowserRouter([
   },
   {
     path: "/project/:projectId",
-    element: <ProjectSubworld />,
-    errorElement: <ErrorBoundary><NotFound /></ErrorBoundary>,
-  },
-  {
-    path: "/projects/:projectName/index.html",
-    element: <ProjectSubworld />,
-    errorElement: <ErrorBoundary><NotFound /></ErrorBoundary>,
-  },
-  {
-    path: "/projects/:projectName",
     element: <ProjectSubworld />,
     errorElement: <ErrorBoundary><NotFound /></ErrorBoundary>,
   },

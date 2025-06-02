@@ -127,10 +127,10 @@ const ProjectWindow = React.memo(({ project, position }: ProjectWindowProps) => 
     console.log("🚀 Project data:", { id: project.id, name: project.name });
     console.log("🚀 Current URL:", window.location.href);
     
-    // UPDATED: Use project name slug instead of ID for better URLs
+    // UPDATED: Use project name slug with existing working route
     const projectSlug = createProjectSlug(project.name);
     console.log(`🚀 Navigating to project: ${project.name} (${projectSlug}) via URL`);
-    const targetUrl = `/projects/${projectSlug}`;
+    const targetUrl = `/project/${projectSlug}`;
     console.log(`🚀 Target URL: ${targetUrl}`);
     
     // Add a small delay to ensure logging is visible
