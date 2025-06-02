@@ -8,6 +8,7 @@ interface CrosshairState {
 
 interface CrosshairProps {
   isPointerLocked?: boolean;
+  showCrossLines?: boolean;
 }
 
 /**
@@ -16,7 +17,7 @@ interface CrosshairProps {
  * A single, unified crosshair that remains perfectly centered on the viewport.
  * Enhanced for better visibility and interaction feedback.
  */
-const Crosshair: React.FC<CrosshairProps> = ({ isPointerLocked = false }) => {
+const Crosshair: React.FC<CrosshairProps> = ({ isPointerLocked = false, showCrossLines = false }) => {
   const { isMobile } = useMobileDetection();
   
   // State to track if crosshair is over an interactive object
@@ -114,40 +115,44 @@ const Crosshair: React.FC<CrosshairProps> = ({ isPointerLocked = false }) => {
       />
       
       {/* Cross lines for better precision and visibility - ALWAYS VISIBLE */}
-      <div style={{
-        position: 'absolute',
-        top: '50%',
-        left: '50%',
-        width: `${lineLength}px`,
-        height: `${lineThickness}px`,
-        backgroundColor: state.isHovering 
-          ? 'rgba(255, 255, 255, 1.0)' 
-          : 'rgba(77, 255, 170, 1.0)',
-        transform: 'translate(-50%, -50%)',
-        pointerEvents: 'none',
-        zIndex: 99998, // Maximum z-index below the dot
-        display: 'block',
-        opacity: 1, // ALWAYS FULLY VISIBLE
-        visibility: 'visible',
-        transition: 'all 0.15s ease-out',
-      }} />
-      <div style={{
-        position: 'absolute',
-        top: '50%',
-        left: '50%',
-        width: `${lineThickness}px`,
-        height: `${lineLength}px`,
-        backgroundColor: state.isHovering 
-          ? 'rgba(255, 255, 255, 1.0)' 
-          : 'rgba(77, 255, 170, 1.0)',
-        transform: 'translate(-50%, -50%)',
-        pointerEvents: 'none',
-        zIndex: 99998, // Maximum z-index below the dot
-        display: 'block',
-        opacity: 1, // ALWAYS FULLY VISIBLE
-        visibility: 'visible',
-        transition: 'all 0.15s ease-out',
-      }} />
+      {showCrossLines && (
+        <>
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            width: `${lineLength}px`,
+            height: `${lineThickness}px`,
+            backgroundColor: state.isHovering 
+              ? 'rgba(255, 255, 255, 1.0)' 
+              : 'rgba(77, 255, 170, 1.0)',
+            transform: 'translate(-50%, -50%)',
+            pointerEvents: 'none',
+            zIndex: 99998, // Maximum z-index below the dot
+            display: 'block',
+            opacity: 1, // ALWAYS FULLY VISIBLE
+            visibility: 'visible',
+            transition: 'all 0.15s ease-out',
+          }} />
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            width: `${lineThickness}px`,
+            height: `${lineLength}px`,
+            backgroundColor: state.isHovering 
+              ? 'rgba(255, 255, 255, 1.0)' 
+              : 'rgba(77, 255, 170, 1.0)',
+            transform: 'translate(-50%, -50%)',
+            pointerEvents: 'none',
+            zIndex: 99998, // Maximum z-index below the dot
+            display: 'block',
+            opacity: 1, // ALWAYS FULLY VISIBLE
+            visibility: 'visible',
+            transition: 'all 0.15s ease-out',
+          }} />
+        </>
+      )}
     </>
   );
 };
