@@ -96,8 +96,11 @@ export const InteractionProvider: React.FC<{ children: ReactNode }> = ({ childre
     } else if (data.type === 'video' || data.type === 'image' || data.type === 'pdf' || data.type === 'html') {
       console.log(`[InteractionContext] Triggering view for ${data.type}`);
       
-      // CRITICAL FIX: Use file utilities for proper media handling
-      if (data.url) {
+      // CRITICAL FIX: Handle images differently to prevent binary data issues
+      if (data.type === 'image' && data.url) {
+        console.log(`[InteractionContext] Opening image directly: ${data.url}`);
+        window.open(data.url, '_blank', 'noopener,noreferrer');
+      } else if (data.url) {
         console.log(`[InteractionContext] Opening ${data.type} with proper viewer: ${data.url}`);
         openFileWithViewer(data.url, data.title || `${data.type} file`);
       } else if (typeof data.onClick === 'function') {

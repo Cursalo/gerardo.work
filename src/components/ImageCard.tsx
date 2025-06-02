@@ -3,7 +3,6 @@ import { Html } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useInteraction } from '../context/InteractionContext';
-import { openFileWithViewer } from '../utils/fileUtils';
 
 // Add CSS for loading spinner outside of React component
 const spinnerStyle = document.createElement('style');
@@ -102,7 +101,7 @@ export const ImageCard: React.FC<ImageCardProps> = ({
     }
   }, [position, title, resolvedImageUrl]);
 
-  // Handle click function - use file utility for proper image handling
+  // Handle click function - open images directly to prevent binary data issues
   const handleClick = useCallback((e?: any) => {
     if (e) {
       e.stopPropagation();
@@ -115,10 +114,10 @@ export const ImageCard: React.FC<ImageCardProps> = ({
       return;
     }
     
-    // FIXED: Use openFileWithViewer instead of direct window.open to prevent binary data issues
+    // FIXED: Open images directly in new tab to prevent binary data issues
     if (resolvedImageUrl) {
-      console.log('Image Card: Using openFileWithViewer for proper image handling');
-      openFileWithViewer(resolvedImageUrl, title);
+      console.log('Image Card: Opening image directly in new tab');
+      window.open(resolvedImageUrl, '_blank', 'noopener,noreferrer');
     }
   }, [resolvedImageUrl, onClick, title]);
 
