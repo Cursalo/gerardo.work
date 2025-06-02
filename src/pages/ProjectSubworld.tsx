@@ -12,6 +12,7 @@ import useMobileDetection from '../hooks/useMobileDetection';
 import useFirstPersonInteractions from '../hooks/useFirstPersonInteractions';
 import BackButton from '../components/BackButton';
 import Crosshair from '../components/Crosshair';
+import InteractionButton from '../components/InteractionButton';
 
 // Add pulse animation for the pointer lock indicator
 const pulseKeyframes = `
@@ -596,6 +597,7 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
           {/* UI Elements - same as main world */}
           {isTouchDevice && <MobileControls />}
           <BackButton />
+          <InteractionButton />
           
           {/* Pointer Lock Status Indicator - only show on desktop when not locked */}
           {!isTouchDevice && !isPointerLocked && (
