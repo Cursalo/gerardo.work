@@ -671,7 +671,7 @@ export class WorldService {
     return worldId;
   }
 
-  // Improved updateWorld for better handling of world data
+  // PERFORMANCE FIX: Modified updateWorld to batch localStorage writes
   public updateWorld(world: World): boolean {
     console.log(`Updating world: ${world.id}`);
     
@@ -690,86 +690,14 @@ export class WorldService {
       // Create a deep copy of the world to avoid reference issues
       const worldCopy = JSON.parse(JSON.stringify(world));
       
-      // Set in memory first
+      // Set in memory - DO NOT save to localStorage immediately
       this.worlds.set(normalizedId, worldCopy);
       
-      // Then persist to localStorage
-      const result = this.saveWorldToLocalStorage(worldCopy);
-      
-      // CRITICAL FIX: Verify and repair persistence by calling saveAllWorlds
-      this.saveAllWorlds();
-      
-      // Force reload to ensure consistency
-      this.loadWorlds();
-      
-      // CRITICAL FIX: Double-check that the world was actually saved
-      // Get direct from localStorage to confirm it was stored correctly
-      try {
-        const worldsStr = localStorage.getItem(this.STORAGE_KEY);
-        if (worldsStr) {
-          const worlds = JSON.parse(worldsStr);
-          if (Array.isArray(worlds)) {
-            const savedWorld = worlds.find(w => w.id === normalizedId);
-            if (savedWorld) {
-              console.log(`World ${normalizedId} verified in localStorage after update`);
-            } else {
-              console.warn(`World ${normalizedId} not found in localStorage after update - forcing direct save`);
-              // Try direct update of localStorage
-              const worldsWithUpdated = worlds.filter(w => w.id !== normalizedId).concat([worldCopy]);
-              localStorage.setItem(this.STORAGE_KEY, JSON.stringify(worldsWithUpdated));
-              console.log(`Direct localStorage update completed for ${normalizedId}`);
-            }
-          }
-        }
-      } catch (verifyError) {
-        console.error(`Error verifying world save:`, verifyError);
-      }
-      
-      return result;
+      console.log(`World ${normalizedId} updated in memory cache`);
+      return true;
     } catch (error) {
       console.error(`Error updating world ${world.id}:`, error);
-      
-      // Attempt direct localStorage save as a fallback
-      try {
-        const worldsStr = localStorage.getItem(this.STORAGE_KEY);
-        let worlds = [];
-        
-        if (worldsStr) {
-          worlds = JSON.parse(worldsStr);
-          if (!Array.isArray(worlds)) {
-            worlds = [];
-          }
-        }
-        
-        // Remove any existing world with the same ID
-        const normalizedId = this.normalizeWorldId(world.id);
-        worlds = worlds.filter((w: any) => 
-          w && w.id && this.normalizeWorldId(w.id) !== normalizedId
-        );
-        
-        // Add the updated world
-        const worldCopy = JSON.parse(JSON.stringify(world));
-        worlds.push(worldCopy);
-        
-        // Save back to localStorage
-        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(worlds));
-        console.log(`World ${world.id} saved directly to localStorage as fallback`);
-        
-        // Update memory cache
-        this.worlds.set(normalizedId, worldCopy);
-        
-        // CRITICAL FIX: Also save a backup copy under a separate key
-        localStorage.setItem(`world_backup_${normalizedId}`, JSON.stringify(worldCopy));
-        console.log(`Backup copy of world ${normalizedId} saved to separate key`);
-        
-        // Force a refresh of the worlds cache
-        this.loadWorlds();
-        
-        return true;
-      } catch (fallbackError) {
-        console.error(`Fallback save failed for world ${world.id}:`, fallbackError);
-        return false;
-      }
+      return false;
     }
   }
   
@@ -1249,5 +1177,34 @@ export class WorldService {
       console.error(`Error retrieving world with id "${id}":`, error);
       return undefined;
     }
+  }
+
+  // PERFORMANCE FIX: Add batch world update method
+  public updateWorldsBatch(worlds: World[]): boolean {
+    console.log(`Batch updating ${worlds.length} worlds...`);
+    
+    let successCount = 0;
+    
+    for (const world of worlds) {
+      if (this.updateWorld(world)) {
+        successCount++;
+      }
+    }
+    
+    // Save all worlds once after batch update
+    const saveSuccess = this.saveAllWorlds();
+    
+    console.log(`Batch update completed: ${successCount}/${worlds.length} worlds updated, localStorage save: ${saveSuccess ? 'success' : 'failed'}`);
+    
+    return successCount === worlds.length && saveSuccess;
+  }
+  
+  // Add method to force localStorage save for a specific world
+  public saveWorld(worldId: string): boolean {
+    const world = this.worlds.get(this.normalizeWorldId(worldId));
+    if (world) {
+      return this.saveWorldToLocalStorage(world);
+    }
+    return false;
   }
 } 

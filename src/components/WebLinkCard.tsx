@@ -146,26 +146,22 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
       onPointerOut={() => updateHoverState(false)}
       onClick={handleClick}
     >
-      {/* Invisible web link card base for proper depth testing */}
-      <mesh ref={meshRef}>
-        <boxGeometry args={[2.5, 1.8, 0.05]} />
-        <meshBasicMaterial 
-          transparent={true}
-          opacity={0.0}
-          depthWrite={true}
-          depthTest={true}
-        />
-      </mesh>
-      
       {/* Web Page Preview */}
       <Html
         transform
         distanceFactor={8}
         position={[0, 0, 0.06]}
+        occlude={false}
         style={{
           width: '220px',
           height: '150px',
           pointerEvents: 'none',
+          // Mobile WebGL fixes
+          backfaceVisibility: 'hidden',
+          WebkitBackfaceVisibility: 'hidden',
+          WebkitTransform: 'translate3d(0, 0, 0)',
+          WebkitPerspective: '1000px',
+          WebkitTransformStyle: 'preserve-3d',
         }}
       >
         <div

@@ -204,22 +204,12 @@ export const VideoCard: React.FC<VideoCardProps> = ({
       onPointerLeave={handlePointerLeave}
       onClick={handleClick}
     >
-      {/* Invisible card frame for proper depth testing */}
-      <mesh ref={meshRef}>
-        <boxGeometry args={[videoDimensions.frameWidth, videoDimensions.frameHeight, 0.05]} />
-        <meshBasicMaterial 
-          transparent={true}
-          opacity={0.0}
-          depthWrite={true}
-          depthTest={true}
-        />
-      </mesh>
-      
       {/* Video content */}
       <Html
         transform
         distanceFactor={8}
         position={[0, 0, 0.03]}
+        occlude={false}
         style={{
           width: `${videoDimensions.width * 100}px`,
           height: `${videoDimensions.height * 100}px`,
@@ -231,6 +221,12 @@ export const VideoCard: React.FC<VideoCardProps> = ({
           transition: 'all 0.3s ease',
           pointerEvents: 'none',
           borderRadius: '12px',
+          // Mobile WebGL fixes
+          backfaceVisibility: 'hidden',
+          WebkitBackfaceVisibility: 'hidden',
+          WebkitTransform: 'translate3d(0, 0, 0)',
+          WebkitPerspective: '1000px',
+          WebkitTransformStyle: 'preserve-3d',
         }}
       >
         {/* Video container with rounded corners */}

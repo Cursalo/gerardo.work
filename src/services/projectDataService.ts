@@ -74,39 +74,50 @@ class ProjectDataService {
       const usedIds = new Set<number>();
       const usedNames = new Set<string>();
       
-      // Load each project's data
-      for (const projectName of projectNames) {
+      // PERFORMANCE FIX: Load all project data concurrently using Promise.all
+      console.log(`ProjectDataService: Loading ${projectNames.length} projects concurrently...`);
+      
+      const projectDataPromises = projectNames.map(async (projectName) => {
         try {
           const projectData = await this.loadProjectData(projectName);
-          if (projectData) {
-            // Check for duplicate IDs
-            if (usedIds.has(projectData.id)) {
-              console.warn(`ProjectDataService: Skipping duplicate project ID ${projectData.id} for ${projectData.name}`);
-              continue;
-            }
-            
-            // Check for duplicate names
-            if (usedNames.has(projectData.name)) {
-              console.warn(`ProjectDataService: Skipping duplicate project name ${projectData.name}`);
-              continue;
-            }
-            
-            // Add to tracking sets
-            usedIds.add(projectData.id);
-            usedNames.add(projectData.name);
-            
-            // Add to our collections
-            this.projectsList.push(projectData);
-            this.projectsCache.set(projectName, projectData);
-            
-            // Also cache by name and customLink for faster lookup
-            this.projectsCache.set(projectData.name, projectData);
-            if (projectData.customLink) {
-              this.projectsCache.set(projectData.customLink, projectData);
-            }
-          }
+          return { projectName, projectData };
         } catch (error) {
           console.error(`ProjectDataService: Error loading project ${projectName}:`, error);
+          return { projectName, projectData: null };
+        }
+      });
+      
+      // Wait for all project data to load concurrently
+      const projectResults = await Promise.all(projectDataPromises);
+      
+      // Process results and handle duplicates
+      for (const { projectName, projectData } of projectResults) {
+        if (projectData) {
+          // Check for duplicate IDs
+          if (usedIds.has(projectData.id)) {
+            console.warn(`ProjectDataService: Skipping duplicate project ID ${projectData.id} for ${projectData.name}`);
+            continue;
+          }
+          
+          // Check for duplicate names
+          if (usedNames.has(projectData.name)) {
+            console.warn(`ProjectDataService: Skipping duplicate project name ${projectData.name}`);
+            continue;
+          }
+          
+          // Add to tracking sets
+          usedIds.add(projectData.id);
+          usedNames.add(projectData.name);
+          
+          // Add to our collections
+          this.projectsList.push(projectData);
+          this.projectsCache.set(projectName, projectData);
+          
+          // Also cache by name and customLink for faster lookup
+          this.projectsCache.set(projectData.name, projectData);
+          if (projectData.customLink) {
+            this.projectsCache.set(projectData.customLink, projectData);
+          }
         }
       }
 
@@ -144,9 +155,6 @@ class ProjectDataService {
   }
 
   private async getProjectDirectories(): Promise<string[]> {
-    // Attempt to get project directory names by making requests
-    const projectNames: string[] = [];
-    
     // Define the project names we expect to find
     const expectedProjects = [
       'AIClases.com', 'Amazonia Apoteket', 'Avatarmatic', 'Beta', 'Blue Voyage Travel',
@@ -158,36 +166,40 @@ class ProjectDataService {
       'TaskArranger.com', 'Tokitaka', 'Wobistro'
     ];
     
-    console.log(`ProjectDataService: Scanning for projects in expected list...`);
+    console.log(`ProjectDataService: Scanning for projects using Promise.all for concurrent fetching...`);
     
-    for (const projectName of expectedProjects) {
+    // PERFORMANCE FIX: Use Promise.all for concurrent fetching instead of sequential
+    const projectPromises = expectedProjects.map(async (projectName) => {
       try {
-        // Get the proper URL for fetching project.json
         const projectUrl = this.getProjectJsonUrl(projectName);
-        console.log(`ProjectDataService: Attempting to fetch ${projectName} from ${projectUrl}`);
-        
         const response = await fetch(projectUrl, {
-          method: 'GET',
+          method: 'HEAD', // Use HEAD instead of GET for existence check only
           headers: {
             'Accept': 'application/json',
           },
-          // Add cache busting for development
           cache: process.env.NODE_ENV === 'development' ? 'no-cache' : 'default'
         });
         
         if (response.ok) {
-          projectNames.push(projectName);
-          console.log(`ProjectDataService: ✅ Successfully found project: ${projectName}`);
+          console.log(`ProjectDataService: ✅ Found project: ${projectName}`);
+          return projectName;
         } else {
-          console.warn(`ProjectDataService: ❌ Failed to load ${projectName}: ${response.status} ${response.statusText}`);
+          console.warn(`ProjectDataService: ❌ Project not found: ${projectName} (${response.status})`);
+          return null;
         }
       } catch (error) {
-        console.warn(`ProjectDataService: ❌ Error fetching ${projectName}:`, error);
-        // Silently skip projects that don't exist
+        console.warn(`ProjectDataService: ❌ Error checking ${projectName}:`, error);
+        return null;
       }
-    }
+    });
     
-    console.log(`ProjectDataService: Found ${projectNames.length} project directories:`, projectNames);
+    // Wait for all checks to complete concurrently
+    const results = await Promise.all(projectPromises);
+    
+    // Filter out null results
+    const projectNames = results.filter((name): name is string => name !== null);
+    
+    console.log(`ProjectDataService: Found ${projectNames.length} project directories using concurrent fetching:`, projectNames);
     return projectNames;
   }
 

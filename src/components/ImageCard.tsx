@@ -191,23 +191,12 @@ export const ImageCard: React.FC<ImageCardProps> = ({
       onPointerLeave={handlePointerLeave}
       onClick={handleClick}
     >
-      {/* Invisible card base for proper depth testing */}
-      <mesh ref={meshRef}>
-        <planeGeometry args={[cardDimensions.width, cardDimensions.height]} />
-        <meshBasicMaterial 
-          transparent={true}
-          opacity={0.0}
-          side={THREE.DoubleSide}
-          depthWrite={true}
-          depthTest={true}
-        />
-      </mesh>
-      
       {/* Image content */}
       <Html
         transform
         distanceFactor={6}
         position={[0, 0, 0.01]}
+        occlude={false}
         style={{
           width: `${cardDimensions.width * 90}px`,
           height: `${cardDimensions.height * 90}px`,
@@ -216,6 +205,12 @@ export const ImageCard: React.FC<ImageCardProps> = ({
           pointerEvents: 'none',
           transform: hovered ? 'scale(1.05)' : 'scale(1)',
           transition: 'transform 0.3s ease',
+          // Mobile WebGL fixes
+          backfaceVisibility: 'hidden',
+          WebkitBackfaceVisibility: 'hidden',
+          WebkitTransform: 'translate3d(0, 0, 0)',
+          WebkitPerspective: '1000px',
+          WebkitTransformStyle: 'preserve-3d',
         }}
       >
         <div style={{ 
