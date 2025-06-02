@@ -1,11 +1,11 @@
 {
   "rewrites": [
     {
-      "source": "/projects/([^/]+)$",
+      "source": "/project/([^/]+)$",
       "destination": "/index.html"
     },
     {
-      "source": "/((?!api|_next|_static|_vercel|favicon.ico|public|projects).*)",
+      "source": "/((?!api|_next|_static|_vercel|favicon.ico|public|projects|project).*)",
       "destination": "/index.html"
     }
   ],
