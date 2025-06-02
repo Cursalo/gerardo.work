@@ -85,7 +85,7 @@ const determineMediaType = (url: string, type?: string): string => {
     return 'image';
 };
 
-// Optimized media card router component
+// Optimized media card router component with custom memo comparison
 const MediaCardRouter: React.FC<{ mediaObject: any; index: number }> = React.memo(({ mediaObject, index }) => {
   const mediaType = useMemo(() => determineMediaType(mediaObject.url, mediaObject.type), [mediaObject.url, mediaObject.type]);
   const title = useMemo(() => 
@@ -162,13 +162,23 @@ const MediaCardRouter: React.FC<{ mediaObject: any; index: number }> = React.mem
         />
       );
   }
+}, (prevProps, nextProps) => {
+  // Custom comparison to prevent unnecessary re-renders
+  return (
+    prevProps.index === nextProps.index &&
+    prevProps.mediaObject.url === nextProps.mediaObject.url &&
+    prevProps.mediaObject.title === nextProps.mediaObject.title &&
+    prevProps.mediaObject.type === nextProps.mediaObject.type &&
+    JSON.stringify(prevProps.mediaObject.position) === JSON.stringify(nextProps.mediaObject.position) &&
+    JSON.stringify(prevProps.mediaObject.rotation) === JSON.stringify(nextProps.mediaObject.rotation)
+  );
 });
 
 MediaCardRouter.displayName = 'MediaCardRouter';
 
 // Scene content component for first-person integration
 const SceneContent: React.FC<{ allMediaObjects: any[], projectData: ProjectData }> = React.memo(({ allMediaObjects, projectData }) => {
-  console.log('SceneContent: Rendering', allMediaObjects.length, 'media objects for project:', projectData.name);
+  // Removed console.log to improve performance
 
   // Enable first person interactions for walking and interaction (same as main world)
   useFirstPersonInteractions();
@@ -270,7 +280,7 @@ const SceneContent: React.FC<{ allMediaObjects: any[], projectData: ProjectData 
       {/* Render all media objects using specialized components */}
       {allMediaObjects.map((mediaObj, index) => {
         const uniqueKey = `${mediaObj.id || mediaObj.url || 'unknown'}-${index}`;
-        console.log(`🎯 Rendering MediaCardRouter ${index}: ${mediaObj.title || 'Untitled'} with key: ${uniqueKey}`);
+        // Removed console.log to improve performance
         return (
           <MediaCardRouter 
             key={uniqueKey} 
@@ -293,6 +303,19 @@ const SceneContent: React.FC<{ allMediaObjects: any[], projectData: ProjectData 
         </Text>
       )}
     </>
+  );
+}, (prevProps, nextProps) => {
+  // Custom comparison to prevent unnecessary re-renders
+  // Only re-render if the actual media objects or project data changes
+  return (
+    prevProps.allMediaObjects.length === nextProps.allMediaObjects.length &&
+    prevProps.projectData.name === nextProps.projectData.name &&
+    prevProps.projectData.id === nextProps.projectData.id &&
+    // Deep comparison of media objects URLs (most likely to change)
+    prevProps.allMediaObjects.every((obj, index) => 
+      obj.url === nextProps.allMediaObjects[index]?.url &&
+      obj.title === nextProps.allMediaObjects[index]?.title
+    )
   );
 });
 

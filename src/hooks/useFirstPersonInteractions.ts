@@ -528,7 +528,14 @@ function useFirstPersonInteractions() {
   }, [isTouchDevice, gl, showChat, hoveredObject, openChat, triggerInteraction, setClickedObject, isPointerLocked, isInCooldown, startInteractionCooldown, startPointerLockGrace]);
 
   // Update hover state using precise raycasting from exact center (0,0)
-  useFrame(() => {
+  useFrame((state) => {
+    // PERFORMANCE FIX: Throttle raycasting to reduce CPU usage
+    // Only perform raycasting every 3rd frame (20fps instead of 60fps)
+    const frameCount = Math.floor(state.clock.elapsedTime * 60); // Approximate frame count
+    if (frameCount % 3 !== 0) {
+      return;
+    }
+    
     // Skip interaction checks when chat is open
     if (showChat) {
       // If we had a previously hovered object, unhover it
@@ -570,16 +577,18 @@ function useFirstPersonInteractions() {
       intersect.object.userData.interactive === true
     );
     
-    // DEBUG: Log raycasting info periodically using a simpler approach
-    const now = Date.now();
-    if (!(window as any).lastRaycastLog || now - (window as any).lastRaycastLog > 2000) {
-      console.log(`🎯 RAYCAST DEBUG: Found ${interactiveIntersects.length} interactive objects. Max distance: ${maxDistance}. Device: ${isTouchDevice ? 'MOBILE' : 'DESKTOP'}`);
-      if (interactiveIntersects.length > 0) {
-        interactiveIntersects.forEach((intersect, i) => {
-          console.log(`  ${i}: "${intersect.object.userData.title}" at distance ${intersect.distance.toFixed(1)} (${intersect.distance < maxDistance ? 'WITHIN' : 'TOO FAR'})`);
-        });
+    // DEBUG: Log raycasting info periodically (only in development and less frequently)
+    if (process.env.NODE_ENV === 'development') {
+      const now = Date.now();
+      if (!(window as any).lastRaycastLog || now - (window as any).lastRaycastLog > 5000) {
+        console.log(`🎯 RAYCAST DEBUG: Found ${interactiveIntersects.length} interactive objects. Max distance: ${maxDistance}. Device: ${isTouchDevice ? 'MOBILE' : 'DESKTOP'}`);
+        if (interactiveIntersects.length > 0) {
+          interactiveIntersects.forEach((intersect, i) => {
+            console.log(`  ${i}: "${intersect.object.userData.title}" at distance ${intersect.distance.toFixed(1)} (${intersect.distance < maxDistance ? 'WITHIN' : 'TOO FAR'})`);
+          });
+        }
+        (window as any).lastRaycastLog = now;
       }
-      (window as any).lastRaycastLog = now;
     }
     
     const intersects = interactiveIntersects.filter(intersect => intersect.distance < maxDistance);

@@ -207,9 +207,21 @@ export const WorldProvider = ({
       try {
         console.log('WorldProvider: Starting setupWorlds...');
         
-        // Force reload to ensure fresh data
-        await projectDataService.forceReload();
-        console.log('WorldProvider: Force reload completed');
+        // PERFORMANCE FIX: Only force reload if data is actually stale
+        const lastSetupTime = localStorage.getItem('last_world_setup_time');
+        const currentTime = Date.now();
+        const timeSinceLastSetup = lastSetupTime ? currentTime - parseInt(lastSetupTime) : Infinity;
+        
+        // Only force reload if more than 30 seconds have passed or if it's the first load
+        const shouldForceReload = !lastSetupTime || timeSinceLastSetup > 30000;
+        
+        if (shouldForceReload) {
+          console.log('WorldProvider: Force reloading data (stale or first load)');
+          await projectDataService.forceReload();
+          localStorage.setItem('last_world_setup_time', currentTime.toString());
+        } else {
+          console.log('WorldProvider: Skipping force reload (data is fresh)');
+        }
         
         // Load projects from project.json files instead of localStorage
         await projectDataService.initialize();
@@ -220,50 +232,61 @@ export const WorldProvider = ({
         await projectDataService.synchronizeWithProjectService();
         console.log('WorldProvider: Synchronization completed');
 
-        // CRITICAL FIX: Force regenerate all project worlds with full data
-        // After synchronization, we need to ensure all project worlds are created with the complete
-        // project.json data including mediaObjects and assetGallery
-        console.log('WorldProvider: Force regenerating all project worlds with full data...');
-        try {
-          // Get all projects from ProjectDataService (which has the full data)
-          const allProjectsData = await projectDataService.getAllProjects();
-          
-          for (const projectData of allProjectsData) {
-            const projectWorldId = `project-world-${projectData.id}`;
+        // PERFORMANCE FIX: Only regenerate project worlds if data was actually reloaded
+        if (shouldForceReload) {
+          console.log('WorldProvider: Regenerating project worlds with fresh data...');
+          try {
+            // Get all projects from ProjectDataService (which has the full data)
+            const allProjectsData = await projectDataService.getAllProjects();
             
-            // Convert ProjectData to Project format with assetGallery preserved
-            const project: Project = {
-              id: projectData.id,
-              name: projectData.name,
-              description: projectData.description,
-              link: projectData.link,
-              thumbnail: projectData.thumbnail,
-              status: projectData.status as 'completed' | 'in-progress',
-              type: projectData.type as 'standard' | 'video',
-              videoUrl: projectData.videoUrl,
-              customLink: projectData.customLink,
-              mediaObjects: projectData.mediaObjects?.map(mediaObj => ({
-                ...mediaObj,
-                type: mediaObj.type as 'video' | 'image' | 'pdf' | 'project' | 'link' | 'button'
-              })),
-              worldSettings: projectData.worldSettings,
-              // Preserve assetGallery for project world creation
-              ...(projectData.assetGallery && { assetGallery: projectData.assetGallery })
-            };
+            for (const projectData of allProjectsData) {
+              const projectWorldId = `project-world-${projectData.id}`;
+              
+              // Check if world already exists and has the same number of objects
+              const existingWorld = worldService.getWorld(projectWorldId);
+              const expectedObjectCount = (projectData.mediaObjects?.length || 0) + (projectData.assetGallery?.length || 0);
+              
+              if (existingWorld && existingWorld.objects.length === expectedObjectCount) {
+                console.log(`WorldProvider: Skipping regeneration of ${projectWorldId} (already up to date)`);
+                continue;
+              }
+              
+              // Convert ProjectData to Project format with assetGallery preserved
+              const project: Project = {
+                id: projectData.id,
+                name: projectData.name,
+                description: projectData.description,
+                link: projectData.link,
+                thumbnail: projectData.thumbnail,
+                status: projectData.status as 'completed' | 'in-progress',
+                type: projectData.type as 'standard' | 'video',
+                videoUrl: projectData.videoUrl,
+                customLink: projectData.customLink,
+                mediaObjects: projectData.mediaObjects?.map(mediaObj => ({
+                  ...mediaObj,
+                  type: mediaObj.type as 'video' | 'image' | 'pdf' | 'project' | 'link' | 'button'
+                })),
+                worldSettings: projectData.worldSettings,
+                // Preserve assetGallery for project world creation
+                ...(projectData.assetGallery && { assetGallery: projectData.assetGallery })
+              };
+              
+              // Recreate the project world with full data
+              console.log(`WorldProvider: Regenerating project world ${projectWorldId} for ${project.name}`);
+              const regeneratedWorld = createProjectWorld(project, isTouchDevice);
+              
+              // Update the world in the service
+              worldService.updateWorld(regeneratedWorld);
+              
+              console.log(`WorldProvider: Project world ${projectWorldId} regenerated with ${regeneratedWorld.objects.length} objects`);
+            }
             
-            // Force recreate the project world with full data
-            console.log(`WorldProvider: Regenerating project world ${projectWorldId} for ${project.name}`);
-            const regeneratedWorld = createProjectWorld(project, isTouchDevice);
-            
-            // Update the world in the service
-            worldService.updateWorld(regeneratedWorld);
-            
-            console.log(`WorldProvider: Project world ${projectWorldId} regenerated with ${regeneratedWorld.objects.length} objects`);
+            console.log(`WorldProvider: Successfully processed ${allProjectsData.length} project worlds`);
+          } catch (error) {
+            console.error('WorldProvider: Error regenerating project worlds:', error);
           }
-          
-          console.log(`WorldProvider: Successfully regenerated ${allProjectsData.length} project worlds`);
-        } catch (error) {
-          console.error('WorldProvider: Error regenerating project worlds:', error);
+        } else {
+          console.log('WorldProvider: Skipping project world regeneration (using cached data)');
         }
         
         const loadedProjects = await projectDataService.getAllProjects();
