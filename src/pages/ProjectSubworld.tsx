@@ -118,6 +118,47 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
       return '';
     };
 
+    const createVideoTexture = async (videoUrl: string) => {
+      try {
+        const video = document.createElement('video');
+        video.src = normalizeUrl(videoUrl);
+        video.crossOrigin = 'anonymous';
+        video.muted = true;
+        video.playsInline = true;
+        video.preload = 'metadata';
+        
+        // Create canvas for video texture
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d')!;
+        
+        return new Promise<THREE.VideoTexture>((resolve, reject) => {
+          video.addEventListener('loadedmetadata', () => {
+            canvas.width = video.videoWidth || 1920;
+            canvas.height = video.videoHeight || 1080;
+            
+            const videoTexture = new THREE.VideoTexture(video);
+            videoTexture.minFilter = THREE.LinearFilter;
+            videoTexture.magFilter = THREE.LinearFilter;
+            videoTexture.generateMipmaps = false;
+            videoTexture.flipY = true;
+            
+            // Store video element for later playback control
+            (videoTexture as any).videoElement = video;
+            
+            resolve(videoTexture);
+          });
+          
+          video.addEventListener('error', () => {
+            reject(new Error('Video failed to load'));
+          });
+          
+          video.load();
+        });
+      } catch (err) {
+        throw err;
+      }
+    };
+
     const loadImageTexture = async (urlToLoad: string, isPlaceholder: boolean) => {
       if (!urlToLoad || !isActive) return;
       
@@ -132,23 +173,37 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
       }
       
       try {
-        const loadedTex = await new Promise<THREE.Texture>((resolve, reject) => {
-          const img = new Image();
-          img.crossOrigin = 'anonymous';
-          
-          img.onload = () => {
-            const texture = new THREE.Texture(img);
-            texture.needsUpdate = true;
-            resolve(texture);
-          };
-          
-          img.onerror = () => {
-            // Fallback: try loading with THREE.TextureLoader
-            loader.load(actualUrlToLoad, resolve, undefined, reject);
-          };
-          
-          img.src = actualUrlToLoad;
-        });
+        let loadedTex: THREE.Texture;
+        
+        // Handle different media types
+        if (mediaType === 'video' && !urlToLoad.includes('youtube') && !urlToLoad.includes('youtu.be')) {
+          // Try to create actual video texture for local videos
+          try {
+            loadedTex = await createVideoTexture(actualUrlToLoad);
+          } catch (videoErr) {
+            console.warn('Video texture failed, falling back to placeholder:', videoErr);
+            throw videoErr; // Fall back to placeholder
+          }
+        } else {
+          // Standard image loading
+          loadedTex = await new Promise<THREE.Texture>((resolve, reject) => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            
+            img.onload = () => {
+              const texture = new THREE.Texture(img);
+              texture.needsUpdate = true;
+              resolve(texture);
+            };
+            
+            img.onerror = () => {
+              // Fallback: try loading with THREE.TextureLoader
+              loader.load(actualUrlToLoad, resolve, undefined, reject);
+            };
+            
+            img.src = actualUrlToLoad;
+          });
+        }
 
         if (!isActive) {
           loadedTex.dispose();
@@ -159,7 +214,7 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
         loadedTex.minFilter = THREE.LinearFilter;
         loadedTex.magFilter = THREE.LinearFilter;
         loadedTex.generateMipmaps = false;
-        loadedTex.flipY = false;
+        loadedTex.flipY = true; // Fix image inversion
         loadedTex.wrapS = THREE.ClampToEdgeWrapping;
         loadedTex.wrapT = THREE.ClampToEdgeWrapping;
         loadedTex.format = THREE.RGBAFormat;
@@ -214,11 +269,14 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
       // Create gradient background
       const gradient = ctx.createLinearGradient(0, 0, 1024, 1024);
       if (type === 'pdf') {
-        gradient.addColorStop(0, '#dc3545');
-        gradient.addColorStop(1, '#c82333');
+        gradient.addColorStop(0, '#ffffff');
+        gradient.addColorStop(1, '#f8f9fa');
       } else if (type === 'video') {
-        gradient.addColorStop(0, '#007bff');
-        gradient.addColorStop(1, '#0056b3');
+        gradient.addColorStop(0, '#000000');
+        gradient.addColorStop(1, '#333333');
+      } else if (type === 'html') {
+        gradient.addColorStop(0, '#4285f4');
+        gradient.addColorStop(1, '#34a853');
       } else {
         gradient.addColorStop(0, '#6c757d');
         gradient.addColorStop(1, '#495057');
@@ -227,25 +285,92 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, 1024, 1024);
       
-      // Add icon
-      ctx.fillStyle = '#ffffff';
-      ctx.shadowColor = 'rgba(0,0,0,0.3)';
-      ctx.shadowBlur = 10;
-      
+      // Add content based on type
       if (type === 'pdf') {
-        ctx.font = 'bold 200px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('📄', 512, 400);
+        // Create a document-like appearance
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(150, 100, 724, 824);
         
+        ctx.strokeStyle = '#dee2e6';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(150, 100, 724, 824);
+        
+        // Add lines to simulate text
+        ctx.fillStyle = '#495057';
+        for (let i = 0; i < 15; i++) {
+          const y = 200 + i * 40;
+          const width = Math.random() * 400 + 200;
+          ctx.fillRect(200, y, width, 8);
+        }
+        
+        // Add PDF icon
+        ctx.fillStyle = '#dc3545';
         ctx.font = 'bold 120px Arial';
-        ctx.fillText('PDF', 512, 550);
-      } else if (type === 'video') {
-        ctx.font = 'bold 300px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('▶', 512, 512);
+        ctx.fillText('📄', 512, 650);
+        
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 60px Arial';
+        ctx.fillText('PDF', 512, 720);
+        
+      } else if (type === 'video') {
+        // Create a video player-like appearance
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(100, 200, 824, 464);
+        
+        // Add play button
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.moveTo(450, 350);
+        ctx.lineTo(450, 550);
+        ctx.lineTo(600, 450);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Add video controls bar
+        ctx.fillStyle = 'rgba(0,0,0,0.8)';
+        ctx.fillRect(100, 620, 824, 60);
+        
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 80px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('▶', 512, 750);
+        
+      } else if (type === 'html') {
+        // Create a webpage-like appearance
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(100, 150, 824, 724);
+        
+        // Add browser bar
+        ctx.fillStyle = '#f8f9fa';
+        ctx.fillRect(100, 150, 824, 60);
+        
+        ctx.strokeStyle = '#dee2e6';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(100, 150, 824, 724);
+        
+        // Add content blocks
+        ctx.fillStyle = '#007bff';
+        ctx.fillRect(150, 250, 724, 100);
+        
+        ctx.fillStyle = '#6c757d';
+        for (let i = 0; i < 8; i++) {
+          const y = 380 + i * 40;
+          const width = Math.random() * 400 + 200;
+          ctx.fillRect(150, y, width, 20);
+        }
+        
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 60px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🌐', 512, 750);
+        
       } else {
+        // Default image placeholder
+        ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 200px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -257,12 +382,12 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
       
       // Add title at bottom
       if (title && title !== 'Untitled') {
-        ctx.font = 'bold 60px Arial';
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = type === 'video' ? '#ffffff' : '#495057';
+        ctx.font = 'bold 50px Arial';
         ctx.textAlign = 'center';
         
         // Wrap text if too long
-        const maxWidth = 900;
+        const maxWidth = 800;
         let words = title.split(' ');
         let line = '';
         let y = 850;
@@ -274,7 +399,7 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
           if (testWidth > maxWidth && n > 0) {
             ctx.fillText(line, 512, y);
             line = words[n] + ' ';
-            y += 70;
+            y += 60;
           } else {
             line = testLine;
           }
@@ -286,6 +411,7 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
       texture.needsUpdate = true;
       texture.minFilter = THREE.LinearFilter;
       texture.magFilter = THREE.LinearFilter;
+      texture.flipY = true;
       return texture;
     };
 
@@ -316,28 +442,14 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
   }, [mediaType, placeholderUrl, displayTitle]); // Simplified dependencies
 
   // Calculate dimensions based on aspect ratio with better proportions
-  const baseSize = 4.0; // Increased for better visibility
-  const maxWidth = 8.0; // Increased max width
-  const maxHeight = 6.0; // Increased max height
+  const maxSize = 4;
+  const minSize = 2;
+  let cardWidth = Math.min(maxSize, Math.max(minSize, aspectRatio * 3));
+  let cardHeight = Math.min(maxSize, Math.max(minSize, 3 / aspectRatio));
   
-  let cardWidth, cardHeight;
-  
-  if (aspectRatio > 1) {
-    // Landscape orientation
-    cardWidth = Math.min(baseSize * Math.sqrt(aspectRatio), maxWidth);
-    cardHeight = cardWidth / aspectRatio;
-  } else {
-    // Portrait orientation  
-    cardHeight = Math.min(baseSize / Math.sqrt(aspectRatio), maxHeight);
-    cardWidth = cardHeight * aspectRatio;
-  }
-  
-  // Ensure reasonable minimum sizes
-  cardWidth = Math.max(cardWidth, 2.5);
-  cardHeight = Math.max(cardHeight, 2.0);
-  
-  // Much thinner cards for a cleaner look
-  const cardDepth = 0.02;
+  // Scale down for better gallery feel
+  cardWidth *= 0.8;
+  cardHeight *= 0.8;
 
   // Smooth floating animation
   useFrame((state) => {
@@ -356,9 +468,24 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
   });
 
   const handleClick = () => {
-    if (mediaObject.url) {
-      console.log(`Opening ${mediaType}: ${mediaObject.url}`);
-      window.open(mediaObject.url, '_blank');
+    if (mediaType === 'video' && currentTexture && (currentTexture as any).videoElement) {
+      // Handle video playback
+      const video = (currentTexture as any).videoElement;
+      if (video.paused) {
+        video.play().catch(console.error);
+      } else {
+        video.pause();
+      }
+    } else if (mediaType === 'pdf' || mediaType === 'html') {
+      // Open in new tab for PDFs and HTML
+      if (placeholderUrl) {
+        window.open(normalizeUrl(placeholderUrl), '_blank');
+      }
+    } else if (mediaType === 'image') {
+      // Open image in new tab
+      if (placeholderUrl) {
+        window.open(normalizeUrl(placeholderUrl), '_blank');
+      }
     }
   };
 
@@ -368,20 +495,30 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
     return null;
   }
 
+  // Add subtle floating animation
+  const floatY = Math.sin(Date.now() * 0.001 + (mediaObject.position?.[0] || 0)) * 0.1;
+  const hoverY = hovered ? 0.2 : 0;
+
   return (
     <group ref={groupRef} position={mediaObject.position || [0, 3, 0]} rotation={mediaObject.rotation || [0, 0, 0]} visible={isVisible}>
-      {/* Main card mesh with proper geometry */}
+      {/* Main card mesh with proper geometry and clean materials */}
       <mesh 
         ref={meshRef}
+        position={[0, floatY + hoverY, 0]}
         onPointerEnter={(e) => {
           e.stopPropagation();
           setHovered(true);
+          document.body.style.cursor = 'pointer';
         }}
         onPointerLeave={(e) => {
           e.stopPropagation();
           setHovered(false);
+          document.body.style.cursor = 'default';
         }}
-        onClick={handleClick}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleClick();
+        }}
         castShadow
         receiveShadow
       >
@@ -389,42 +526,53 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
         <boxGeometry args={[cardWidth, cardHeight, 0.05]} />
         <meshStandardMaterial 
           map={currentTexture}
-          side={THREE.DoubleSide}
+          side={THREE.FrontSide}
           transparent={false}
           opacity={1}
-          metalness={0.1}
-          roughness={0.8}
+          metalness={0}
+          roughness={1}
+          color="#ffffff"
+          toneMapped={false}
         />
       </mesh>
 
       {/* Loading spinner overlay for loading states */}
       {textureQuality.includes('loading') && (
-        <group position={[0, 0, 0.03]}>
+        <group position={[0, floatY + hoverY, 0.03]}>
           <mesh>
-            <ringGeometry args={[0.8, 1.2, 32]} />
+            <ringGeometry args={[0.3, 0.4, 16]} />
             <meshBasicMaterial color="#007bff" transparent opacity={0.8} />
           </mesh>
           <mesh rotation={[0, 0, Date.now() * 0.005]}>
-            <ringGeometry args={[1.0, 1.1, 8]} />
+            <ringGeometry args={[0.32, 0.38, 8]} />
             <meshBasicMaterial color="#0056b3" />
           </mesh>
         </group>
       )}
 
-      {/* Subtle border for better definition */}
-      <mesh position={[0, 0, 0.026]}>
-        <ringGeometry args={[Math.max(cardWidth, cardHeight) * 0.707, Math.max(cardWidth, cardHeight) * 0.715, 32]} />
-        <meshBasicMaterial 
-          color={hovered ? "#007bff" : "#ffffff"} 
-          transparent 
-          opacity={hovered ? 0.8 : 0.6} 
-        />
-      </mesh>
+      {/* Video play indicator */}
+      {mediaType === 'video' && currentTexture && (currentTexture as any).videoElement && (
+        <mesh position={[0, floatY + hoverY, 0.03]}>
+          <circleGeometry args={[0.3, 16]} />
+          <meshBasicMaterial 
+            color="rgba(0,0,0,0.7)" 
+            transparent 
+            opacity={hovered ? 0.8 : 0.5}
+          />
+        </mesh>
+      )}
+      
+      {mediaType === 'video' && currentTexture && (currentTexture as any).videoElement && (
+        <mesh position={[0, floatY + hoverY, 0.031]}>
+          <coneGeometry args={[0.1, 0.15, 3]} />
+          <meshBasicMaterial color="#ffffff" />
+        </mesh>
+      )}
 
       {/* Clean title with better spacing and visibility */}
       <Text
-        position={[0, -cardHeight/2 - 0.5, 0]}
-        fontSize={Math.min(0.25, cardWidth * 0.08)}
+        position={[0, floatY + hoverY - cardHeight/2 - 0.3, 0]}
+        fontSize={Math.min(0.2, cardWidth * 0.06)}
         color="#2c3e50"
         anchorX="center"
         anchorY="top"
@@ -436,9 +584,9 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
 
       {/* Media type indicator */}
       <Text
-        position={[cardWidth/2 - 0.2, cardHeight/2 - 0.2, 0.02]}
+        position={[cardWidth/2 - 0.1, floatY + hoverY + cardHeight/2 - 0.1, 0.03]}
         fontSize={0.15}
-        color={mediaType === 'pdf' ? '#dc3545' : mediaType === 'video' ? '#007bff' : '#6c757d'}
+        color={hovered ? "#007bff" : "#6c757d"}
         anchorX="right"
         anchorY="top"
       >
@@ -511,6 +659,39 @@ const SceneContent: React.FC<{ allMediaObjects: any[], projectData: ProjectData 
         acceleration={0.12}
         deceleration={0.2}
       />
+
+      {/* Crosshair cursor for interaction */}
+      <Html fullscreen pointerEvents="none">
+        <div style={{
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 1000,
+          pointerEvents: 'none'
+        }}>
+          <div style={{
+            width: '20px',
+            height: '20px',
+            border: '2px solid rgba(255, 255, 255, 0.8)',
+            borderRadius: '50%',
+            position: 'relative',
+            background: 'rgba(0, 0, 0, 0.3)',
+            boxShadow: '0 0 10px rgba(0, 0, 0, 0.5)'
+          }}>
+            <div style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: '4px',
+              height: '4px',
+              background: '#ffffff',
+              borderRadius: '50%'
+            }} />
+          </div>
+        </div>
+      </Html>
 
       {/* Clean white floor with subtle stripes */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]} receiveShadow>
