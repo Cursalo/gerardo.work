@@ -35,6 +35,7 @@ const tempDirectionVec = new THREE.Vector3(); // For storing direction before no
  * - Camera always looks exactly where the centered crosshair points
  * - Smooth acceleration and deceleration for movement
  * - Mobile touch controls for touch devices
+ * - Gamepad LT/RT trigger zoom in subworlds
  */
 const FirstPersonCamera = ({
   position = new Vector3(0, 0, 15),
@@ -86,6 +87,11 @@ const FirstPersonCamera = ({
   
   // Pointer lock state
   const [isPointerLocked, setIsPointerLocked] = useState(false);
+  
+  // Camera FOV state for zoom
+  const [baseFOV] = useState(75); // Store initial FOV
+  const [currentFOV, setCurrentFOV] = useState(baseFOV); // Current FOV with zoom applied
+  const [isZooming, setIsZooming] = useState(false); // Track if zoom is active
   
   // Last time we tried to request pointer lock, to prevent spam
   const lastPointerLockRequestRef = useRef(0);
@@ -602,7 +608,82 @@ const FirstPersonCamera = ({
   // Only include gamepad state and the callback in dependencies to prevent unnecessary re-renders
   }, [gamepadConnected, gamepad, checkBButtonHold]);
   
-  // Return a progress indicator if the B button is being held
+  // Handle gamepad zoom triggers (LT/RT) for subworlds
+  const handleGamepadZoom = useCallback(() => {
+    // Only enable zoom in subworlds
+    if (!gamepadConnected || !gamepad || !currentWorld || !currentWorld.id.startsWith('project-world-')) {
+      // Reset FOV if we're not in a subworld or gamepad disconnected
+      if (currentFOV !== baseFOV) {
+        setCurrentFOV(baseFOV);
+        setIsZooming(false);
+        
+        // Update camera FOV
+        if (camera instanceof THREE.PerspectiveCamera) {
+          camera.fov = baseFOV;
+          camera.updateProjectionMatrix();
+        }
+      }
+      return;
+    }
+    
+    const leftTrigger = gamepad.triggers.left;
+    const rightTrigger = gamepad.triggers.right;
+    
+    // Calculate new FOV based on trigger values
+    let newFOV = baseFOV;
+    let zoomActive = false;
+    
+    // LT zooms in (decreases FOV)
+    if (leftTrigger > 0.1) {
+      // Map 0.1-1.0 trigger to 75-35 FOV (zoom in)
+      newFOV = baseFOV - (leftTrigger * 40);
+      zoomActive = true;
+    }
+    // RT zooms out (increases FOV) - only if LT not pressed
+    else if (rightTrigger > 0.1) {
+      // Map 0.1-1.0 trigger to 75-100 FOV (zoom out)
+      newFOV = baseFOV + (rightTrigger * 25);
+      zoomActive = true;
+    }
+    
+    // Update FOV if changed
+    if (newFOV !== currentFOV) {
+      setCurrentFOV(newFOV);
+      setIsZooming(zoomActive);
+      
+      // Apply to camera
+      if (camera instanceof THREE.PerspectiveCamera) {
+        camera.fov = newFOV;
+        camera.updateProjectionMatrix();
+      }
+    } else if (zoomActive !== isZooming) {
+      // Update zoom state if needed
+      setIsZooming(zoomActive);
+    }
+  }, [gamepadConnected, gamepad, currentWorld, camera, baseFOV, currentFOV, isZooming]);
+  
+  // Setup interval for zoom checking
+  useEffect(() => {
+    // Only enable for gamepad users
+    if (!gamepadConnected) return;
+    
+    // Check zoom triggers every frame via an interval
+    const zoomIntervalId = setInterval(handleGamepadZoom, 16); // ~60fps
+    
+    return () => {
+      clearInterval(zoomIntervalId);
+      
+      // Reset FOV on cleanup
+      if (camera instanceof THREE.PerspectiveCamera && currentFOV !== baseFOV) {
+        camera.fov = baseFOV;
+        camera.updateProjectionMatrix();
+        setCurrentFOV(baseFOV);
+        setIsZooming(false);
+      }
+    };
+  }, [gamepadConnected, camera, handleGamepadZoom, currentFOV, baseFOV]);
+  
+  // Return component with zoom indicator
   return (
     <>
       {bButtonHoldProgress > 0 && (
@@ -641,6 +722,27 @@ const FirstPersonCamera = ({
                 transition: 'width 0.1s ease-out',
               }} />
             </div>
+          </div>
+        </Html>
+      )}
+      
+      {/* Display zoom indicator when active */}
+      {isZooming && (
+        <Html fullscreen>
+          <div style={{
+            position: 'absolute',
+            bottom: '60px',
+            right: '20px',
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            padding: '5px 10px',
+            borderRadius: '5px',
+            color: 'white',
+            fontFamily: 'Arial, sans-serif',
+            fontSize: '14px',
+            zIndex: 1000,
+            pointerEvents: 'none',
+          }}>
+            {currentFOV < baseFOV ? '🔍 Zooming In' : '🔎 Zooming Out'} ({Math.round(currentFOV)}°)
           </div>
         </Html>
       )}
