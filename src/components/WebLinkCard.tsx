@@ -4,6 +4,22 @@ import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { useAppContext } from '../hooks/useAppContext';
 
+// Add CSS for loading spinner outside of React component
+const weblinkSpinnerStyle = document.createElement('style');
+weblinkSpinnerStyle.textContent = `
+  .weblink-spinner {
+    animation: weblink-spin 1s linear infinite;
+  }
+  @keyframes weblink-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+`;
+if (!document.head.querySelector('[data-weblink-styles]')) {
+  weblinkSpinnerStyle.setAttribute('data-weblink-styles', 'true');
+  document.head.appendChild(weblinkSpinnerStyle);
+}
+
 interface WebLinkCardProps {
   title: string;
   description?: string;
@@ -48,8 +64,8 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
     }
   }, [title, position, registerObject, unregisterObject]);
 
-  // Check for overlapping with other objects
-  useFrame(() => {
+  // Check for overlapping with other objects and handle camera facing
+  useFrame((state) => {
     if (groupRef.current) {
       const worldPosition = new THREE.Vector3();
       groupRef.current.getWorldPosition(worldPosition);
@@ -57,6 +73,30 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
       const isOverlappingNow = checkOverlap(worldPosition);
       if (isOverlappingNow !== isOverlapping) {
         setIsOverlapping(isOverlappingNow);
+      }
+      
+      // Face the camera smoothly
+      const camera = state.camera;
+      const cardPosition = new THREE.Vector3(position[0], position[1], position[2]);
+      const cameraPosition = camera.position.clone();
+      
+      // Calculate direction from card to camera
+      const direction = new THREE.Vector3().subVectors(cameraPosition, cardPosition);
+      direction.y = 0; // Only rotate on Y axis
+      direction.normalize();
+      
+      // Calculate target rotation to face camera
+      const targetRotationY = Math.atan2(direction.x, direction.z);
+      
+      // Smooth interpolation to target rotation
+      if (hovered) {
+        // Add gentle wobble when hovered
+        const time = state.clock.elapsedTime;
+        const wobble = Math.sin(time * 2) * 0.02;
+        groupRef.current.rotation.y += (targetRotationY + wobble - groupRef.current.rotation.y) * 0.1;
+      } else {
+        // Smoothly face camera
+        groupRef.current.rotation.y += (targetRotationY - groupRef.current.rotation.y) * 0.05;
       }
     }
   });
@@ -106,8 +146,8 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
       onPointerOut={() => updateHoverState(false)}
       onClick={handleClick}
     >
-      {/* Web Link Card Base */}
-      <mesh 
+      {/* Web Link Card Base - temporarily disabled to debug duplicates */}
+      {/* <mesh 
         ref={meshRef} 
         castShadow 
         receiveShadow
@@ -120,7 +160,7 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
           metalness={0.2}
           roughness={0.3}
         />
-      </mesh>
+      </mesh> */}
       
       {/* Web Page Preview */}
       <Html
@@ -165,24 +205,16 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
               }}
             >
               <div
+                className="weblink-spinner"
                 style={{
                   width: '30px',
                   height: '30px',
                   border: '3px solid #eee',
                   borderTop: '3px solid #3498db',
                   borderRadius: '50%',
-                  animation: 'spin 1s linear infinite',
                   marginBottom: '10px',
                 }}
               />
-              <style>
-                {`
-                  @keyframes spin {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
-                  }
-                `}
-              </style>
               <div style={{ fontSize: '12px', color: '#666' }}>Loading...</div>
             </div>
           )}

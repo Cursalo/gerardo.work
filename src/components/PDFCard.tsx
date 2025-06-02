@@ -52,8 +52,8 @@ export const PDFCard: React.FC<PDFCardProps> = ({
     }
   }, [title, position, registerObject, unregisterObject]);
 
-  // Check for overlapping with other objects
-  useFrame(() => {
+  // Check for overlapping with other objects and handle camera facing
+  useFrame((state) => {
     if (groupRef.current) {
       const worldPosition = new THREE.Vector3();
       groupRef.current.getWorldPosition(worldPosition);
@@ -61,6 +61,30 @@ export const PDFCard: React.FC<PDFCardProps> = ({
       const isOverlappingNow = checkOverlap(worldPosition);
       if (isOverlappingNow !== isOverlapping) {
         setIsOverlapping(isOverlappingNow);
+      }
+      
+      // Face the camera smoothly
+      const camera = state.camera;
+      const cardPosition = new THREE.Vector3(position[0], position[1], position[2]);
+      const cameraPosition = camera.position.clone();
+      
+      // Calculate direction from card to camera
+      const direction = new THREE.Vector3().subVectors(cameraPosition, cardPosition);
+      direction.y = 0; // Only rotate on Y axis
+      direction.normalize();
+      
+      // Calculate target rotation to face camera
+      const targetRotationY = Math.atan2(direction.x, direction.z);
+      
+      // Smooth interpolation to target rotation
+      if (hovered) {
+        // Add gentle wobble when hovered
+        const time = state.clock.elapsedTime;
+        const wobble = Math.sin(time * 2) * 0.02;
+        groupRef.current.rotation.y += (targetRotationY + wobble - groupRef.current.rotation.y) * 0.1;
+      } else {
+        // Smoothly face camera
+        groupRef.current.rotation.y += (targetRotationY - groupRef.current.rotation.y) * 0.05;
       }
     }
   });
@@ -113,8 +137,8 @@ export const PDFCard: React.FC<PDFCardProps> = ({
       onPointerOut={() => updateHoverState(false)}
       onClick={handleClick}
     >
-      {/* PDF Card Base */}
-      <mesh 
+      {/* PDF Card Base - temporarily disabled to debug duplicates */}
+      {/* <mesh 
         ref={meshRef} 
         castShadow 
         receiveShadow
@@ -127,7 +151,7 @@ export const PDFCard: React.FC<PDFCardProps> = ({
           metalness={0.2}
           roughness={0.3}
         />
-      </mesh>
+      </mesh> */}
       
       {/* PDF Thumbnail and Viewer */}
       <Html

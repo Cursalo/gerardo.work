@@ -1,10 +1,7 @@
-import { useState, useRef, useContext, useEffect } from 'react';
+import { useState, useRef, useMemo, useCallback } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { Mesh, Group, Vector3 } from 'three';
-import { VisibilityContext } from './Scene';
-import { useWorld } from '../context/WorldContext';
-import { useInteraction } from '../context/InteractionContext';
 
 interface VideoCardProps {
   id: number;
@@ -19,7 +16,7 @@ interface VideoCardProps {
  * VideoCard component
  * 
  * Displays video content in 3D space with hover effects and interactions.
- * Optimized for crosshair interaction through the center of the screen.
+ * Optimized for performance and reduced render loops.
  */
 export const VideoCard: React.FC<VideoCardProps> = ({
   id,
@@ -31,7 +28,9 @@ export const VideoCard: React.FC<VideoCardProps> = ({
 }) => {
   const [hovered, setHovered] = useState(false);
   const [isPlaying, setIsPlaying] = useState(true);
-  const [isOverlapping, setIsOverlapping] = useState(false);
+  const [videoError, setVideoError] = useState(false);
+  const [videoLoaded, setVideoLoaded] = useState(false);
+  
   const groupRef = useRef<Group>(null);
   const meshRef = useRef<Mesh>(null);
   const videoRef = useRef<HTMLIFrameElement>(null);
@@ -39,69 +38,44 @@ export const VideoCard: React.FC<VideoCardProps> = ({
   // Get camera from three.js context
   const { camera } = useThree();
   
-  // Get visibility tools from context
-  const { registerPosition, checkOverlap } = useContext(VisibilityContext);
+  // Calculate video dimensions using 16:9 aspect ratio for better video display
+  const videoDimensions = useMemo(() => {
+    const baseWidth = 3.2; // Increased for better visibility
+    const aspectRatio = 16 / 9;
+    return {
+      width: baseWidth,
+      height: baseWidth / aspectRatio,
+      frameWidth: baseWidth * 1.05,
+      frameHeight: (baseWidth / aspectRatio) * 1.05
+    };
+  }, []);
 
-  // Get the setter from context
-  const { setCurrentWorldId } = useWorld();
-  const { hoveredObject } = useInteraction();
-
-  // Generate a stable ID for this card for interaction context
-  const cardInstanceId = useRef(`videocard-${id}-${Math.random().toString(36).substring(7)}`).current;
-  
-  // Old idRef for visibility context, can be kept or merged if logic allows
-  const visibilityIdRef = useRef<number>(Math.floor(Math.random() * 10000)); 
-
-  // Register position and check for overlaps
-  useEffect(() => {
-    registerPosition(visibilityIdRef.current, position);
-  }, [position, registerPosition]);
-  
-  // Set this object as interactive for raycasting and crosshair interaction
-  useEffect(() => {
-    if (meshRef.current) {
-      // Mark this object as interactive for the raycaster
-      meshRef.current.userData = {
-        ...meshRef.current.userData,
-        interactive: true,
-        id: cardInstanceId, // Use unique instance ID for hover detection
-        name: title, // Use card title for identification
-        type: 'video_card', // Specific type for this card
-        action: 'navigate_to_project_world', // Define a clear action
-        worldIdToNavigate: `project-world-${id}`, // Data for the action
-        videoUrl: videoUrl, // Include other relevant data if needed
-        description: description
-      };
-      // Attach click handler - REMOVED - Parent WorldObject handles clicks or InteractionContext
-      // meshRef.current.userData.onClick = handleClick; // This should be handled by InteractionContext based on action
-    }
-  }, [id, title, videoUrl, description, cardInstanceId]); // Dependencies for userData
-  
-  // Update hover state based on InteractionContext
-  useEffect(() => {
-    const isHoveredByCrosshair = hoveredObject?.userData?.id === cardInstanceId;
-    if (hovered !== isHoveredByCrosshair) { // Only update if state changes
-        updateHoverState(isHoveredByCrosshair);
-    }
-  }, [hoveredObject, cardInstanceId, hovered]); // Added hovered to dependencies to avoid stale closure in updateHoverState if it relied on it
-
-  // Handle hover tracking internally
-  const updateHoverState = (isHovered: boolean) => {
-    setHovered(isHovered);
+  // Enhanced URL resolution for mobile compatibility with proper encoding
+  const resolvedVideoUrl = useMemo(() => {
+    if (!videoUrl) return '';
     
-    // Apply scale effect on hover
-    if (groupRef.current) {
-      const targetScale = isHovered ? 1.15 : 1.0;
-      groupRef.current.scale.set(targetScale, targetScale, targetScale);
+    // If it's already a full URL, return as-is
+    if (videoUrl.startsWith('http://') || videoUrl.startsWith('https://')) {
+      return videoUrl;
     }
-  };
-  
-  // Calculate video dimensions using 4:3 aspect ratio
-  const width = 200;
-  const height = width * (3/4); // 4:3 aspect ratio
+    
+    // If it's a relative URL from public directory, encode spaces and special characters
+    if (videoUrl.startsWith('/projects/') || videoUrl.startsWith('/assets/') || videoUrl.startsWith('/')) {
+      return videoUrl.split('/').map(segment => segment ? encodeURIComponent(segment) : segment).join('/');
+    }
+    
+    // If it's just a path without leading /, add it and encode
+    if (!videoUrl.startsWith('/') && !videoUrl.includes('://')) {
+      return `/${videoUrl}`.split('/').map(segment => segment ? encodeURIComponent(segment) : segment).join('/');
+    }
+    
+    return videoUrl;
+  }, [videoUrl]);
 
   // Extract YouTube video ID from URL or handle other video types
-  const getVideoEmbedUrl = (url: string) => {
+  const videoEmbedUrl = useMemo(() => {
+    const url = resolvedVideoUrl;
+    
     // YouTube URL handling
     if (url.includes('youtube.com') || url.includes('youtu.be')) {
       let videoId = '';
@@ -130,148 +104,121 @@ export const VideoCard: React.FC<VideoCardProps> = ({
       }
     }
     
-    // Direct video file or other video URL - can be played directly
+    // Direct video file or other video URL
     return url;
-  };
+  }, [resolvedVideoUrl]);
 
   // Check if URL is a direct video file
-  const isDirectVideo = (url: string) => {
+  const isDirectVideo = useMemo(() => {
+    const url = resolvedVideoUrl;
     const videoExtensions = ['.mp4', '.webm', '.mov', '.ogg', '.avi', '.MP4', '.WEBM', '.MOV'];
     return videoExtensions.some(ext => url.toLowerCase().endsWith(ext.toLowerCase())) || 
            (url.startsWith('blob:') || url.startsWith('data:video/'));
-  };
-
-  // Enhanced URL resolution for mobile compatibility with proper encoding
-  const getResolvedVideoUrl = (url: string) => {
-    if (!url) return '';
-    
-    // If it's already a full URL, return as-is
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      return url;
-    }
-    
-    // If it's a relative URL from public directory, encode spaces and special characters
-    if (url.startsWith('/projects/') || url.startsWith('/assets/') || url.startsWith('/')) {
-      return url.split('/').map(segment => segment ? encodeURIComponent(segment) : segment).join('/');
-    }
-    
-    // If it's just a path without leading /, add it and encode
-    if (!url.startsWith('/') && !url.includes('://')) {
-      return `/${url}`.split('/').map(segment => segment ? encodeURIComponent(segment) : segment).join('/');
-    }
-    
-    return url;
-  };
-
-  // Get the properly resolved video URL
-  const resolvedVideoUrl = getResolvedVideoUrl(videoUrl);
+  }, [resolvedVideoUrl]);
 
   // Handle video loading errors
-  const [videoError, setVideoError] = useState(false);
-  const [videoLoaded, setVideoLoaded] = useState(false);
-  
-  const handleVideoError = () => {
+  const handleVideoError = useCallback(() => {
     console.warn(`Failed to load video: ${resolvedVideoUrl}`);
     setVideoError(true);
-  };
+    setVideoLoaded(false);
+  }, [resolvedVideoUrl]);
   
-  const handleVideoLoad = () => {
+  const handleVideoLoad = useCallback(() => {
     setVideoLoaded(true);
     setVideoError(false);
-  };
+  }, []);
 
+  // Handle hover events
+  const handlePointerEnter = useCallback(() => {
+    setHovered(true);
+    document.body.style.cursor = 'pointer';
+  }, []);
+
+  const handlePointerLeave = useCallback(() => {
+    setHovered(false);
+    document.body.style.cursor = 'default';
+  }, []);
+
+  // Handle click for video playback
+  const handleClick = useCallback(() => {
+    if (resolvedVideoUrl) {
+      window.open(resolvedVideoUrl, '_blank');
+    }
+  }, [resolvedVideoUrl]);
+
+  // Optimized floating animation
   useFrame((state) => {
     if (groupRef.current) {
-      // Floating animation
-      groupRef.current.position.y = position[1] + Math.sin(state.clock.elapsedTime * 0.5 + position[0]) * 0.1;
+      const time = state.clock.elapsedTime;
+      const baseY = position[1];
+      
+      // Gentle floating animation
+      const floatOffset = Math.sin(time * 0.5 + position[0] * 0.2) * 0.1;
+      groupRef.current.position.y = baseY + floatOffset;
       
       // Keep fixed position in world space
       groupRef.current.position.x = position[0];
       groupRef.current.position.z = position[2];
       
-      // Face the camera when not hovered
-      if (camera && !hovered) {
-        const dirToCamera = new Vector3().subVectors(
-          new Vector3(camera.position.x, groupRef.current.position.y, camera.position.z),
-          groupRef.current.position
-        ).normalize();
+      // Face the camera smoothly
+      if (camera) {
+        const cardPosition = new Vector3(position[0], position[1], position[2]);
+        const cameraPosition = camera.position.clone();
         
-        const targetRotationY = Math.atan2(dirToCamera.x, dirToCamera.z);
-        groupRef.current.rotation.y += (targetRotationY - groupRef.current.rotation.y) * 0.05;
+        // Calculate direction from card to camera
+        const direction = new Vector3().subVectors(cameraPosition, cardPosition);
+        direction.y = 0; // Only rotate on Y axis
+        direction.normalize();
+        
+        // Calculate target rotation to face camera
+        const targetRotationY = Math.atan2(direction.x, direction.z);
+        
+        // Smooth interpolation with different speeds for hover state
+        if (hovered) {
+          // Add slight wobble when hovered
+          const wobble = Math.sin(time * 2) * 0.01;
+          groupRef.current.rotation.y += (targetRotationY + wobble - groupRef.current.rotation.y) * 0.08;
+        } else {
+          // Smoothly face camera
+          groupRef.current.rotation.y += (targetRotationY - groupRef.current.rotation.y) * 0.04;
+        }
       }
       
-      // Add slight wobble when hovered
-      if (hovered) {
-        const wobble = Math.sin(state.clock.elapsedTime * 2) * 0.03;
-        groupRef.current.rotation.y += (wobble - groupRef.current.rotation.y * 0.1) * 0.1;
-      }
-      
-      // Check if this card is overlapping with another and update state
-      const currentPos: [number, number, number] = [
-        groupRef.current.position.x,
-        groupRef.current.position.y,
-        groupRef.current.position.z
-      ];
-      const overlapping = checkOverlap(visibilityIdRef.current, currentPos);
-      if (overlapping !== isOverlapping) {
-        setIsOverlapping(overlapping);
-      }
+      // Smooth scaling on hover
+      const targetScale = hovered ? 1.05 : 1.0; // Reduced scale effect
+      const currentScale = groupRef.current.scale.x;
+      const newScale = currentScale + (targetScale - currentScale) * 0.1;
+      groupRef.current.scale.setScalar(newScale);
     }
   });
 
-  // Handle click interaction - REMOVED - Parent WorldObject handles clicks
-  // const handleClick = () => {
-    // Construct the project world ID
-    // const projectWorldId = `project-world-${id}`;
-    // console.log(`VideoCard clicked: Navigating to ${projectWorldId}`);
-    // Set the current world ID in the context to trigger navigation
-    // setCurrentWorldId(projectWorldId);
-    // We might remove the isPlaying toggle if navigation is the primary action
-    // setIsPlaying(!isPlaying);
-  // };
 
-  const getScale = () => {
-    if (hovered) return 1.2;
-    if (!camera) return 1;
-    
-    const distance = new Vector3(position[0], position[1], position[2])
-      .distanceTo(camera.position);
-    
-    if (distance < 8) {
-      return 1.1 + ((8 - distance) / 8) * 0.1;
-    } else if (distance < 20) {
-      return 0.9 + ((20 - distance) / 12) * 0.2;
-    } else {
-      return Math.max(0.7, 0.9 - ((distance - 20) / 40) * 0.2);
-    }
-  };
-
-  // Calculate frame dimensions
-  const frameWidth = width * 1.1;
-  const frameHeight = height * 1.2;
 
   return (
     <group 
       ref={groupRef}
       position={[position[0], position[1], position[2]]}
       rotation={rotation}
-      scale={getScale()}
+
+      onPointerEnter={handlePointerEnter}
+      onPointerLeave={handlePointerLeave}
+      onClick={handleClick}
     >
-      {/* Card frame */}
-      <mesh 
+      {/* Card frame - temporarily disabled to debug duplicates */}
+      {/* <mesh 
         ref={meshRef} 
         castShadow 
         receiveShadow
       >
-        <boxGeometry args={[frameWidth / 100, frameHeight / 100, 0.05]} />
+        <boxGeometry args={[videoDimensions.frameWidth, videoDimensions.frameHeight, 0.05]} />
         <meshStandardMaterial 
           color={hovered ? "#ffffff" : "#f0f0f0"} 
-          metalness={0.7}
-          roughness={0.2}
-          emissive={hovered ? "#ffffff" : "#aaaaaa"}
-          emissiveIntensity={hovered ? 0.5 : 0.2}
+          metalness={0.1}
+          roughness={0.4}
+          emissive={hovered ? "#ffffff" : "#e0e0e0"}
+          emissiveIntensity={hovered ? 0.3 : 0.1}
         />
-      </mesh>
+      </mesh> */}
       
       {/* Video content */}
       <Html
@@ -279,8 +226,8 @@ export const VideoCard: React.FC<VideoCardProps> = ({
         distanceFactor={8}
         position={[0, 0, 0.03]}
         style={{
-          width: `${width}px`,
-          height: `${height}px`,
+          width: `${videoDimensions.width * 100}px`,
+          height: `${videoDimensions.height * 100}px`,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -301,28 +248,35 @@ export const VideoCard: React.FC<VideoCardProps> = ({
             borderRadius: '12px',
             overflow: 'hidden',
             pointerEvents: 'none',
+            backgroundColor: '#000',
           }}
         >
           {/* Clean floating title */}
           <div 
             style={{ 
               position: 'absolute',
-              top: '-30px',
+              top: '-35px',
               left: '0',
               right: '0',
-              fontSize: '16px', 
-              fontWeight: '500',
-              color: hovered || isOverlapping ? '#ffffff' : '#333333',
+              fontSize: '14px', 
+              fontWeight: '600',
+              color: '#333333',
               textAlign: 'center',
-              padding: '5px 0',
+              padding: '6px 12px',
               width: '100%',
               zIndex: 10,
               fontFamily: 'Helvetica, Arial, sans-serif',
-              letterSpacing: '0.5px',
-              textShadow: hovered || isOverlapping
-                ? '0 2px 4px rgba(0,0,0,0.4)' 
-                : '0 1px 2px rgba(255,255,255,0.8), 0 1px 3px rgba(0,0,0,0.2)',
-              transition: 'color 0.3s ease, text-shadow 0.3s ease',
+              letterSpacing: '0.3px',
+              backgroundColor: 'rgba(255,255,255,0.9)',
+              borderRadius: '8px',
+              backdropFilter: 'blur(4px)',
+              transform: hovered ? 'scale(1.05)' : 'scale(1)',
+              transition: 'all 0.3s ease',
+              maxWidth: '90%',
+              margin: '0 auto',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
             }}
           >
             {title}
@@ -332,30 +286,31 @@ export const VideoCard: React.FC<VideoCardProps> = ({
             // Error state - show thumbnail or fallback
             <div
               style={{
-                width: `${width}px`,
-                height: `${height}px`,
-                backgroundColor: '#f0f0f0',
+                width: '100%',
+                height: '100%',
+                backgroundColor: '#1a1a1a',
                 borderRadius: '12px',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                border: '2px dashed #ccc',
-                color: '#666'
+                border: '2px dashed #444',
+                color: '#ccc'
               }}
             >
-              <div style={{ fontSize: '14px', textAlign: 'center', padding: '10px' }}>
-                <div>⚠️ Video unavailable</div>
-                <div style={{ fontSize: '12px', marginTop: '5px' }}>
-                  {title}
-                </div>
+              <div style={{ fontSize: '32px', marginBottom: '12px' }}>📹</div>
+              <div style={{ fontSize: '14px', textAlign: 'center', padding: '10px', color: '#999' }}>
+                Video unavailable
+              </div>
+              <div style={{ fontSize: '12px', marginTop: '5px', color: '#666' }}>
+                Click to open original
               </div>
             </div>
-          ) : isDirectVideo(resolvedVideoUrl) ? (
+          ) : isDirectVideo ? (
             <video
               src={resolvedVideoUrl}
-              width={width}
-              height={height}
+              width={videoDimensions.width * 100}
+              height={videoDimensions.height * 100}
               autoPlay
               muted
               loop
@@ -366,33 +321,34 @@ export const VideoCard: React.FC<VideoCardProps> = ({
               style={{ 
                 border: 'none',
                 borderRadius: '12px',
-                width: `${width}px`,
-                height: `${height}px`,
-                boxShadow: hovered ? '0 0 20px rgba(255,255,255,0.5)' : '0 5px 15px rgba(0,0,0,0.1)',
+                width: '100%',
+                height: '100%',
+                boxShadow: hovered ? '0 0 20px rgba(255,255,255,0.3)' : '0 5px 15px rgba(0,0,0,0.1)',
                 transition: 'all 0.3s ease',
-                pointerEvents: 'auto',
+                pointerEvents: 'none',
                 objectFit: 'cover',
-                backgroundColor: '#f0f0f0'
+                backgroundColor: '#000'
               }}
             />
           ) : (
             <iframe
               ref={videoRef}
-              src={getVideoEmbedUrl(resolvedVideoUrl)}
-              width={width}
-              height={height}
+              src={videoEmbedUrl}
+              width={videoDimensions.width * 100}
+              height={videoDimensions.height * 100}
               style={{ 
                 border: 'none',
                 borderRadius: '12px',
-                width: `${width}px`,
-                height: `${height}px`,
-                boxShadow: hovered ? '0 0 20px rgba(255,255,255,0.5)' : '0 5px 15px rgba(0,0,0,0.1)',
+                width: '100%',
+                height: '100%',
+                boxShadow: hovered ? '0 0 20px rgba(255,255,255,0.3)' : '0 5px 15px rgba(0,0,0,0.1)',
                 transition: 'all 0.3s ease',
-                pointerEvents: 'auto',
+                pointerEvents: 'none',
                 overflow: 'hidden'
               }}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
+              title={title}
             />
           )}
           
@@ -403,21 +359,49 @@ export const VideoCard: React.FC<VideoCardProps> = ({
               bottom: '0',
               left: '0',
               right: '0',
-              fontSize: '14px', 
+              fontSize: '12px', 
               fontWeight: '500',
               color: '#ffffff',
               textAlign: 'center',
-              padding: '8px 10px',
-              background: 'rgba(0,0,0,0.6)',
+              padding: '12px 16px',
+              background: 'linear-gradient(transparent, rgba(0,0,0,0.8))',
               backdropFilter: 'blur(4px)',
               opacity: hovered ? 1 : 0,
               transform: `translateY(${hovered ? '0' : '20px'})`,
               transition: 'opacity 0.3s ease, transform 0.3s ease',
               pointerEvents: 'none',
+              borderBottomLeftRadius: '12px',
+              borderBottomRightRadius: '12px',
             }}
           >
-            {description || "Click to play/pause"}
+            {description || "Click to watch video"}
           </div>
+
+          {/* Play indicator */}
+          {!videoError && (
+            <div
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: '48px',
+                height: '48px',
+                backgroundColor: 'rgba(255,255,255,0.9)',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: hovered ? 1 : 0.7,
+                transition: 'all 0.3s ease',
+                fontSize: '20px',
+                color: '#333',
+                backdropFilter: 'blur(4px)',
+              }}
+            >
+              ▶
+            </div>
+          )}
         </div>
       </Html>
     </group>
