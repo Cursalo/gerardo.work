@@ -289,31 +289,22 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
       return texture;
     };
 
-    // Handle different media types
+    // Simplified handling - start with placeholder immediately for better UX
     if (mediaType === 'image') {
-      // Progressive loading for images
-      if (textureQuality === 'loading_placeholder') {
+      // For images, try to load directly first
+      if (placeholderUrl) {
         loadImageTexture(placeholderUrl, true);
-      } else if (textureQuality === 'loaded_placeholder' && fullResUrl !== placeholderUrl) {
-        setTimeout(() => loadImageTexture(fullResUrl, false), 100);
       }
-    } else if (mediaType === 'video') {
-      // For videos, try to get thumbnail first, then fallback to placeholder
-      if (textureQuality === 'loading_placeholder') {
-        if (placeholderUrl.includes('youtube') || placeholderUrl.includes('youtu.be')) {
-          loadImageTexture(placeholderUrl, false);
-        } else {
-          // Create video placeholder
-          const placeholderTex = createPlaceholderTexture(mediaType, displayTitle);
-          setCurrentTexture(placeholderTex);
-          setTextureQuality('loaded_full');
-        }
-      }
-    } else if (mediaType === 'pdf') {
-      // For PDFs, create a nice placeholder (could be enhanced with PDF.js in the future)
+    } else {
+      // For non-images (video, pdf), create placeholder immediately
       const placeholderTex = createPlaceholderTexture(mediaType, displayTitle);
       setCurrentTexture(placeholderTex);
       setTextureQuality('loaded_full');
+      
+      // For videos, also try to load thumbnail
+      if (mediaType === 'video' && placeholderUrl && (placeholderUrl.includes('youtube') || placeholderUrl.includes('youtu.be'))) {
+        setTimeout(() => loadImageTexture(placeholderUrl, false), 100);
+      }
     }
     
     return () => {
@@ -322,7 +313,7 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
         setTimeout(() => currentTexture.dispose(), 100);
       }
     };
-  }, [textureQuality, placeholderUrl, fullResUrl, mediaType, displayTitle]);
+  }, [mediaType, placeholderUrl, displayTitle]); // Simplified dependencies
 
   // Calculate dimensions based on aspect ratio with better proportions
   const baseSize = 4.0; // Increased for better visibility
@@ -371,38 +362,64 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
     }
   };
 
+  // Early return if no texture or invalid data
+  if (!currentTexture || !isVisible) {
+    console.log('MediaCard early return:', mediaObject?.id, 'texture:', !!currentTexture, 'visible:', isVisible);
+    return null;
+  }
+
   return (
-    <group 
-      ref={groupRef}
-      position={mediaObject.position || [0, 3, 0]}
-      rotation={mediaObject.rotation || [0, 0, 0]}
-      onPointerOver={() => setHovered(true)}
-      onPointerOut={() => setHovered(false)}
-      onClick={handleClick}
-    >
-      {/* Ultra-thin rounded card with perfect texture mapping */}
-      <RoundedBox
+    <group ref={groupRef} position={mediaObject.position || [0, 3, 0]} rotation={mediaObject.rotation || [0, 0, 0]} visible={isVisible}>
+      {/* Main card mesh with proper geometry */}
+      <mesh 
         ref={meshRef}
-        args={[cardWidth, cardHeight, cardDepth]}
-        radius={0.03} // Smaller radius for cleaner look
-        smoothness={6}
+        onPointerEnter={(e) => {
+          e.stopPropagation();
+          setHovered(true);
+        }}
+        onPointerLeave={(e) => {
+          e.stopPropagation();
+          setHovered(false);
+        }}
+        onClick={handleClick}
         castShadow
         receiveShadow
       >
-        <meshStandardMaterial
+        {/* Use BoxGeometry for better reliability */}
+        <boxGeometry args={[cardWidth, cardHeight, 0.05]} />
+        <meshStandardMaterial 
           map={currentTexture}
+          side={THREE.DoubleSide}
           transparent={false}
-          side={THREE.FrontSide}
-          color={textureQuality === 'error' ? '#f8f9fa' : '#ffffff'}
-          metalness={0.05}
-          roughness={0.1}
-          envMapIntensity={0.3}
-          // Ensure proper UV mapping
-          polygonOffset={true}
-          polygonOffsetFactor={-1}
-          polygonOffsetUnits={-1}
+          opacity={1}
+          metalness={0.1}
+          roughness={0.8}
         />
-      </RoundedBox>
+      </mesh>
+
+      {/* Loading spinner overlay for loading states */}
+      {textureQuality.includes('loading') && (
+        <group position={[0, 0, 0.03]}>
+          <mesh>
+            <ringGeometry args={[0.8, 1.2, 32]} />
+            <meshBasicMaterial color="#007bff" transparent opacity={0.8} />
+          </mesh>
+          <mesh rotation={[0, 0, Date.now() * 0.005]}>
+            <ringGeometry args={[1.0, 1.1, 8]} />
+            <meshBasicMaterial color="#0056b3" />
+          </mesh>
+        </group>
+      )}
+
+      {/* Subtle border for better definition */}
+      <mesh position={[0, 0, 0.026]}>
+        <ringGeometry args={[Math.max(cardWidth, cardHeight) * 0.707, Math.max(cardWidth, cardHeight) * 0.715, 32]} />
+        <meshBasicMaterial 
+          color={hovered ? "#007bff" : "#ffffff"} 
+          transparent 
+          opacity={hovered ? 0.8 : 0.6} 
+        />
+      </mesh>
 
       {/* Clean title with better spacing and visibility */}
       <Text
@@ -413,7 +430,6 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
         anchorY="top"
         maxWidth={cardWidth * 1.2}
         lineHeight={1.2}
-        font="/fonts/Inter-Regular.woff" // Use system font fallback
       >
         {displayTitle}
       </Text>
@@ -428,71 +444,22 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
       >
         {mediaType === 'pdf' ? '📄' : mediaType === 'video' ? '▶' : '🖼'}
       </Text>
-
-      {/* Subtle hover glow effect */}
-      {hovered && (
-        <RoundedBox
-          args={[cardWidth + 0.05, cardHeight + 0.05, cardDepth + 0.005]}
-          radius={0.035}
-          smoothness={6}
-          position={[0, 0, -0.005]}
-        >
-          <meshBasicMaterial 
-            color="#4facfe" 
-            transparent 
-            opacity={0.2}
-            side={THREE.BackSide}
-          />
-        </RoundedBox>
-      )}
-
-      {/* Loading state with better styling */}
-      {textureQuality === 'loading_placeholder' && (
-        <Html position={[0, 0, cardDepth + 0.1]} center>
-          <div style={{
-            color: '#495057',
-            fontSize: '14px',
-            textAlign: 'center',
-            background: 'rgba(248,249,250,0.95)',
-            padding: '12px 16px',
-            borderRadius: '8px',
-            fontFamily: 'system-ui, -apple-system, sans-serif',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            border: '1px solid rgba(0,0,0,0.1)'
-          }}>
-            <div style={{ 
-              width: '20px', 
-              height: '20px', 
-              border: '2px solid #dee2e6',
-              borderTop: '2px solid #007bff',
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite',
-              margin: '0 auto 8px'
-            }}></div>
-            Loading {mediaType}...
-          </div>
-        </Html>
-      )}
     </group>
   );
 };
 
 // Scene content component for first-person integration
 const SceneContent: React.FC<{ allMediaObjects: any[], projectData: ProjectData }> = ({ allMediaObjects, projectData }) => {
-  // Register FP interaction hook
-  useFirstPersonInteractions();
-  
-  // Debug logging
-  console.log(`SceneContent: Rendering ${allMediaObjects.length} media objects`);
-  
-  // Create striped floor texture
+  console.log('SceneContent: Rendering', allMediaObjects.length, 'media objects');
+
+  // Create floor texture with subtle stripes
   const floorTexture = useMemo(() => {
     const canvas = document.createElement('canvas');
     canvas.width = 512;
     canvas.height = 512;
     const ctx = canvas.getContext('2d')!;
     
-    // Base white
+    // Clean white base
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, 512, 512);
     
