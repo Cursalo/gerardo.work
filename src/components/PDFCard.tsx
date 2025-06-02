@@ -171,6 +171,16 @@ export const PDFCard: React.FC<PDFCardProps> = ({
     }
   }, [pdfUrl, onClick]);
 
+  // Update userData with onClick function after handleClick is defined
+  useEffect(() => {
+    if (groupRef.current && groupRef.current.userData) {
+      groupRef.current.userData.onClick = handleClick;
+      if (meshRef.current) {
+        meshRef.current.userData.onClick = handleClick;
+      }
+    }
+  }, [handleClick]);
+
   // Load and process PDF
   useEffect(() => {
     const loadPDF = async () => {
@@ -345,7 +355,7 @@ export const PDFCard: React.FC<PDFCardProps> = ({
         ref={meshRef}
         position={[0, 0, 0]}
       >
-        <planeGeometry args={[(isMobile ? 3.4 : 3.2) * 3.0, (isMobile ? 2.6 : 2.4) * 3.0]} />
+        <planeGeometry args={[(isMobile ? 3.4 : 3.2) * 1.5, (isMobile ? 2.6 : 2.4) * 1.5]} />
         <meshBasicMaterial transparent opacity={0} />
       </mesh>
 
@@ -637,28 +647,13 @@ export const PDFCard: React.FC<PDFCardProps> = ({
                 style={{
                   fontSize: '12px',
                   fontWeight: '600',
-                  color: 'rgba(255,255,255,0.9)',
+                  color: 'rgba(255,255,255,0.6)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
                 }}
               >
-                <span>Click to open</span>
-                <svg 
-                  width="14" 
-                  height="14" 
-                  viewBox="0 0 24 24" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  strokeWidth="2"
-                  style={{
-                    transform: hovered ? 'translateX(2px)' : 'translateX(0)',
-                    transition: 'transform 0.3s ease',
-                  }}
-                >
-                  <path d="M7 17L17 7"/>
-                  <path d="M7 7h10v10"/>
-                </svg>
+                <span>PDF Document</span>
               </div>
               
               <div

@@ -75,9 +75,8 @@ const InteractionButton: React.FC = () => {
   const baseStyle = isMobile ? { ...buttonStyle, ...mobileButtonStyle } : buttonStyle;
   const currentStyle = isVisible ? { ...baseStyle, ...activeStyle } : baseStyle;
 
-  // Set button text based on the type of interactive object
+  // Set button text - always "Interact" for media cards, specific text for NPCs/special objects
   let buttonText = "Interact";
-  let interactionKey = "Click"; // Default interaction key
   
   if (hoveredObject?.userData) {
     const userData = hoveredObject.userData;
@@ -86,8 +85,9 @@ const InteractionButton: React.FC = () => {
       buttonText = "Chat with Technoclaw";
     } else if (userData.type === 'link' && userData.url && userData.url.includes('soundcloud.com')) {
       buttonText = "Listen on SoundCloud";
-    } else if (userData.title) {
-      buttonText = userData.title;
+    } else {
+      // For all media cards and other objects, just show "Interact"
+      buttonText = "Interact";
     }
   }
 

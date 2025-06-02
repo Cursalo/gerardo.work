@@ -140,6 +140,16 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
     }
   }, [url, onClick]);
 
+  // Update userData with onClick function after handleClick is defined
+  useEffect(() => {
+    if (groupRef.current && groupRef.current.userData) {
+      groupRef.current.userData.onClick = handleClick;
+      if (meshRef.current) {
+        meshRef.current.userData.onClick = handleClick;
+      }
+    }
+  }, [handleClick]);
+
   // Extract domain and get site info
   useEffect(() => {
     const extractSiteInfo = async () => {
@@ -259,7 +269,7 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
         ref={meshRef}
         position={[0, 0, 0]}
       >
-        <planeGeometry args={[(isMobile ? 3.0 : 2.8) * 3.0, (isMobile ? 2.2 : 2.0) * 3.0]} />
+        <planeGeometry args={[(isMobile ? 3.0 : 2.8) * 1.5, (isMobile ? 2.2 : 2.0) * 1.5]} />
         <meshBasicMaterial transparent opacity={0} />
       </mesh>
 

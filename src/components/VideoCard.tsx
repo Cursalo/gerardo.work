@@ -158,6 +158,16 @@ export const VideoCard: React.FC<VideoCardProps> = ({
     }
   }, [resolvedVideoUrl]);
 
+  // Update userData with onClick function after handleClick is defined
+  useEffect(() => {
+    if (groupRef.current && groupRef.current.userData) {
+      groupRef.current.userData.onClick = handleClick;
+      if (meshRef.current) {
+        meshRef.current.userData.onClick = handleClick;
+      }
+    }
+  }, [handleClick]);
+
   // Check if URL is a direct video file
   const isDirectVideo = useMemo(() => {
     const url = resolvedVideoUrl;
@@ -257,7 +267,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({
         ref={meshRef}
         position={[0, 0, 0]}
       >
-        <planeGeometry args={[videoDimensions.width * 3.0, videoDimensions.height * 3.0]} />
+        <planeGeometry args={[videoDimensions.width * 1.5, videoDimensions.height * 1.5]} />
         <meshBasicMaterial transparent opacity={0} />
       </mesh>
 
@@ -344,7 +354,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({
                 Video unavailable
               </div>
               <div style={{ fontSize: '12px', marginTop: '5px', color: '#666' }}>
-                Click to open original
+                Video file
               </div>
             </div>
           ) : isDirectVideo ? (

@@ -11,9 +11,9 @@ const HOVER_START_EVENT = new Event('crosshair:hover:start');
 const HOVER_END_EVENT = new Event('crosshair:hover:end');
 const CLICK_EVENT = new Event('crosshair:click');
 
-// MASSIVELY increase the interaction distance for much better clicking experience
-const MOBILE_INTERACTION_DISTANCE = 300; // Very large for mobile accessibility
-const DESKTOP_INTERACTION_DISTANCE = 500; // Extremely large for desktop - can click from very far away
+// Reasonable interaction distances for better user experience
+const MOBILE_INTERACTION_DISTANCE = 50; // Reasonable range for mobile touch interaction
+const DESKTOP_INTERACTION_DISTANCE = 100; // Reasonable range for desktop clicks
 
 // --- DEBUG --- Add a counter for setHoveredObject calls
 let setHoveredObjectCallCount = 0;

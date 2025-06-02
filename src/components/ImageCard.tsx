@@ -120,6 +120,16 @@ export const ImageCard: React.FC<ImageCardProps> = ({
     }
   }, [resolvedImageUrl, onClick]);
 
+  // Update userData with onClick function after handleClick is defined
+  useEffect(() => {
+    if (groupRef.current && groupRef.current.userData) {
+      groupRef.current.userData.onClick = handleClick;
+      if (meshRef.current) {
+        meshRef.current.userData.onClick = handleClick;
+      }
+    }
+  }, [handleClick]);
+
   // Calculate proper card dimensions based on image aspect ratio
   const cardDimensions = useMemo(() => {
     let aspectRatio = 1.0; // Default square
@@ -247,7 +257,7 @@ export const ImageCard: React.FC<ImageCardProps> = ({
         ref={meshRef}
         position={[0, 0, 0]}
       >
-        <planeGeometry args={[cardDimensions.width * 3.0, cardDimensions.height * 3.0]} />
+        <planeGeometry args={[cardDimensions.width * 1.5, cardDimensions.height * 1.5]} />
         <meshBasicMaterial transparent opacity={0} />
       </mesh>
 
@@ -392,32 +402,7 @@ export const ImageCard: React.FC<ImageCardProps> = ({
         </div>
       </Html>
 
-      {/* Click indicator */}
-      {hovered && (
-        <Html
-          transform={false}
-          distanceFactor={6}
-          position={[0, cardDimensions.height/2 + 0.3, 0.02]}
-          style={{
-            pointerEvents: 'none',
-            opacity: hovered ? 1 : 0,
-            transition: 'opacity 0.3s ease',
-          }}
-        >
-          <div style={{
-            backgroundColor: 'rgba(0,0,0,0.8)',
-            color: '#fff',
-            padding: '4px 12px',
-            borderRadius: '16px',
-            fontSize: '11px',
-            fontWeight: 'bold',
-            textAlign: 'center',
-            whiteSpace: 'nowrap',
-          }}>
-            Click to open
-          </div>
-        </Html>
-      )}
+
 
     </group>
   );
