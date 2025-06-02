@@ -137,21 +137,18 @@ export const PDFCard: React.FC<PDFCardProps> = ({
       onPointerOut={() => updateHoverState(false)}
       onClick={handleClick}
     >
-      {/* PDF Card Base - temporarily disabled to debug duplicates */}
-      {/* <mesh 
-        ref={meshRef} 
-        castShadow 
-        receiveShadow
-      >
+      {/* Invisible collision mesh for proper depth testing and raycasting */}
+      <mesh ref={meshRef}>
         <boxGeometry args={[2, 2.8, 0.05]} />
-        <meshStandardMaterial 
-          color={hovered ? "#ffffff" : "#f0f0f0"}
-          emissive={hovered ? "#ffffff" : "#cccccc"}
-          emissiveIntensity={hovered ? 0.5 : 0.1}
-          metalness={0.2}
-          roughness={0.3}
+        <meshBasicMaterial 
+          transparent={true}
+          opacity={0}
+          side={2}
+          colorWrite={false}
+          depthWrite={true}
+          depthTest={true}
         />
-      </mesh> */}
+      </mesh>
       
       {/* PDF Thumbnail and Viewer */}
       <Html

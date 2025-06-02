@@ -191,18 +191,18 @@ export const ImageCard: React.FC<ImageCardProps> = ({
       onPointerLeave={handlePointerLeave}
       onClick={handleClick}
     >
-      {/* Card base - temporarily disabled to debug duplicates */}
-      {/* <mesh ref={meshRef} castShadow receiveShadow>
+      {/* Invisible collision mesh for proper depth testing and raycasting */}
+      <mesh ref={meshRef}>
         <planeGeometry args={[cardDimensions.width, cardDimensions.height]} />
-        <meshStandardMaterial 
-          color={hovered ? "#ffffff" : "#f8f8f8"}
-          emissive={hovered ? "#ffffff" : "#f0f0f0"}
-          emissiveIntensity={hovered ? 0.3 : 0.1}
+        <meshBasicMaterial 
+          transparent={true}
+          opacity={0}
           side={THREE.DoubleSide}
-          transparent={false}
-          opacity={1.0}
+          colorWrite={false}
+          depthWrite={true}
+          depthTest={true}
         />
-      </mesh> */}
+      </mesh>
       
       {/* Image content */}
       <Html

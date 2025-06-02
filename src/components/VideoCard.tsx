@@ -204,21 +204,18 @@ export const VideoCard: React.FC<VideoCardProps> = ({
       onPointerLeave={handlePointerLeave}
       onClick={handleClick}
     >
-      {/* Card frame - temporarily disabled to debug duplicates */}
-      {/* <mesh 
-        ref={meshRef} 
-        castShadow 
-        receiveShadow
-      >
+      {/* Invisible collision mesh for proper depth testing and raycasting */}
+      <mesh ref={meshRef}>
         <boxGeometry args={[videoDimensions.frameWidth, videoDimensions.frameHeight, 0.05]} />
-        <meshStandardMaterial 
-          color={hovered ? "#ffffff" : "#f0f0f0"} 
-          metalness={0.1}
-          roughness={0.4}
-          emissive={hovered ? "#ffffff" : "#e0e0e0"}
-          emissiveIntensity={hovered ? 0.3 : 0.1}
+        <meshBasicMaterial 
+          transparent={true}
+          opacity={0}
+          side={2}
+          colorWrite={false}
+          depthWrite={true}
+          depthTest={true}
         />
-      </mesh> */}
+      </mesh>
       
       {/* Video content */}
       <Html
