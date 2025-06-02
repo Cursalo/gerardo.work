@@ -63,7 +63,7 @@ const normalizeUrl = (url: string): string => {
 
 // Performance-optimized MediaCard with proper orientation and rounded corners
 const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
-  console.log('MediaCard rendering:', mediaObject?.id || 'no-id', mediaObject?.title || mediaObject?.name);
+  console.log('MediaCard rendering:', mediaObject?.id || 'no-id', mediaObject?.title || mediaObject?.name, 'type:', mediaObject?.type);
   const [hovered, setHovered] = useState(false);
   const [currentTexture, setCurrentTexture] = useState<THREE.Texture | null>(null);
   const [textureQuality, setTextureQuality] = useState<TextureQuality>('loading_placeholder');
@@ -73,6 +73,15 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
   const groupRef = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.Mesh>(null);
   const { camera } = useThree();
+
+  // Determine media type from URL and object data
+  const mediaType = useMemo(() => {
+    if (mediaObject.type) return mediaObject.type;
+    const url = mediaObject.url?.toLowerCase() || '';
+    if (url.includes('youtube') || url.includes('youtu.be') || url.endsWith('.mp4') || url.endsWith('.webm')) return 'video';
+    if (url.endsWith('.pdf')) return 'pdf';
+    return 'image';
+  }, [mediaObject.type, mediaObject.url]);
 
   // Memoize URLs and title
   const placeholderUrl = useMemo(() => mediaObject.thumbnail || mediaObject.url, [mediaObject.thumbnail, mediaObject.url]);
@@ -88,13 +97,18 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
     }
   });
 
-  // Simplified texture loading - always load
+  // Set default aspect ratio based on media type
   useEffect(() => {
-    
+    const defaultAR = getDefaultAspectRatio(mediaObject.url || '', mediaType);
+    setAspectRatio(defaultAR);
+  }, [mediaObject.url, mediaType]);
+
+  // Media-type specific texture loading
+  useEffect(() => {
     let isActive = true;
     const loader = new THREE.TextureLoader();
 
-    const loadTexture = async (urlToLoad: string, isPlaceholder: boolean) => {
+    const loadImageTexture = async (urlToLoad: string, isPlaceholder: boolean) => {
       if (!urlToLoad || !isActive) return;
       
       const actualUrlToLoad = normalizeUrl(urlToLoad);
@@ -129,16 +143,48 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
         setTextureQuality(isPlaceholder ? 'loaded_placeholder' : 'loaded_full');
 
       } catch (err) {
+        console.error('Error loading texture:', err);
         if (!isActive) return;
         setTextureQuality('error');
       }
     };
 
-    // Progressive loading: placeholder first, then full res
-    if (textureQuality === 'loading_placeholder') {
-      loadTexture(placeholderUrl, true);
-    } else if (textureQuality === 'loaded_placeholder' && fullResUrl !== placeholderUrl) {
-      setTimeout(() => loadTexture(fullResUrl, false), 100); // Small delay for performance
+    const createPlaceholderTexture = (type: string) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d')!;
+      
+      // Set background
+      ctx.fillStyle = type === 'pdf' ? '#e74c3c' : type === 'video' ? '#3498db' : '#95a5a6';
+      ctx.fillRect(0, 0, 256, 256);
+      
+      // Add icon
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 72px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const icon = type === 'pdf' ? 'PDF' : type === 'video' ? '▶' : '🖼';
+      ctx.fillText(icon, 128, 128);
+      
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.needsUpdate = true;
+      return texture;
+    };
+
+    // Handle different media types
+    if (mediaType === 'image') {
+      // Progressive loading for images
+      if (textureQuality === 'loading_placeholder') {
+        loadImageTexture(placeholderUrl, true);
+      } else if (textureQuality === 'loaded_placeholder' && fullResUrl !== placeholderUrl) {
+        setTimeout(() => loadImageTexture(fullResUrl, false), 100);
+      }
+    } else {
+      // For PDF and Video, create placeholder texture
+      const placeholderTex = createPlaceholderTexture(mediaType);
+      setCurrentTexture(placeholderTex);
+      setTextureQuality('loaded_full');
     }
     
     return () => {
@@ -147,12 +193,29 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
         setTimeout(() => currentTexture.dispose(), 100);
       }
     };
-  }, [textureQuality, placeholderUrl, fullResUrl]); // Removed isVisible dependency
+  }, [textureQuality, placeholderUrl, fullResUrl, mediaType]); // Added mediaType dependency
 
-  // Calculate dimensions based on aspect ratio
+  // Calculate dimensions based on aspect ratio (FIXED)
   const baseSize = 3.0;
-  const cardWidth = baseSize * Math.min(aspectRatio, 2.5); // Cap max width
-  const cardHeight = baseSize / Math.max(aspectRatio / 2.5, 1); // Cap max height
+  const maxWidth = 6.0; // Maximum width limit
+  const maxHeight = 4.0; // Maximum height limit
+  
+  let cardWidth, cardHeight;
+  
+  if (aspectRatio > 1) {
+    // Landscape: width is dominant
+    cardWidth = Math.min(baseSize * aspectRatio, maxWidth);
+    cardHeight = cardWidth / aspectRatio;
+  } else {
+    // Portrait: height is dominant  
+    cardHeight = Math.min(baseSize / aspectRatio, maxHeight);
+    cardWidth = cardHeight * aspectRatio;
+  }
+  
+  // Ensure minimum sizes
+  cardWidth = Math.max(cardWidth, 2.0);
+  cardHeight = Math.max(cardHeight, 1.5);
+  
   const cardDepth = 0.05;
 
   // Smooth floating animation
@@ -173,6 +236,7 @@ const MediaCard: React.FC<MediaCardProps> = ({ mediaObject }) => {
 
   const handleClick = () => {
     if (mediaObject.url) {
+      console.log(`Opening ${mediaType}: ${mediaObject.url}`);
       window.open(mediaObject.url, '_blank');
     }
   };
@@ -268,11 +332,6 @@ const SceneContent: React.FC<{ allMediaObjects: any[], projectData: ProjectData 
   // Debug logging
   console.log(`SceneContent: Rendering ${allMediaObjects.length} media objects`);
   
-  // Debug first few media objects
-  if (allMediaObjects.length > 0) {
-    console.log('First 3 media objects:', allMediaObjects.slice(0, 3));
-  }
-  
   // Create striped floor texture
   const floorTexture = useMemo(() => {
     const canvas = document.createElement('canvas');
@@ -318,7 +377,7 @@ const SceneContent: React.FC<{ allMediaObjects: any[], projectData: ProjectData 
       />
 
       {/* Clean white gallery environment */}
-      <Environment preset="sunset" background={false} />
+      <Environment preset="apartment" background={false} />
       
       {/* Force white background */}
       <color attach="background" args={['#ffffff']} />
@@ -366,13 +425,7 @@ const SceneContent: React.FC<{ allMediaObjects: any[], projectData: ProjectData 
         {allMediaObjects.length} media object{allMediaObjects.length !== 1 ? 's' : ''}
       </Text>
 
-      {/* Test cube to verify 3D rendering works */}
-      <mesh position={[5, 2, 0]}>
-        <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial color="#ff0000" />
-      </mesh>
-      
-      {/* Render all media objects - debugging */}
+      {/* Render all media objects */}
       {allMediaObjects.map((mediaObj, index) => (
         <MediaCard key={mediaObj.id || index} mediaObject={mediaObj} />
       ))}

@@ -122,11 +122,19 @@ const ProjectWindow = React.memo(({ project, position }: ProjectWindowProps) => 
     
     setClicked(true);
     
-    console.log("ProjectWindow clicked - navigating to project subworld");
+    console.log("🚀 ProjectWindow clicked - navigating to project subworld");
+    console.log("🚀 Project data:", { id: project.id, name: project.name });
+    console.log("🚀 Current URL:", window.location.href);
     
     // Use URL navigation instead of world context for consistency between localhost and GitHub
-    console.log(`Navigating to project: ${project.id} via URL`);
-    window.location.href = `/project/${project.id}`;
+    console.log(`🚀 Navigating to project: ${project.id} via URL`);
+    const targetUrl = `/project/${project.id}`;
+    console.log(`🚀 Target URL: ${targetUrl}`);
+    
+    // Add a small delay to ensure logging is visible
+    setTimeout(() => {
+      window.location.href = targetUrl;
+    }, 100);
     
     // Reset after a brief delay
     setTimeout(() => setClicked(false), 300);
