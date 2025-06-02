@@ -5,6 +5,7 @@ import { useChat } from '../context/ChatContext';
 import { useInteraction, type HoveredObject } from '../context/InteractionContext';
 import type { InteractionData } from '../context/InteractionContext';
 import useMobileDetection from './useMobileDetection';
+import { useGamepad } from './useGamepad';
 
 // Custom events for crosshair feedback
 const HOVER_START_EVENT = new Event('crosshair:hover:start');
@@ -42,6 +43,10 @@ function useFirstPersonInteractions() {
   const { isTouchDevice, isIOS } = useMobileDetection();
   
   const { showChat, openChat } = useChat();
+  
+  // Get gamepad state
+  const { gamepad, isConnected: gamepadConnected } = useGamepad();
+  const previousGamepadButtons = useRef({ A: false, X: false, B: false });
   
   // Store the original materials for objects to restore when no longer hovered
   const originalMaterials = useRef<Map<THREE.Object3D, THREE.Material | THREE.Material[]>>(new Map());
@@ -547,6 +552,63 @@ function useFirstPersonInteractions() {
     const frameCount = Math.floor(state.clock.elapsedTime * 60); // Approximate frame count
     if (frameCount % 3 !== 0) {
       return;
+    }
+    
+    // Handle gamepad button presses for interaction
+    if (gamepadConnected && gamepad && !showChat) {
+      // Check for A button press (primary interaction)
+      const aPressed = gamepad.buttons.A && !previousGamepadButtons.current.A;
+      // Check for X button press (secondary interaction)
+      const xPressed = gamepad.buttons.X && !previousGamepadButtons.current.X;
+      // Check for B button press (back/escape)
+      const bPressed = gamepad.buttons.B && !previousGamepadButtons.current.B;
+      
+      // Add debug logging for button states
+      if (gamepad.buttons.A) {
+        console.log('🎮 Gamepad A button is pressed', { 
+          current: gamepad.buttons.A, 
+          previous: previousGamepadButtons.current.A,
+          aPressed: aPressed
+        });
+      }
+      
+      // Update previous button states
+      previousGamepadButtons.current.A = gamepad.buttons.A;
+      previousGamepadButtons.current.X = gamepad.buttons.X;
+      previousGamepadButtons.current.B = gamepad.buttons.B;
+      
+      // Handle B button for back navigation (like escape key)
+      if (bPressed) {
+        if (document.pointerLockElement) {
+          document.exitPointerLock();
+        }
+      }
+      
+      // Handle A or X button for interaction
+      if ((aPressed || xPressed) && hoveredObject && !isInCooldown()) {
+        console.log(`[FPInteractions Gamepad] ${aPressed ? 'A' : 'X'} button pressed on:`, hoveredObject.name);
+        document.dispatchEvent(CLICK_EVENT);
+        
+        if (hoveredObject.userData.action === 'chat') {
+          console.log('[FPInteractions Gamepad] Opening chat with NPC');
+          openChat();
+        } else {
+          console.log('[FPInteractions Gamepad] Triggering interaction');
+          
+          // Detect if this is a media card interaction
+          const isMediaCard = hoveredObject.userData.objectType === 'image' || 
+                              hoveredObject.userData.objectType === 'pdf' || 
+                              hoveredObject.userData.objectType === 'video' ||
+                              hoveredObject.userData.type === 'link';
+          
+          if (isMediaCard) {
+            startInteractionCooldown(`Gamepad ${aPressed ? 'A' : 'X'} button on ${hoveredObject.userData.objectType || 'media'} card`);
+          }
+          
+          triggerInteraction();
+        }
+        setClickedObject(hoveredObject);
+      }
     }
     
     // Skip interaction checks when chat is open

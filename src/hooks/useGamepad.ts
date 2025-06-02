@@ -66,6 +66,23 @@ const smoothInput = (current: number, target: number, smoothing: number = 0.8): 
   return current + (target - current) * smoothing;
 };
 
+// Helper function to safely check button press state
+const getButtonPressed = (gamepad: Gamepad, buttonIndex: number): boolean => {
+  if (!gamepad || !gamepad.buttons || buttonIndex >= gamepad.buttons.length) {
+    return false;
+  }
+  
+  const button = gamepad.buttons[buttonIndex];
+  if (!button) return false;
+  
+  // Different browsers implement buttons differently
+  if (typeof button === 'object') {
+    return button.pressed || button.value > 0.5;
+  }
+  
+  return button === 1.0;
+};
+
 export const useGamepad = () => {
   const [gamepadState, setGamepadState] = useState<GamepadState>({
     connected: false,
@@ -154,6 +171,15 @@ export const useGamepad = () => {
     leftTrigger = leftTrigger > TRIGGER_DEADZONE ? leftTrigger : 0;
     rightTrigger = rightTrigger > TRIGGER_DEADZONE ? rightTrigger : 0;
 
+    // Log button state for debugging if the A button is pressed
+    if (gamepad.buttons[BUTTON_MAP.A]?.pressed) {
+      console.log('🎮 Raw A button state:', {
+        pressed: gamepad.buttons[BUTTON_MAP.A]?.pressed,
+        value: gamepad.buttons[BUTTON_MAP.A]?.value,
+        touched: gamepad.buttons[BUTTON_MAP.A]?.touched
+      });
+    }
+
     const newState: GamepadState = {
       connected: true,
       leftStick: {
@@ -165,22 +191,22 @@ export const useGamepad = () => {
         y: smoothedRightStick.current.y,
       },
       buttons: {
-        A: gamepad.buttons[BUTTON_MAP.A]?.pressed || false,
-        B: gamepad.buttons[BUTTON_MAP.B]?.pressed || false,
-        X: gamepad.buttons[BUTTON_MAP.X]?.pressed || false,
-        Y: gamepad.buttons[BUTTON_MAP.Y]?.pressed || false,
-        LB: gamepad.buttons[BUTTON_MAP.LB]?.pressed || false,
-        RB: gamepad.buttons[BUTTON_MAP.RB]?.pressed || false,
+        A: getButtonPressed(gamepad, BUTTON_MAP.A),
+        B: getButtonPressed(gamepad, BUTTON_MAP.B),
+        X: getButtonPressed(gamepad, BUTTON_MAP.X),
+        Y: getButtonPressed(gamepad, BUTTON_MAP.Y),
+        LB: getButtonPressed(gamepad, BUTTON_MAP.LB),
+        RB: getButtonPressed(gamepad, BUTTON_MAP.RB),
         LT: leftTrigger,
         RT: rightTrigger,
-        back: gamepad.buttons[BUTTON_MAP.back]?.pressed || false,
-        start: gamepad.buttons[BUTTON_MAP.start]?.pressed || false,
-        leftStickButton: gamepad.buttons[BUTTON_MAP.leftStickButton]?.pressed || false,
-        rightStickButton: gamepad.buttons[BUTTON_MAP.rightStickButton]?.pressed || false,
-        dpadUp: gamepad.buttons[BUTTON_MAP.dpadUp]?.pressed || false,
-        dpadDown: gamepad.buttons[BUTTON_MAP.dpadDown]?.pressed || false,
-        dpadLeft: gamepad.buttons[BUTTON_MAP.dpadLeft]?.pressed || false,
-        dpadRight: gamepad.buttons[BUTTON_MAP.dpadRight]?.pressed || false,
+        back: getButtonPressed(gamepad, BUTTON_MAP.back),
+        start: getButtonPressed(gamepad, BUTTON_MAP.start),
+        leftStickButton: getButtonPressed(gamepad, BUTTON_MAP.leftStickButton),
+        rightStickButton: getButtonPressed(gamepad, BUTTON_MAP.rightStickButton),
+        dpadUp: getButtonPressed(gamepad, BUTTON_MAP.dpadUp),
+        dpadDown: getButtonPressed(gamepad, BUTTON_MAP.dpadDown),
+        dpadLeft: getButtonPressed(gamepad, BUTTON_MAP.dpadLeft),
+        dpadRight: getButtonPressed(gamepad, BUTTON_MAP.dpadRight),
       },
       triggers: {
         left: leftTrigger,
@@ -199,37 +225,47 @@ export const useGamepad = () => {
 
   // Setup gamepad event listeners and polling
   useEffect(() => {
+    console.log('🎮 useGamepad effect running');
     const handleGamepadConnected = (e: GamepadEvent) => {
-      console.log('🎮 Gamepad connected:', e.gamepad.id);
+      console.log('🎮 Gamepad connected event:', e.gamepad.id);
       setGamepadState(prev => ({ ...prev, connected: true }));
     };
 
     const handleGamepadDisconnected = (e: GamepadEvent) => {
-      console.log('🎮 Gamepad disconnected:', e.gamepad.id);
+      console.log('🎮 Gamepad disconnected event:', e.gamepad.id);
       setGamepadState(prev => ({ ...prev, connected: false }));
     };
 
     // Add event listeners
+    console.log('🎮 Adding gamepad event listeners');
     window.addEventListener('gamepadconnected', handleGamepadConnected);
     window.addEventListener('gamepaddisconnected', handleGamepadDisconnected);
 
     // Start polling
+    console.log('🎮 Starting gamepad polling loop');
     animationFrameRef.current = requestAnimationFrame(pollGamepad);
 
     // Check for already connected gamepads
     const gamepads = navigator.getGamepads();
     if (gamepads[0]) {
+      console.log('🎮 Gamepad already connected on startup:', gamepads[0].id);
       setGamepadState(prev => ({ ...prev, connected: true }));
+    } else {
+      console.log('🎮 No gamepads connected on startup.');
     }
 
     return () => {
       // Cleanup
+      console.log('🎮 useGamepad effect cleanup');
+      console.log('🎮 Removing gamepad event listeners');
       window.removeEventListener('gamepadconnected', handleGamepadConnected);
       window.removeEventListener('gamepaddisconnected', handleGamepadDisconnected);
       
       if (animationFrameRef.current) {
+        console.log('🎮 Cancelling animation frame loop');
         cancelAnimationFrame(animationFrameRef.current);
       }
+      console.log('🎮 useGamepad effect cleanup complete');
     };
   }, [pollGamepad]);
 
