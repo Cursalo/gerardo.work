@@ -141,10 +141,18 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
         // External URL - open directly
         window.open(url, '_blank');
       } else {
-        // Local file - use file viewer utility
+        // Local file - check if it's HTML and handle directly
         const fileInfo = detectFileType(url);
         console.log('Detected file type:', fileInfo.type, 'for URL:', url);
-        openFileWithViewer(url, title);
+        
+        if (fileInfo.type === 'html') {
+          // FIXED: Handle HTML files directly like external URLs to prevent infinite loading
+          console.log('WebLink Card: Opening HTML file directly');
+          window.open(url, '_blank', 'noopener,noreferrer');
+        } else {
+          // Use file viewer utility for other file types
+          openFileWithViewer(url, title);
+        }
       }
     }
     
