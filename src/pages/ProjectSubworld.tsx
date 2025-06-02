@@ -676,7 +676,29 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
             </div>
           )}
           
-
+          {/* Interaction Cooldown Indicator - shows when interactions are temporarily blocked */}
+          {!isTouchDevice && isPointerLocked && (
+            <div 
+              id="interaction-cooldown-indicator"
+              style={{
+                position: 'fixed',
+                top: '20px',
+                right: '20px',
+                backgroundColor: 'rgba(255, 165, 0, 0.9)',
+                color: '#fff',
+                padding: '12px 16px',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: 'bold',
+                zIndex: 9999,
+                border: '2px solid rgba(255, 140, 0, 0.7)',
+                display: 'none', // Initially hidden, will be shown via JS when needed
+                animation: 'pulse 2s infinite',
+              }}
+            >
+              ⏱️ Move mouse to enable interactions
+            </div>
+          )}
           
           {/* Crosshair for consistent interaction - ALWAYS VISIBLE and PERFECTLY CENTERED */}
           <div style={{

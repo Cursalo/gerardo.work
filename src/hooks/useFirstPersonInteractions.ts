@@ -16,8 +16,13 @@ const MOBILE_INTERACTION_DISTANCE = 25; // More precise range for mobile touch i
 const DESKTOP_INTERACTION_DISTANCE = 40; // More precise range for desktop clicks
 
 // INTERACTION COOLDOWN SYSTEM - Prevents immediate re-interaction when returning from external tabs
-const INTERACTION_COOLDOWN_MS = 2000; // 2 second cooldown after clicking any media card
-const TAB_RETURN_COOLDOWN_MS = 1500; // 1.5 second cooldown when returning from external tab
+const INTERACTION_COOLDOWN_MS = 8000; // 8 second cooldown after clicking any media card - much longer to prevent loops
+const TAB_RETURN_COOLDOWN_MS = 3000; // 3 second cooldown when returning from external tab
+const POINTER_LOCK_GRACE_MS = 1000; // 1 second grace period after pointer lock to prevent immediate interaction
+
+// Movement-based cooldown reset
+const MOVEMENT_RESET_THRESHOLD = 2; // Pixels of movement required to reset cooldown
+const MOVEMENT_RESET_TIME_MS = 2000; // Time window to accumulate movement
 
 // --- DEBUG --- Add a counter for setHoveredObject calls
 let setHoveredObjectCallCount = 0;
@@ -50,7 +55,15 @@ function useFirstPersonInteractions() {
     isInCooldown: false,
     lastClickTime: 0,
     lastTabReturnTime: 0,
-    cooldownTimer: null as NodeJS.Timeout | null
+    lastPointerLockTime: 0,
+    cooldownTimer: null as NodeJS.Timeout | null,
+    // Movement tracking for cooldown reset
+    lastMousePosition: { x: 0, y: 0 },
+    movementAccumulator: 0,
+    movementStartTime: 0,
+    // Window state tracking
+    hasReturnedFromExternalWindow: false,
+    isUserMoving: false
   });
 
   // Flag to track touch interaction state with improved state tracking
@@ -78,6 +91,7 @@ function useFirstPersonInteractions() {
     console.log(`🕒 COOLDOWN: Starting interaction cooldown - ${reason}`);
     interactionCooldown.current.isInCooldown = true;
     interactionCooldown.current.lastClickTime = Date.now();
+    interactionCooldown.current.hasReturnedFromExternalWindow = false; // Reset flag
     
     // Clear any existing timer
     if (interactionCooldown.current.cooldownTimer) {
@@ -95,21 +109,94 @@ function useFirstPersonInteractions() {
   const startTabReturnCooldown = useCallback(() => {
     console.log(`🕒 TAB RETURN: Starting tab return cooldown`);
     interactionCooldown.current.lastTabReturnTime = Date.now();
+    interactionCooldown.current.hasReturnedFromExternalWindow = true;
     
     // Temporarily disable interactions when returning from tab
     const tempDisable = setTimeout(() => {
       console.log(`✅ TAB RETURN: Tab return cooldown ended`);
+      // Only reset the flag if user hasn't moved significantly
+      if (!interactionCooldown.current.isUserMoving) {
+        interactionCooldown.current.hasReturnedFromExternalWindow = false;
+      }
     }, TAB_RETURN_COOLDOWN_MS);
   }, []);
 
+  const startPointerLockGrace = useCallback(() => {
+    console.log(`🕒 POINTER LOCK: Starting grace period`);
+    interactionCooldown.current.lastPointerLockTime = Date.now();
+  }, []);
+
+  // Enhanced cooldown check with multiple conditions
   const isInCooldown = useCallback(() => {
     const now = Date.now();
     const timeSinceClick = now - interactionCooldown.current.lastClickTime;
     const timeSinceTabReturn = now - interactionCooldown.current.lastTabReturnTime;
+    const timeSincePointerLock = now - interactionCooldown.current.lastPointerLockTime;
     
-    return interactionCooldown.current.isInCooldown || 
+    const inCooldown = interactionCooldown.current.isInCooldown || 
            timeSinceClick < INTERACTION_COOLDOWN_MS ||
-           timeSinceTabReturn < TAB_RETURN_COOLDOWN_MS;
+           timeSinceTabReturn < TAB_RETURN_COOLDOWN_MS ||
+           timeSincePointerLock < POINTER_LOCK_GRACE_MS ||
+           interactionCooldown.current.hasReturnedFromExternalWindow;
+    
+    // Update UI indicator
+    const indicator = document.getElementById('interaction-cooldown-indicator');
+    if (indicator) {
+      if (inCooldown && document.pointerLockElement) {
+        indicator.style.display = 'block';
+        // Update message based on reason
+        let message = '⏱️ Move mouse to enable interactions';
+        if (timeSincePointerLock < POINTER_LOCK_GRACE_MS) {
+          message = '🎯 Crosshair mode enabled - move mouse to start interacting';
+        } else if (interactionCooldown.current.hasReturnedFromExternalWindow) {
+          message = '👍 Welcome back! Move mouse to enable interactions';
+        } else if (timeSinceTabReturn < TAB_RETURN_COOLDOWN_MS) {
+          message = '🔄 Returned from external tab - move mouse to continue';
+        }
+        indicator.textContent = message;
+      } else {
+        indicator.style.display = 'none';
+      }
+    }
+    
+    return inCooldown;
+  }, []);
+
+  // Movement tracking for cooldown reset
+  const trackMovement = useCallback((mouseX: number, mouseY: number) => {
+    const now = Date.now();
+    const deltaX = mouseX - interactionCooldown.current.lastMousePosition.x;
+    const deltaY = mouseY - interactionCooldown.current.lastMousePosition.y;
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    
+    // Reset movement tracking if too much time has passed
+    if (now - interactionCooldown.current.movementStartTime > MOVEMENT_RESET_TIME_MS) {
+      interactionCooldown.current.movementAccumulator = 0;
+      interactionCooldown.current.movementStartTime = now;
+    }
+    
+    // Accumulate movement
+    interactionCooldown.current.movementAccumulator += distance;
+    interactionCooldown.current.lastMousePosition = { x: mouseX, y: mouseY };
+    
+    // Check if enough movement has been accumulated
+    if (interactionCooldown.current.movementAccumulator > MOVEMENT_RESET_THRESHOLD) {
+      if (interactionCooldown.current.hasReturnedFromExternalWindow) {
+        console.log(`👍 MOVEMENT RESET: User moved enough (${interactionCooldown.current.movementAccumulator.toFixed(2)}px), resetting external window flag`);
+        interactionCooldown.current.hasReturnedFromExternalWindow = false;
+      }
+      interactionCooldown.current.isUserMoving = true;
+      
+      // Reset movement tracking
+      interactionCooldown.current.movementAccumulator = 0;
+      interactionCooldown.current.movementStartTime = now;
+    }
+    
+    // Reset moving flag after a period of no movement
+    const timeSinceLastMovement = now - interactionCooldown.current.movementStartTime;
+    if (timeSinceLastMovement > 1000) { // 1 second of no movement
+      interactionCooldown.current.isUserMoving = false;
+    }
   }, []);
   
   // Remove initial scan to prevent lingering hover states on mobile
@@ -142,8 +229,12 @@ function useFirstPersonInteractions() {
       const isLocked = document.pointerLockElement === gl.domElement;
       setIsPointerLocked(isLocked);
       
-      // CRITICAL FIX: Reset interaction state when pointer lock is lost
-      if (!isLocked) {
+      if (isLocked) {
+        // Start grace period when pointer lock is acquired
+        startPointerLockGrace();
+        console.log('🎯 POINTER LOCK ACQUIRED - Starting grace period to prevent immediate interactions');
+      } else {
+        // CRITICAL FIX: Reset interaction state when pointer lock is lost
         console.log('🎯 POINTER LOCK LOST - Resetting interaction state');
         setHoveredObject(null);
         setClickedObject(null);
@@ -203,14 +294,24 @@ function useFirstPersonInteractions() {
       console.log('🎯 WINDOW BLUR - User left tab, preparing for reset on return');
     };
     
+    // MOUSE MOVEMENT TRACKING for cooldown reset
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isTouchDevice && document.pointerLockElement) {
+        // Track movement during pointer lock for cooldown reset
+        trackMovement(e.movementX || 0, e.movementY || 0);
+      }
+    };
+    
     document.addEventListener('pointerlockchange', handlePointerLockChange);
     document.addEventListener('keydown', handleEscapeKey);
+    document.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('focus', handleWindowFocus);
     window.addEventListener('blur', handleWindowBlur);
     
     return () => {
       document.removeEventListener('pointerlockchange', handlePointerLockChange);
       document.removeEventListener('keydown', handleEscapeKey);
+      document.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('focus', handleWindowFocus);
       window.removeEventListener('blur', handleWindowBlur);
       
@@ -220,7 +321,7 @@ function useFirstPersonInteractions() {
         interactionCooldown.current.cooldownTimer = null;
       }
     };
-      }, [gl.domElement, isTouchDevice, setHoveredObject, setClickedObject, startTabReturnCooldown]);
+  }, [gl.domElement, isTouchDevice, setHoveredObject, setClickedObject, startTabReturnCooldown, startPointerLockGrace, trackMovement]);
   
   // Direct DOM event handlers for touch interactions
   useEffect(() => {
@@ -337,9 +438,21 @@ function useFirstPersonInteractions() {
         return;
       }
 
-      // CRITICAL FIX: Allow first click to work and request pointer lock simultaneously
-      // This creates a seamless experience where the first click both establishes pointer lock 
-      // AND triggers the interaction if crosshair is over an object
+      // CRITICAL FIX: Check cooldown FIRST before any other interaction logic
+      if (isInCooldown()) {
+        const now = Date.now();
+        const reasons = [];
+        if (interactionCooldown.current.isInCooldown) reasons.push('interaction cooldown active');
+        if (now - interactionCooldown.current.lastClickTime < INTERACTION_COOLDOWN_MS) reasons.push('recent click');
+        if (now - interactionCooldown.current.lastTabReturnTime < TAB_RETURN_COOLDOWN_MS) reasons.push('returned from external tab');
+        if (now - interactionCooldown.current.lastPointerLockTime < POINTER_LOCK_GRACE_MS) reasons.push('pointer lock grace period');
+        if (interactionCooldown.current.hasReturnedFromExternalWindow) reasons.push('awaiting user movement');
+        
+        console.log(`🚫 CLICK BLOCKED: ${reasons.join(', ')}. Move mouse to enable interactions.`);
+        return;
+      }
+
+      // Handle pointer lock request for initial setup
       if (!document.pointerLockElement) {
         console.log('[FPInteractions Desktop] Requesting pointer lock for cursor alignment...');
         // Try to request pointer lock on click
@@ -349,9 +462,11 @@ function useFirstPersonInteractions() {
           console.warn('Failed to request pointer lock:', err);
         }
         
-        // CRITICAL: Don't return here - allow the interaction to proceed
-        // This way the first click both requests pointer lock AND triggers interaction
-        console.log('[FPInteractions Desktop] Allowing interaction while requesting pointer lock...');
+        // CRITICAL: Start grace period and DON'T allow interaction on first click
+        // This prevents immediate interaction while pointer lock is being established
+        startPointerLockGrace();
+        console.log('[FPInteractions Desktop] First click - requesting pointer lock only, no interaction');
+        return;
       }
 
       // UNITY FIX: Perform a NEW raycast at the EXACT moment of click to ensure perfect alignment
@@ -378,14 +493,9 @@ function useFirstPersonInteractions() {
           setClickedObject(clickTarget);
           return;
         }
+        
         console.log('[FPInteractions Desktop] Click on clickTarget:', clickTarget.name, clickTarget.userData);
         document.dispatchEvent(CLICK_EVENT); // For crosshair feedback
-
-        // CHECK COOLDOWN - Prevent interaction if in cooldown period
-        if (isInCooldown()) {
-          console.log('🚫 CLICK BLOCKED: Still in cooldown period');
-          return;
-        }
 
         if (clickTarget.userData.action === 'chat') {
           console.log(`[FPInteractions Desktop] Opening chat with NPC: ${clickTarget.userData.npcName || clickTarget.userData.npcId || clickTarget.userData.name || clickTarget.name}`);
@@ -415,7 +525,7 @@ function useFirstPersonInteractions() {
     return () => {
       gl.domElement.removeEventListener('click', handleClick);
     };
-  }, [isTouchDevice, gl, showChat, hoveredObject, openChat, triggerInteraction, setClickedObject, isPointerLocked, isInCooldown, startInteractionCooldown]);
+  }, [isTouchDevice, gl, showChat, hoveredObject, openChat, triggerInteraction, setClickedObject, isPointerLocked, isInCooldown, startInteractionCooldown, startPointerLockGrace]);
 
   // Update hover state using precise raycasting from exact center (0,0)
   useFrame(() => {
