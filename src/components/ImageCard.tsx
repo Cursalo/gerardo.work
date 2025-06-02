@@ -102,18 +102,20 @@ export const ImageCard: React.FC<ImageCardProps> = ({
     }
   }, [position, title, resolvedImageUrl]);
 
-  // Handle click function using the new file utility
+  // Handle click function - for images, open directly in new tab
   const handleClick = useCallback((e?: any) => {
     if (e) {
       e.stopPropagation();
     }
     console.log('Image Card clicked!', resolvedImageUrl);
     
-    // Use external onClick if provided, otherwise use file utility
+    // Use external onClick if provided, otherwise open image directly
     if (onClick) {
       onClick();
     } else if (resolvedImageUrl) {
-      openFileWithViewer(resolvedImageUrl, title);
+      // For images, open directly in new tab instead of using file utility
+      // This prevents the raw binary data issue
+      window.open(resolvedImageUrl, '_blank');
     }
   }, [resolvedImageUrl, onClick, title]);
 

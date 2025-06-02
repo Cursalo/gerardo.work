@@ -8,7 +8,7 @@ const buttonStyle: React.CSSProperties = {
   top: '55%', // Position below center, adjust as needed
   left: '50%',
   transform: 'translateX(-50%)',
-  zIndex: 1010, // Ensure it's above joysticks
+  zIndex: 999998, // MAXIMUM z-index to always stay above 3D content
   padding: '12px 20px',
   backgroundColor: 'rgba(0, 0, 0, 0.8)',
   color: '#ffffff',
@@ -34,7 +34,7 @@ const mobileButtonStyle: React.CSSProperties = {
   padding: '14px 24px',
   fontSize: '16px',
   top: '65%', // Position lower on mobile for better visibility
-  zIndex: 1500, // Higher z-index to avoid being hidden
+  zIndex: 999999, // MAXIMUM z-index to always stay above 3D content
   backgroundColor: 'rgba(0, 0, 0, 0.9)',
   border: '2px solid rgba(77, 255, 170, 0.8)',
   boxShadow: '0 0 12px rgba(77, 255, 170, 0.4)',
@@ -60,6 +60,10 @@ const desktopCueStyle: React.CSSProperties = {
 const activeStyle: React.CSSProperties = {
   opacity: 1,
   pointerEvents: 'auto',
+  // Force the button to always be on top of everything
+  position: 'fixed',
+  zIndex: 999999,
+  isolation: 'isolate', // Create new stacking context
 };
 
 const InteractionButton: React.FC = () => {

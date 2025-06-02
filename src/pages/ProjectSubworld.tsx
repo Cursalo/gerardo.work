@@ -500,32 +500,32 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
           return min + (max - min) * (x - Math.floor(x));
         };
         
-        // Create BEAUTIFUL floating gallery with proper spacing
+        // Create BEAUTIFUL floating gallery with proper spacing - CLOSER to center
         const clusterCount = Math.max(4, Math.ceil(totalAssets / 6));
         const currentCluster = index % clusterCount;
         
-        // Base cluster positions in a MUCH LARGER circle for proper gallery feel
+        // Base cluster positions in a CLOSER circle for easier navigation
         const clusterAngle = (currentCluster / clusterCount) * Math.PI * 2;
-        const clusterRadius = 40 + (clusterCount * 8);
+        const clusterRadius = 15 + (clusterCount * 3); // Much closer: was 40 + (clusterCount * 8)
         const clusterX = Math.cos(clusterAngle) * clusterRadius;
         const clusterZ = Math.sin(clusterAngle) * clusterRadius;
         
-        // Add GENEROUS organic randomization within each cluster
+        // Add moderate organic randomization within each cluster
         const inClusterIndex = Math.floor(index / clusterCount);
-        const randomX = seededRandom(index * 7 + 123, -20, 20);
-        const randomZ = seededRandom(index * 11 + 456, -20, 20);
+        const randomX = seededRandom(index * 7 + 123, -8, 8); // Reduced from -20, 20
+        const randomZ = seededRandom(index * 11 + 456, -8, 8); // Reduced from -20, 20
         const randomY = seededRandom(index * 13 + 789, 2.2, 3.6);
         
-        // Create EXPANDED spiral-like distribution within clusters
-        const spiralRadius = 8 + (inClusterIndex * 3);
+        // Create spiral-like distribution within clusters - tighter spacing
+        const spiralRadius = 4 + (inClusterIndex * 2); // Reduced from 8 + (inClusterIndex * 3)
         const spiralAngle = inClusterIndex * 2.3;
         const spiralX = Math.cos(spiralAngle) * spiralRadius;
         const spiralZ = Math.sin(spiralAngle) * spiralRadius;
         
         const position: [number, number, number] = [
-          clusterX + spiralX + randomX * 0.5,
+          clusterX + spiralX + randomX * 0.3, // Reduced randomization factor from 0.5 to 0.3
           randomY,
-          clusterZ + spiralZ + randomZ * 0.5
+          clusterZ + spiralZ + randomZ * 0.3  // Reduced randomization factor from 0.5 to 0.3
         ];
         
         // Randomize rotation for more organic look

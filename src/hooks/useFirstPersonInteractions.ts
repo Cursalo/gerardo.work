@@ -46,7 +46,7 @@ function useFirstPersonInteractions() {
   // Store the original materials for objects to restore when no longer hovered
   const originalMaterials = useRef<Map<THREE.Object3D, THREE.Material | THREE.Material[]>>(new Map());
   
-  // Debug ray for alignment verification (set to true to visualize)
+  // Debug ray for alignment verification (PERMANENTLY DISABLED)
   const showDebugRay = false;
   const rayHelper = useRef<THREE.ArrowHelper | null>(null);
 
@@ -201,19 +201,32 @@ function useFirstPersonInteractions() {
   
   // Remove initial scan to prevent lingering hover states on mobile
   
-  // Initialize debug ray helper if enabled
+  // Force cleanup any existing debug ray helpers (PERMANENTLY DISABLED)
   useEffect(() => {
-    if (showDebugRay && !rayHelper.current) {
-      // Create a helper arrow showing raycasting direction
-      const dir = new THREE.Vector3(0, 0, -1);
-      const origin = new THREE.Vector3(0, 0, 0);
-      const length = 10;
-      const hex = 0xff0000;
-      
-      const arrow = new THREE.ArrowHelper(dir, origin, length, hex);
-      scene.add(arrow);
-      rayHelper.current = arrow;
+    // FORCE CLEANUP: Remove any existing ray helpers from previous sessions
+    scene.traverse((child) => {
+      if (child instanceof THREE.ArrowHelper) {
+        console.log('🧹 CLEANUP: Removing lingering debug ray helper');
+        scene.remove(child);
+      }
+    });
+    
+    // Ensure our ray helper is null
+    if (rayHelper.current) {
+      scene.remove(rayHelper.current);
+      rayHelper.current = null;
     }
+    
+    // Debug ray creation is PERMANENTLY DISABLED
+    // if (showDebugRay && !rayHelper.current) {
+    //   const dir = new THREE.Vector3(0, 0, -1);
+    //   const origin = new THREE.Vector3(0, 0, 0);
+    //   const length = 10;
+    //   const hex = 0xff0000;
+    //   const arrow = new THREE.ArrowHelper(dir, origin, length, hex);
+    //   scene.add(arrow);
+    //   rayHelper.current = arrow;
+    // }
     
     return () => {
       if (rayHelper.current) {
@@ -221,7 +234,7 @@ function useFirstPersonInteractions() {
         rayHelper.current = null;
       }
     };
-  }, [scene, showDebugRay]);
+  }, [scene]);
   
   // Track pointer lock state and handle cleanup
   useEffect(() => {
@@ -568,10 +581,11 @@ function useFirstPersonInteractions() {
     const centerPoint = new THREE.Vector2(0, 0);
     raycaster.setFromCamera(centerPoint, camera);
     
-    if (rayHelper.current) {
-      rayHelper.current.setDirection(raycaster.ray.direction);
-      rayHelper.current.position.copy(raycaster.ray.origin);
-    }
+    // Debug ray helper is PERMANENTLY DISABLED
+    // if (rayHelper.current) {
+    //   rayHelper.current.setDirection(raycaster.ray.direction);
+    //   rayHelper.current.position.copy(raycaster.ray.origin);
+    // }
 
     const maxDistance = isTouchDevice ? MOBILE_INTERACTION_DISTANCE : DESKTOP_INTERACTION_DISTANCE;
     const allIntersects = raycaster.intersectObjects(scene.children, true);
