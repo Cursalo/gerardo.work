@@ -553,7 +553,81 @@ function useFirstPersonInteractions() {
     if (frameCount % 3 !== 0) {
       return;
     }
-    
+
+    // Get delta time
+    const delta = state.clock.getDelta();
+
+    // Gamepad Movement (Left Stick)
+    let moveX = 0;
+    let moveZ = 0;
+    if (gamepadConnected && gamepad) {
+      // Invert vertical axis for left stick (movement)
+      moveX = gamepad.leftStick.x;
+      moveZ = -gamepad.leftStick.y; // Negate Y for inverted control
+    }
+
+    // Apply movement based on camera orientation
+    const forward = new THREE.Vector3();
+    camera.getWorldDirection(forward);
+    forward.y = 0; // Keep movement strictly horizontal
+    forward.normalize();
+
+    const right = new THREE.Vector3().crossVectors(camera.up, forward);
+
+    // Determine movement direction
+    const moveDirection = new THREE.Vector3();
+    if (moveZ !== 0) {
+      moveDirection.addScaledVector(forward, moveZ);
+    }
+    if (moveX !== 0) {
+      moveDirection.addScaledVector(right, moveX);
+    }
+
+    // Normalize movement direction if moving diagonally
+    if (moveDirection.length() > 1) {
+      moveDirection.normalize();
+    }
+
+    // Apply movement speed
+    const speed = 5; // Adjust movement speed as needed
+    const velocity = useRef(new THREE.Vector3());
+    const currentPosition = useRef(new THREE.Vector3().copy(camera.position));
+    const euler = useRef(new THREE.Euler());
+
+    velocity.current.copy(moveDirection).multiplyScalar(speed * delta);
+
+    // Apply velocity to camera position
+    currentPosition.current.add(velocity.current);
+
+    // Apply updated position to camera
+    camera.position.copy(currentPosition.current);
+
+    // Gamepad Look (Right Stick)
+    if (gamepadConnected && gamepad) {
+      // Invert vertical axis for right stick (look)
+      const lookX = gamepad.rightStick.x;
+      const lookY = -gamepad.rightStick.y; // Negate Y for inverted control
+
+      // Sensitivity for gamepad look
+      const lookSensitivity = 0.02;
+
+      // Apply look sensitivity
+      const finalLookX = lookX * lookSensitivity;
+      const finalLookY = lookY * lookSensitivity;
+
+      // Update euler rotation
+      euler.current.setFromQuaternion(camera.quaternion);
+      euler.current.y -= finalLookX;
+      euler.current.x -= finalLookY; // Apply vertical look
+
+      // Clamp vertical look (prevent looking straight up or down)
+      const PI_2 = Math.PI / 2;
+      euler.current.x = Math.max(-PI_2 + 0.1, Math.min(PI_2 - 0.1, euler.current.x));
+
+      // Apply updated rotation to camera
+      camera.quaternion.setFromEuler(euler.current);
+    }
+
     // Handle gamepad button presses for interaction
     if (gamepadConnected && gamepad && !showChat) {
       // Check for A button press (primary interaction)
