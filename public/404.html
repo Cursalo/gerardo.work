@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Redirecting...</title>
+  <script>
+    // GitHub Pages 404 handler for client-side routing
+    // This script takes the current URL and redirects to index.html
+    // with the path stored in the sessionStorage so the React router can pick it up
+    
+    var pathSegmentsToKeep = 0;
+    var l = window.location;
+    
+    // Store the path for the React app to use
+    sessionStorage.setItem('redirect', l.pathname + l.search + l.hash);
+    
+    // Redirect to the root domain
+    l.replace(
+      l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
+      l.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/') + '/?' +
+      l.pathname.slice(1).split('/').slice(pathSegmentsToKeep).join('/').replace(/&/g, '~and~') +
+      (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+      l.hash
+    );
+  </script>
+</head>
+<body>
+  <p>Redirecting to portfolio...</p>
+</body>
+</html> 
