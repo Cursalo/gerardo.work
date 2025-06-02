@@ -4,173 +4,158 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no" />
-    <title>Minimal 3D Portfolio</title>
-    <!-- Add Font Awesome for icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <!-- Add Google Fonts -->
+    <title>3D Portfolio</title>
+    
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- Fix script for thumbnails and async message channel error -->
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      html, body {
+        height: 100%;
+        width: 100%;
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+        font-family: 'Inter', sans-serif;
+        overflow: hidden;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      
+      #root {
+        height: 100vh;
+        width: 100vw;
+        position: relative;
+      }
+      
+      /* Loading screen */
+      .loading-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        transition: opacity 0.5s ease-out;
+      }
+      
+      .loading-spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid rgba(255,255,255,0.2);
+        border-top: 3px solid #60a5fa;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 20px;
+      }
+      
+      .loading-text {
+        color: #e2e8f0;
+        font-size: 14px;
+        font-weight: 500;
+        opacity: 0.8;
+      }
+      
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
+    
+    <!-- Essential Fix Script -->
     <script>
       (function() {
-        // 1. Fix for "message channel closed before response was received" error
+        // Message channel fix
         const existingHandler = window.onmessage;
-        
         window.onmessage = function(event) {
           try {
             if (existingHandler) existingHandler(event);
-            
             if (event.data && event.data.type === 'navigate-to-subworld') {
               event.stopImmediatePropagation();
               return true;
             }
           } catch (err) {
-            console.error('Error in message handler:', err);
+            console.error('Message handler error:', err);
           }
         };
         
+        // Navigation handler
         window.addEventListener('navigate-to-subworld', function(event) {
           try {
-            console.log('Navigation event handler attached');
-            
             const detail = event.detail || {};
             if (detail.subWorldId) {
               setTimeout(() => {
                 window.history.pushState({}, '', `/world/${detail.subWorldId}`);
                 localStorage.setItem('target_world_id', detail.subWorldId);
-                console.log(`Navigation redirected to ${detail.subWorldId}`);
               }, 100);
             }
           } catch (err) {
-            console.error('Error in navigation event handler:', err);
+            console.error('Navigation error:', err);
           }
           return true;
         });
         
-        // 2. Fix for thumbnail issues
+        // Thumbnail fix
         window.addEventListener('load', function() {
-          try {
-            // Wait for app to initialize
-            setTimeout(fixThumbnails, 1000);
-          } catch (err) {
-            console.error('Error initializing thumbnail fix:', err);
-          }
+          setTimeout(fixThumbnails, 1000);
         });
         
         function fixThumbnails() {
           try {
-            // Get projects from localStorage
             const projectsStr = localStorage.getItem('projects');
             if (!projectsStr) return;
             
             const projects = JSON.parse(projectsStr);
-            const storedFilesStr = localStorage.getItem('portfolio_files');
-            const storedFiles = storedFilesStr ? JSON.parse(storedFilesStr) : {};
-            
             let updated = false;
             
-            // Fix each project's thumbnail
             projects.forEach(project => {
-              if (!project.thumbnail) {
-                // Generate fallback for missing thumbnails
-                project.thumbnail = generateFallbackThumbnail(project);
+              if (!project.thumbnail || project.thumbnail.includes('picsum.photos')) {
+                const hue = (project.id * 37) % 360;
+                project.thumbnail = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='180' viewBox='0 0 320 180'%3E%3Crect width='320' height='180' fill='hsl(${hue}, 70%25, 75%25)' /%3E%3Ctext x='160' y='90' font-family='Inter' font-size='16' text-anchor='middle' alignment-baseline='middle' fill='%23334155'%3E${encodeURIComponent(project.name)}%3C/text%3E%3C/svg%3E`;
                 updated = true;
-                return;
-              }
-              
-              // Fix file:// URLs that don't match stored files
-              if (project.thumbnail.startsWith('file://')) {
-                const filename = project.thumbnail.replace('file://', '');
-                
-                // Check if file exists in storage
-                if (!storedFiles[filename] || !storedFiles[filename].dataUrl) {
-                  // Try to find a partial match
-                  const fileKeys = Object.keys(storedFiles);
-                  const possibleMatch = fileKeys.find(key => 
-                    key.endsWith(filename) || filename.endsWith(key)
-                  );
-                  
-                  if (possibleMatch && storedFiles[possibleMatch].dataUrl) {
-                    // Update to use the correct path
-                    project.thumbnail = `file://${possibleMatch}`;
-                  } else {
-                    // Generate fallback
-                    project.thumbnail = generateFallbackThumbnail(project);
-                  }
-                  updated = true;
-                }
-              }
-              
-              // Fix potentially unreliable URLs
-              if (project.thumbnail.includes('picsum.photos')) {
-                project.thumbnail = generateFallbackThumbnail(project);
-                updated = true;
-              }
-              
-              // Fix YouTube URLs 
-              if ((project.thumbnail.includes('youtube.com') || project.thumbnail.includes('youtu.be')) 
-                  && !project.thumbnail.includes('img.youtube.com/vi/')) {
-                try {
-                  // Extract video ID
-                  let videoId = '';
-                  
-                  if (project.thumbnail.includes('v=')) {
-                    videoId = project.thumbnail.split('v=')[1];
-                    const ampersandPosition = videoId.indexOf('&');
-                    if (ampersandPosition !== -1) {
-                      videoId = videoId.substring(0, ampersandPosition);
-                    }
-                  } else if (project.thumbnail.includes('youtu.be/')) {
-                    videoId = project.thumbnail.split('youtu.be/')[1];
-                  } else if (project.thumbnail.includes('embed/')) {
-                    videoId = project.thumbnail.split('embed/')[1];
-                  }
-                  
-                  if (videoId) {
-                    project.thumbnail = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
-                  } else {
-                    project.thumbnail = generateFallbackThumbnail(project);
-                  }
-                  updated = true;
-                } catch (error) {
-                  project.thumbnail = generateFallbackThumbnail(project);
-                  updated = true;
-                }
               }
             });
             
-            // Save updated projects back to localStorage
             if (updated) {
               localStorage.setItem('projects', JSON.stringify(projects));
-              console.log('Fixed project thumbnails. Reload the page to see changes.');
-              
-              // Set a flag to trigger world refresh
-              localStorage.setItem('verify_file_storage', 'true');
-              
-              // Auto-reload after 1 second
-              setTimeout(() => {
-                window.location.reload();
-              }, 1000);
+              setTimeout(() => window.location.reload(), 1000);
             }
           } catch (err) {
-            console.error('Error fixing thumbnails:', err);
+            console.error('Thumbnail fix error:', err);
           }
         }
-        
-        function generateFallbackThumbnail(project) {
-          // Generate a colorful SVG as fallback
-          const hue = (project.id * 37) % 360;
-          return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='180' viewBox='0 0 320 180'%3E%3Crect width='320' height='180' fill='hsl(${hue}, 80%25, 80%25)' /%3E%3Ctext x='160' y='90' font-family='Arial' font-size='16' text-anchor='middle' alignment-baseline='middle' fill='%23333'%3E${encodeURIComponent(project.name)}%3C/text%3E%3C/svg%3E`;
-        }
-        
-        console.log('Fix script loaded and applied');
       })();
     </script>
   </head>
   <body>
+    <div class="loading-screen" id="loading">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Loading 3D Portfolio...</div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Remove loading screen when app loads
+      window.addEventListener('load', function() {
+        setTimeout(() => {
+          const loading = document.getElementById('loading');
+          if (loading) {
+            loading.style.opacity = '0';
+            setTimeout(() => loading.remove(), 500);
+          }
+        }, 2000);
+      });
+    </script>
   </body>
 </html>

@@ -57,23 +57,24 @@ const Crosshair: React.FC<CrosshairProps> = ({ isPointerLocked = false }) => {
   const lineLength = isMobile ? 30 : 20;
   const lineThickness = isMobile ? 2 : 1;
   
-  // Base crosshair styles - updated with custom color and enhanced visibility
+  // Base crosshair styles - ALWAYS VISIBLE, NEVER DISAPPEARS
   const baseStyles: React.CSSProperties = {
     position: 'absolute',
     top: '50%',
     left: '50%',
     width: `${baseSize}px`,
     height: `${baseSize}px`,
-    backgroundColor: 'rgba(77, 255, 170, 0.9)', // Custom light green color
+    backgroundColor: 'rgba(77, 255, 170, 1.0)', // FULL OPACITY - NEVER FADE
     borderRadius: '50%',
     transform: 'translate(-50%, -50%)',
     pointerEvents: 'none',
-    zIndex: 9999, // Increased z-index to ensure visibility
+    zIndex: 99999, // MAXIMUM Z-INDEX to ensure visibility over everything
     transition: 'all 0.15s ease-out',
-    boxShadow: '0 0 4px rgba(0, 0, 0, 0.5)', // Add shadow for better visibility
-    display: 'block', // Always show crosshair
-    opacity: 1, // Ensure full opacity
-    mixBlendMode: 'normal' as const, // Prevent blend mode issues
+    boxShadow: '0 0 8px rgba(0, 0, 0, 0.8)', // Stronger shadow for better visibility
+    display: 'block', // FORCE DISPLAY
+    opacity: 1, // FORCE OPACITY
+    visibility: 'visible', // FORCE VISIBILITY
+    mixBlendMode: 'normal' as const,
   };
 
   // Additional styles when hovering over interactive elements
@@ -112,7 +113,7 @@ const Crosshair: React.FC<CrosshairProps> = ({ isPointerLocked = false }) => {
         data-testid="central-crosshair"
       />
       
-      {/* Cross lines for better precision and visibility */}
+      {/* Cross lines for better precision and visibility - ALWAYS VISIBLE */}
       <div style={{
         position: 'absolute',
         top: '50%',
@@ -120,13 +121,14 @@ const Crosshair: React.FC<CrosshairProps> = ({ isPointerLocked = false }) => {
         width: `${lineLength}px`,
         height: `${lineThickness}px`,
         backgroundColor: state.isHovering 
-          ? 'rgba(255, 255, 255, 0.8)' 
-          : 'rgba(77, 255, 170, 0.8)',
+          ? 'rgba(255, 255, 255, 1.0)' 
+          : 'rgba(77, 255, 170, 1.0)',
         transform: 'translate(-50%, -50%)',
         pointerEvents: 'none',
-        zIndex: 9998, // Just below the dot
+        zIndex: 99998, // Maximum z-index below the dot
         display: 'block',
-        opacity: state.isClicking ? 0.9 : 0.8,
+        opacity: 1, // ALWAYS FULLY VISIBLE
+        visibility: 'visible',
         transition: 'all 0.15s ease-out',
       }} />
       <div style={{
@@ -136,13 +138,14 @@ const Crosshair: React.FC<CrosshairProps> = ({ isPointerLocked = false }) => {
         width: `${lineThickness}px`,
         height: `${lineLength}px`,
         backgroundColor: state.isHovering 
-          ? 'rgba(255, 255, 255, 0.8)' 
-          : 'rgba(77, 255, 170, 0.8)',
+          ? 'rgba(255, 255, 255, 1.0)' 
+          : 'rgba(77, 255, 170, 1.0)',
         transform: 'translate(-50%, -50%)',
         pointerEvents: 'none',
-        zIndex: 9998, // Just below the dot
+        zIndex: 99998, // Maximum z-index below the dot
         display: 'block',
-        opacity: state.isClicking ? 0.9 : 0.8,
+        opacity: 1, // ALWAYS FULLY VISIBLE
+        visibility: 'visible',
         transition: 'all 0.15s ease-out',
       }} />
     </>

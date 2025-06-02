@@ -11,8 +11,9 @@ const HOVER_START_EVENT = new Event('crosshair:hover:start');
 const HOVER_END_EVENT = new Event('crosshair:hover:end');
 const CLICK_EVENT = new Event('crosshair:click');
 
-// Increase the interaction distance to make project cards more visible on mobile
-const MOBILE_INTERACTION_DISTANCE = 30; // Increased from 15 to be more forgiving
+// MASSIVELY increase the interaction distance for much better clicking experience
+const MOBILE_INTERACTION_DISTANCE = 300; // Very large for mobile accessibility
+const DESKTOP_INTERACTION_DISTANCE = 500; // Extremely large for desktop - can click from very far away
 
 // --- DEBUG --- Add a counter for setHoveredObject calls
 let setHoveredObjectCallCount = 0;
@@ -49,6 +50,10 @@ function useFirstPersonInteractions() {
     objectsScanned: false   // Track if we've performed an initial scene scan
   });
   
+  // Auto-reset mechanism for stuck states
+  const lastInteractionTime = useRef(Date.now());
+  const stuckStateTimeout = useRef<NodeJS.Timeout | null>(null);
+  
   // --- DEBUG --- Wrapper for setHoveredObject to log calls
   const setHoveredObject = useCallback((obj: HoveredObject | null) => {
     setHoveredObjectCallCount++;
@@ -63,11 +68,12 @@ function useFirstPersonInteractions() {
       // Perform an initial scan to make objects visible even without interaction
       const performInitialScan = () => {
         raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+        const maxDistance = isTouchDevice ? MOBILE_INTERACTION_DISTANCE : DESKTOP_INTERACTION_DISTANCE;
         const intersects = raycaster.intersectObjects(scene.children, true)
           .filter(intersect => 
             intersect.object.userData && 
             intersect.object.userData.interactive === true &&
-            intersect.distance < MOBILE_INTERACTION_DISTANCE
+            intersect.distance < maxDistance
           );
           
         if (intersects.length > 0) {
@@ -108,18 +114,80 @@ function useFirstPersonInteractions() {
     };
   }, [scene, showDebugRay]);
   
-  // Track pointer lock state
+  // Track pointer lock state and handle cleanup
   useEffect(() => {
     const handlePointerLockChange = () => {
-      setIsPointerLocked(document.pointerLockElement === gl.domElement);
+      const isLocked = document.pointerLockElement === gl.domElement;
+      setIsPointerLocked(isLocked);
+      
+      // CRITICAL FIX: Reset interaction state when pointer lock is lost
+      if (!isLocked) {
+        console.log('🎯 POINTER LOCK LOST - Resetting interaction state');
+        setHoveredObject(null);
+        setClickedObject(null);
+        document.dispatchEvent(HOVER_END_EVENT);
+        if (isTouchDevice) {
+          touchState.current.isTouching = false;
+          touchState.current.lastTouchedObject = null;
+          touchState.current.processedTouch = false;
+        }
+      }
+    };
+    
+    // ESCAPE KEY HANDLER - Reset everything
+    const handleEscapeKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        console.log('🎯 ESCAPE PRESSED - Force resetting all interaction states');
+        // Exit pointer lock
+        if (document.pointerLockElement) {
+          document.exitPointerLock();
+        }
+        // Reset all states
+        setHoveredObject(null);
+        setClickedObject(null);
+        document.dispatchEvent(HOVER_END_EVENT);
+        if (isTouchDevice) {
+          touchState.current.isTouching = false;
+          touchState.current.lastTouchedObject = null;
+          touchState.current.processedTouch = false;
+        }
+      }
+    };
+    
+    // WINDOW FOCUS HANDLER - Reset when returning from external tab
+    const handleWindowFocus = () => {
+      console.log('🎯 WINDOW FOCUS - Checking and resetting interaction state');
+      // When user returns from external tab, reset interaction state
+      setTimeout(() => {
+        if (!document.pointerLockElement) {
+          setHoveredObject(null);
+          setClickedObject(null);
+          document.dispatchEvent(HOVER_END_EVENT);
+          if (isTouchDevice) {
+            touchState.current.isTouching = false;
+            touchState.current.lastTouchedObject = null;
+            touchState.current.processedTouch = false;
+          }
+        }
+      }, 100);
+    };
+
+    const handleWindowBlur = () => {
+      console.log('🎯 WINDOW BLUR - User left tab, preparing for reset on return');
     };
     
     document.addEventListener('pointerlockchange', handlePointerLockChange);
+    document.addEventListener('keydown', handleEscapeKey);
+    window.addEventListener('focus', handleWindowFocus);
+    window.addEventListener('blur', handleWindowBlur);
     
     return () => {
       document.removeEventListener('pointerlockchange', handlePointerLockChange);
+      document.removeEventListener('keydown', handleEscapeKey);
+      window.removeEventListener('focus', handleWindowFocus);
+      window.removeEventListener('blur', handleWindowBlur);
     };
-  }, [gl.domElement]);
+  }, [gl.domElement, isTouchDevice, setHoveredObject, setClickedObject]);
   
   // Direct DOM event handlers for touch interactions
   useEffect(() => {
@@ -129,11 +197,12 @@ function useFirstPersonInteractions() {
       raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
       // console.log('[FPInteractions DEBUG] forceRaycast called'); // DEBUG
       
+      const maxDistance = isTouchDevice ? MOBILE_INTERACTION_DISTANCE : DESKTOP_INTERACTION_DISTANCE;
       const intersects = raycaster.intersectObjects(scene.children, true)
         .filter(intersect => 
           intersect.object.userData && 
           intersect.object.userData.interactive === true &&
-          intersect.distance < MOBILE_INTERACTION_DISTANCE // Apply distance check here too
+          intersect.distance < maxDistance // Apply appropriate distance check
         );
       
       const interactiveObject = intersects.length > 0 
@@ -163,10 +232,22 @@ function useFirstPersonInteractions() {
       touchState.current.touchStartTime = Date.now();
       touchState.current.processedTouch = false; 
 
-      forceRaycast(); 
+      // UNITY FIX: Perform precise raycast for touch interaction using exact center
+      raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+      const maxDistance = isTouchDevice ? MOBILE_INTERACTION_DISTANCE : DESKTOP_INTERACTION_DISTANCE;
+      const touchIntersects = raycaster.intersectObjects(scene.children, true)
+        .filter(intersect =>
+          intersect.object.userData &&
+          intersect.object.userData.interactive === true &&
+          intersect.distance < maxDistance
+        );
+      
+      const touchTarget = touchIntersects.length > 0 ? touchIntersects[0].object as HoveredObject : null;
 
-      if (hoveredObject && !showChat) {
-        // console.log('[FPInteractions DEBUG] handleTouchStart: hoveredObject exists, dispatching CLICK_EVENT', hoveredObject.name); // DEBUG
+      if (touchTarget && !showChat) {
+        console.log(`🎯 TOUCH DEBUG: Touch target found: ${touchTarget.userData?.title}`);
+        setHoveredObject(touchTarget);
+        document.dispatchEvent(HOVER_START_EVENT);
         document.dispatchEvent(CLICK_EVENT); 
       }
     };
@@ -178,11 +259,12 @@ function useFirstPersonInteractions() {
 
       // Perform a quick raycast check on touch end to see if still looking at a valid object
       raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+      const maxDistance = isTouchDevice ? MOBILE_INTERACTION_DISTANCE : DESKTOP_INTERACTION_DISTANCE;
       const intersects = raycaster.intersectObjects(scene.children, true)
         .filter(intersect =>
           intersect.object.userData &&
           intersect.object.userData.interactive === true &&
-          intersect.distance < MOBILE_INTERACTION_DISTANCE // Consistent distance check
+          intersect.distance < maxDistance // Consistent distance check
         );
       const objectAtTouchEnd = intersects.length > 0 ? intersects[0].object as HoveredObject : null;
 
@@ -222,32 +304,58 @@ function useFirstPersonInteractions() {
         return;
       }
 
-      // Check pointer lock for FPS mode, but allow interaction even if not locked for general desktop use
-      // if (!isPointerLocked && document.pointerLockElement !== gl.domElement) {
-      //   console.log('[FPInteractions Desktop] Click ignored, pointer not locked and not on canvas focus (if strict).');
-      //   return;
-      // }
+      // CRITICAL FIX: Allow first click to work and request pointer lock simultaneously
+      // This creates a seamless experience where the first click both establishes pointer lock 
+      // AND triggers the interaction if crosshair is over an object
+      if (!document.pointerLockElement) {
+        console.log('[FPInteractions Desktop] Requesting pointer lock for cursor alignment...');
+        // Try to request pointer lock on click
+        try {
+          gl.domElement.requestPointerLock();
+        } catch (err) {
+          console.warn('Failed to request pointer lock:', err);
+        }
+        
+        // CRITICAL: Don't return here - allow the interaction to proceed
+        // This way the first click both requests pointer lock AND triggers interaction
+        console.log('[FPInteractions Desktop] Allowing interaction while requesting pointer lock...');
+      }
 
-      if (hoveredObject && hoveredObject.userData?.interactive) {
+      // UNITY FIX: Perform a NEW raycast at the EXACT moment of click to ensure perfect alignment
+      // This guarantees the click uses the same coordinates as the crosshair
+      raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+      const maxDistance = isTouchDevice ? MOBILE_INTERACTION_DISTANCE : DESKTOP_INTERACTION_DISTANCE;
+      const clickIntersects = raycaster.intersectObjects(scene.children, true)
+        .filter(intersect =>
+          intersect.object.userData &&
+          intersect.object.userData.interactive === true &&
+          intersect.distance < maxDistance
+        );
+      
+      const clickTarget = clickIntersects.length > 0 ? clickIntersects[0].object as HoveredObject : null;
+      
+      console.log(`🎯 CLICK DEBUG: Found ${clickIntersects.length} interactive objects at click. Using target:`, clickTarget?.userData?.title || 'NONE');
+
+      if (clickTarget && clickTarget.userData?.interactive) {
         // Special case: chat action
-        if (hoveredObject.userData.action === 'chat') {
+        if (clickTarget.userData.action === 'chat') {
           console.log('[FPInteractions Desktop] Clicked NPC for chat');
           openChat();
           document.dispatchEvent(CLICK_EVENT);
-          setClickedObject(hoveredObject);
+          setClickedObject(clickTarget);
           return;
         }
-        console.log('[FPInteractions Desktop] Click on hoveredObject:', hoveredObject.name, hoveredObject.userData);
+        console.log('[FPInteractions Desktop] Click on clickTarget:', clickTarget.name, clickTarget.userData);
         document.dispatchEvent(CLICK_EVENT); // For crosshair feedback
 
-        if (hoveredObject.userData.action === 'chat') {
-          console.log(`[FPInteractions Desktop] Opening chat with NPC: ${hoveredObject.userData.npcName || hoveredObject.userData.npcId || hoveredObject.userData.name || hoveredObject.name}`);
+        if (clickTarget.userData.action === 'chat') {
+          console.log(`[FPInteractions Desktop] Opening chat with NPC: ${clickTarget.userData.npcName || clickTarget.userData.npcId || clickTarget.userData.name || clickTarget.name}`);
           openChat();
         } else {
-          console.log(`[FPInteractions Desktop] Triggering general interaction for: ${hoveredObject.name}`);
+          console.log(`[FPInteractions Desktop] Triggering general interaction for: ${clickTarget.name}`);
           triggerInteraction(); // This uses the hoveredObject from InteractionContext
         }
-        setClickedObject(hoveredObject); // For potential feedback if needed elsewhere
+        setClickedObject(clickTarget); // For potential feedback if needed elsewhere
       } else {
         // console.log('[FPInteractions Desktop] Click with no interactive hoveredObject.');
       }
@@ -273,6 +381,21 @@ function useFirstPersonInteractions() {
       return;
     }
     
+    // AUTO-RESET: Check for stuck states and reset after 10 seconds of no interaction changes
+    const currentTime = Date.now();
+    if (hoveredObject && (currentTime - lastInteractionTime.current) > 10000) {
+      console.log('🎯 AUTO-RESET: Detected stuck interaction state, resetting...');
+      setHoveredObject(null);
+      setClickedObject(null);
+      document.dispatchEvent(HOVER_END_EVENT);
+      if (isTouchDevice) {
+        touchState.current.isTouching = false;
+        touchState.current.lastTouchedObject = null;
+        touchState.current.processedTouch = false;
+      }
+      lastInteractionTime.current = currentTime;
+    }
+    
     raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
     
     if (rayHelper.current) {
@@ -280,12 +403,26 @@ function useFirstPersonInteractions() {
       rayHelper.current.position.copy(raycaster.ray.origin);
     }
 
-    const intersects = raycaster.intersectObjects(scene.children, true)
-      .filter(intersect =>
-        intersect.object.userData &&
-        intersect.object.userData.interactive === true &&
-        (!isTouchDevice || intersect.distance < MOBILE_INTERACTION_DISTANCE)
-      );
+    const maxDistance = isTouchDevice ? MOBILE_INTERACTION_DISTANCE : DESKTOP_INTERACTION_DISTANCE;
+    const allIntersects = raycaster.intersectObjects(scene.children, true);
+    const interactiveIntersects = allIntersects.filter(intersect =>
+      intersect.object.userData &&
+      intersect.object.userData.interactive === true
+    );
+    
+    // DEBUG: Log raycasting info periodically using a simpler approach
+    const now = Date.now();
+    if (!(window as any).lastRaycastLog || now - (window as any).lastRaycastLog > 2000) {
+      console.log(`🎯 RAYCAST DEBUG: Found ${interactiveIntersects.length} interactive objects. Max distance: ${maxDistance}. Device: ${isTouchDevice ? 'MOBILE' : 'DESKTOP'}`);
+      if (interactiveIntersects.length > 0) {
+        interactiveIntersects.forEach((intersect, i) => {
+          console.log(`  ${i}: "${intersect.object.userData.title}" at distance ${intersect.distance.toFixed(1)} (${intersect.distance < maxDistance ? 'WITHIN' : 'TOO FAR'})`);
+        });
+      }
+      (window as any).lastRaycastLog = now;
+    }
+    
+    const intersects = interactiveIntersects.filter(intersect => intersect.distance < maxDistance);
 
     let interactiveObject = intersects.length > 0 ? intersects[0].object as HoveredObject : null;
 

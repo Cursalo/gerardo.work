@@ -1,7 +1,8 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Html } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { useInteraction } from '../context/InteractionContext';
 
 // Add CSS for loading spinner outside of React component
 const spinnerStyle = document.createElement('style');
@@ -25,6 +26,7 @@ interface ImageCardProps {
   description?: string;
   position: [number, number, number];
   rotation?: [number, number, number];
+  onClick?: () => void;
 }
 
 /**
@@ -36,22 +38,21 @@ export const ImageCard: React.FC<ImageCardProps> = ({
   imageUrl,
   description,
   position,
-  rotation = [0, 0, 0]
+  rotation = [0, 0, 0],
+  onClick
 }) => {
   const [imageError, setImageError] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
-  const [hovered, setHovered] = useState(false);
   
   const groupRef = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.Mesh>(null);
+  const { hoveredObject } = useInteraction();
 
-  // Set initial position
-  useEffect(() => {
-    if (groupRef.current) {
-      groupRef.current.position.set(position[0], position[1], position[2]);
-    }
-  }, [position]);
+  // Add mobile detection
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                   ('ontouchstart' in window) || 
+                   (navigator.maxTouchPoints > 0);
 
   // Enhanced URL resolution for mobile compatibility with proper encoding
   const resolvedImageUrl = useMemo(() => {
@@ -74,6 +75,50 @@ export const ImageCard: React.FC<ImageCardProps> = ({
     
     return imageUrl;
   }, [imageUrl]);
+
+  // Check if this card is currently hovered via the raycasting system
+  const hovered = hoveredObject?.userData?.url === resolvedImageUrl && hoveredObject?.userData?.type === 'image';
+
+  // Set up 3D interaction data after resolvedImageUrl is available
+  useEffect(() => {
+    if (groupRef.current) {
+      // Set initial position
+      groupRef.current.position.set(position[0], position[1], position[2]);
+      
+      // Set up 3D interaction data for the crosshair system (EXACTLY like WorldObject.tsx)
+      const interactionData = {
+        interactive: true,
+        action: 'view_media',
+        objectType: 'image',
+        title: title,
+        url: resolvedImageUrl,
+        type: 'image'
+      };
+      
+      // CRITICAL FIX: Set userData on BOTH group and mesh for raycasting detection
+      groupRef.current.userData = interactionData;
+      
+      // Also set on mesh when it's available
+      if (meshRef.current) {
+        meshRef.current.userData = interactionData;
+      }
+    }
+  }, [position, title, resolvedImageUrl]);
+
+  // Handle click function (EXACTLY like WorldObject.tsx)
+  const handleClick = useCallback((e?: any) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    console.log('Image Card clicked!', resolvedImageUrl);
+    
+    // Use external onClick if provided, otherwise default behavior
+    if (onClick) {
+      onClick();
+    } else if (resolvedImageUrl) {
+      window.open(resolvedImageUrl, '_blank');
+    }
+  }, [resolvedImageUrl, onClick]);
 
   // Calculate proper card dimensions based on image aspect ratio
   const cardDimensions = useMemo(() => {
@@ -115,6 +160,13 @@ export const ImageCard: React.FC<ImageCardProps> = ({
     
     return { width, height, aspectRatio };
   }, [imageDimensions, imageUrl, title]);
+  
+  // Ensure mesh has the same userData as group when dimensions change (mesh gets recreated)
+  useEffect(() => {
+    if (meshRef.current && groupRef.current?.userData) {
+      meshRef.current.userData = groupRef.current.userData;
+    }
+  }, [cardDimensions]);
 
   const handleImageError = () => {
     console.warn(`Failed to load image: ${resolvedImageUrl}`);
@@ -184,38 +236,29 @@ export const ImageCard: React.FC<ImageCardProps> = ({
     }
   });
 
-  const handlePointerEnter = () => {
-    setHovered(true);
-    document.body.style.cursor = 'pointer';
-  };
-
-  const handlePointerLeave = () => {
-    setHovered(false);
-    document.body.style.cursor = 'default';
-  };
-
-  const handleClick = () => {
-    if (resolvedImageUrl) {
-      window.open(resolvedImageUrl, '_blank');
-    }
-  };
-
   return (
     <group 
       ref={groupRef}
       rotation={rotation}
-      onPointerEnter={handlePointerEnter}
-      onPointerLeave={handlePointerLeave}
       onClick={handleClick}
     >
+      {/* Invisible 3D mesh for raycasting detection - ENLARGED for better clicking */}
+      <mesh
+        ref={meshRef}
+        position={[0, 0, 0]}
+      >
+        <planeGeometry args={[cardDimensions.width * 3.0, cardDimensions.height * 3.0]} />
+        <meshBasicMaterial transparent opacity={0} />
+      </mesh>
+
       {/* Image content */}
       <Html
         transform={false}
-        distanceFactor={6}
-        position={[0, 0, 0.01]}
+        distanceFactor={5}
+        position={[0, 0, 0.1]}
         style={{
-          width: `${cardDimensions.width * 90}px`,
-          height: `${cardDimensions.height * 90}px`,
+          width: `${cardDimensions.width * (isMobile ? 100 : 90)}px`,
+          height: `${cardDimensions.height * (isMobile ? 100 : 90)}px`,
           borderRadius: '12px',
           overflow: 'hidden',
           pointerEvents: 'none',
@@ -233,7 +276,10 @@ export const ImageCard: React.FC<ImageCardProps> = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-        }}>
+          cursor: 'pointer',
+          pointerEvents: 'none',
+        }}
+        >
           {/* Title above image */}
           <div style={{
             position: 'absolute',

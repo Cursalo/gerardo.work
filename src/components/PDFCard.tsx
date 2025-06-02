@@ -1,7 +1,97 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
+import { useAppContext } from '../hooks/useAppContext';
+import { useInteraction } from '../context/InteractionContext';
+
+// Import PDF.js with proper worker configuration
+declare global {
+  interface Window {
+    pdfjsLib: any;
+    pdfjsWorker: any;
+  }
+}
+
+// Add CSS for beautiful animations
+const pdfStyles = document.createElement('style');
+pdfStyles.textContent = `
+  .pdf-card {
+    animation: pdfSlideIn 0.6s ease-out;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .pdf-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 25px 50px rgba(0,0,0,0.2);
+  }
+  @keyframes pdfSlideIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  .pdf-shimmer {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  .pdf-spinner {
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  .pdf-progress {
+    animation: progress 2s ease-in-out infinite;
+  }
+  @keyframes progress {
+    0%, 100% { transform: scaleX(0.3); }
+    50% { transform: scaleX(0.7); }
+  }
+  .pdf-pages-flip {
+    animation: pageFlip 3s ease-in-out infinite;
+  }
+  @keyframes pageFlip {
+    0%, 100% { transform: rotateY(0deg); }
+    25% { transform: rotateY(-5deg); }
+    75% { transform: rotateY(5deg); }
+  }
+`;
+if (!document.head.querySelector('[data-pdf-modern-styles]')) {
+  pdfStyles.setAttribute('data-pdf-modern-styles', 'true');
+  document.head.appendChild(pdfStyles);
+}
+
+// Dynamically load PDF.js
+const loadPDFJS = async () => {
+  if (window.pdfjsLib) return window.pdfjsLib;
+
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    script.onload = () => {
+      if (window.pdfjsLib) {
+        // Configure worker
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 
+          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        resolve(window.pdfjsLib);
+      } else {
+        reject(new Error('PDF.js failed to load'));
+      }
+    };
+    script.onerror = () => reject(new Error('Failed to load PDF.js script'));
+    document.head.appendChild(script);
+  });
+};
 
 interface PDFCardProps {
   title: string;
@@ -11,26 +101,9 @@ interface PDFCardProps {
   rotation?: [number, number, number];
   scale?: number;
   onClick?: () => void;
+  isMobile?: boolean;
 }
 
-// Add CSS for loading spinner
-const pdfSpinnerStyle = document.createElement('style');
-pdfSpinnerStyle.textContent = `
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-`;
-if (!document.head.querySelector('[data-pdf-spinner]')) {
-  pdfSpinnerStyle.setAttribute('data-pdf-spinner', 'true');
-  document.head.appendChild(pdfSpinnerStyle);
-}
-
-/**
- * PDFCard component
- * 
- * Displays PDF content in 3D space with proper fallbacks and mobile compatibility.
- */
 export const PDFCard: React.FC<PDFCardProps> = ({
   title,
   description,
@@ -39,92 +112,157 @@ export const PDFCard: React.FC<PDFCardProps> = ({
   rotation = [0, 0, 0],
   scale = 1,
   onClick,
+  isMobile = false,
 }) => {
   const groupRef = useRef<THREE.Group>(null);
-  const [hovered, setHovered] = useState(false);
-  const [pdfLoadError, setPdfLoadError] = useState(false);
-  const [resolvedPdfUrl, setResolvedPdfUrl] = useState<string>('');
+  const meshRef = useRef<THREE.Mesh>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isOverlapping, setIsOverlapping] = useState(false);
+  const [loadState, setLoadState] = useState<'loading' | 'loaded' | 'error'>('loading');
+  const [pdfInfo, setPdfInfo] = useState<{
+    numPages?: number;
+    thumbnail?: string;
+    fileSize?: string;
+    title?: string;
+  }>({});
+  const [loadProgress, setLoadProgress] = useState(0);
+  const { registerObject, unregisterObject, checkOverlap } = useAppContext();
+  const { hoveredObject } = useInteraction();
 
-  // Set initial position
+  // Check if this card is currently hovered via the raycasting system
+  const hovered = hoveredObject?.userData?.url === pdfUrl && hoveredObject?.userData?.type === 'pdf';
+
+  // Set initial position and register for 3D interactions
   useEffect(() => {
     if (groupRef.current) {
       groupRef.current.position.set(position[0], position[1], position[2]);
-    }
-  }, [position]);
-
-  // Enhanced PDF URL resolution with proper encoding and fallbacks
-  const resolvePdfUrl = (url: string): string => {
-    if (!url) return '';
-    
-    // If it's already a full URL, return as-is
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      return url;
-    }
-    
-    // Handle file:// URLs from localStorage
-    if (url.startsWith('file://')) {
-      try {
-        const filename = url.replace('file://', '');
-        const storedFilesStr = localStorage.getItem('portfolio_files');
-        
-        if (storedFilesStr) {
-          const storedFiles = JSON.parse(storedFilesStr);
-          const fileData = storedFiles[filename];
-          
-          if (fileData && fileData.dataUrl) {
-            console.log(`PDFCard: Resolved localStorage file URL for ${filename}`);
-            return fileData.dataUrl;
-          }
-        }
-      } catch (error) {
-        console.error('PDFCard: Error resolving localStorage file URL:', error);
-      }
       
-      // Fallback: treat as relative path without file://
-      const filename = url.replace('file://', '');
-      url = filename;
+      // Set up 3D interaction data for the crosshair system (EXACTLY like WorldObject.tsx)
+      const interactionData = {
+        interactive: true,
+        action: 'open_url',
+        objectType: 'pdf',
+        title: title,
+        url: pdfUrl,
+        type: 'pdf'
+      };
+      
+      // CRITICAL FIX: Set userData on BOTH group and mesh for raycasting detection
+      groupRef.current.userData = interactionData;
+      
+      // Also set on mesh when it's available
+      if (meshRef.current) {
+        meshRef.current.userData = interactionData;
+      }
     }
-    
-    // If it's a relative URL from public directory, encode spaces and special characters
-    if (url.startsWith('/projects/') || url.startsWith('/assets/') || url.startsWith('/')) {
-      return url.split('/').map(segment => segment ? encodeURIComponent(segment) : segment).join('/');
-    }
-    
-    // If it's just a path without leading /, add it and encode
-    if (!url.startsWith('/') && !url.includes('://')) {
-      return `/${url}`.split('/').map(segment => segment ? encodeURIComponent(segment) : segment).join('/');
-    }
-    
-    return url;
-  };
+  }, [position, title, pdfUrl]);
 
-  // Process PDF URL on mount and when pdfUrl changes
+  // Handle click function (EXACTLY like WorldObject.tsx)
+  const handleClick = useCallback((e?: any) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    console.log('PDF Card clicked!', pdfUrl);
+    if (pdfUrl) {
+      window.open(pdfUrl, '_blank');
+    }
+    if (onClick) {
+      onClick();
+    }
+  }, [pdfUrl, onClick]);
+
+  // Load and process PDF
   useEffect(() => {
-    const resolved = resolvePdfUrl(pdfUrl);
-    setResolvedPdfUrl(resolved);
-    setPdfLoadError(false);
-    
-    console.log(`PDFCard: Resolved URL for "${title}": ${resolved}`);
+    const loadPDF = async () => {
+      try {
+        setLoadState('loading');
+        setLoadProgress(0);
+
+        const pdfjsLib = await loadPDFJS();
+        
+        // Create loading task with progress tracking
+        const loadingTask = pdfjsLib.getDocument({
+          url: pdfUrl,
+          cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
+          cMapPacked: true,
+        });
+
+        // Track loading progress
+        loadingTask.onProgress = (progress: any) => {
+          if (progress.total > 0) {
+            setLoadProgress(Math.round((progress.loaded / progress.total) * 100));
+          }
+        };
+
+        const pdf = await loadingTask.promise;
+        
+        // Get PDF info
+        const numPages = pdf.numPages;
+        const metadata = await pdf.getMetadata();
+        
+        // Generate thumbnail from first page
+        const page = await pdf.getPage(1);
+        const viewport = page.getViewport({ scale: 1.5 });
+        
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        const renderContext = {
+          canvasContext: context,
+          viewport: viewport,
+        };
+
+        await page.render(renderContext).promise;
+        const thumbnailDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+
+        // Estimate file size
+        const fileSize = await fetch(pdfUrl, { method: 'HEAD' })
+          .then(response => {
+            const contentLength = response.headers.get('content-length');
+            if (contentLength) {
+              const bytes = parseInt(contentLength);
+              if (bytes < 1024) return `${bytes} B`;
+              if (bytes < 1048576) return `${Math.round(bytes / 1024)} KB`;
+              return `${Math.round(bytes / 1048576)} MB`;
+            }
+            return 'Unknown size';
+          })
+          .catch(() => 'Unknown size');
+
+        setPdfInfo({
+          numPages,
+          thumbnail: thumbnailDataUrl,
+          fileSize,
+          title: metadata?.info?.Title || title,
+        });
+
+        setLoadState('loaded');
+      } catch (error) {
+        console.error('Error loading PDF:', error);
+        setLoadState('error');
+      }
+    };
+
+    if (pdfUrl) {
+      loadPDF();
+    }
   }, [pdfUrl, title]);
 
-  // Check if PDF can be embedded (basic heuristic)
-  const canEmbedPdf = (url: string): boolean => {
-    if (!url) return false;
-    
-    // Data URLs from localStorage should work
-    if (url.startsWith('data:application/pdf')) return true;
-    
-    // Local files should work
-    if (url.startsWith('/')) return true;
-    
-    // Known problematic domains
-    const problematicDomains = ['drive.google.com', 'dropbox.com', 'onedrive.com'];
-    const urlLower = url.toLowerCase();
-    
-    return !problematicDomains.some(domain => urlLower.includes(domain));
-  };
+  // Register this component's position and check for overlaps
+  useEffect(() => {
+    if (groupRef.current) {
+      const id = `pdf-${title}-${position.join(',')}`;
+      registerObject(id, groupRef);
+      
+      return () => {
+        unregisterObject(id);
+      };
+    }
+  }, [title, position, registerObject, unregisterObject]);
 
-  // Camera facing animation
+  // Check for overlapping with other objects and handle camera facing
   useFrame((state) => {
     if (groupRef.current) {
       const time = state.clock.elapsedTime;
@@ -139,6 +277,13 @@ export const PDFCard: React.FC<PDFCardProps> = ({
         baseY + floatOffset, 
         position[2]
       );
+      
+      // Check for overlaps using the fixed world position
+      const worldPosition = new THREE.Vector3(position[0], position[1], position[2]);
+      const isOverlappingNow = checkOverlap(worldPosition);
+      if (isOverlappingNow !== isOverlapping) {
+        setIsOverlapping(isOverlappingNow);
+      }
       
       // Simple camera facing without affecting position
       const camera = state.camera;
@@ -163,213 +308,388 @@ export const PDFCard: React.FC<PDFCardProps> = ({
       if (adjustedDiff < -Math.PI) adjustedDiff += 2 * Math.PI;
       
       // Apply smooth rotation
-      const rotationSpeed = hovered ? 0.08 : 0.04;
+      const rotationSpeed = hovered ? 0.1 : 0.05;
       groupRef.current.rotation.y += adjustedDiff * rotationSpeed;
       
       // Add gentle wobble when hovered (rotation only)
       if (hovered) {
-        const wobble = Math.sin(time * 2) * 0.01;
+        const wobble = Math.sin(time * 2.5) * 0.012;
         groupRef.current.rotation.y += wobble;
       }
     }
   });
 
-  // Handle hover events
-  const handlePointerEnter = () => {
-    setHovered(true);
-    document.body.style.cursor = 'pointer';
-  };
-
-  const handlePointerLeave = () => {
-    setHovered(false);
-    document.body.style.cursor = 'default';
-  };
-
-  // Handle click event
-  const handleClick = () => {
-    if (onClick) {
-      onClick();
-    } else {
-      // Default action: Open PDF in a new tab
-      window.open(resolvedPdfUrl, '_blank');
+  // Get file name from URL
+  const getFileNameFromUrl = (url: string): string => {
+    try {
+      const urlObj = new URL(url);
+      const pathname = urlObj.pathname;
+      const fileName = pathname.split('/').pop() || 'document.pdf';
+      return fileName.replace(/\.[^/.]+$/, ''); // Remove extension
+    } catch (e) {
+      return 'Document';
     }
   };
 
-  // Handle iframe load error
-  const handleIframeError = () => {
-    console.warn(`PDFCard: Failed to load PDF in iframe: ${resolvedPdfUrl}`);
-    setPdfLoadError(true);
-  };
+  const fileName = getFileNameFromUrl(pdfUrl);
 
   return (
     <group 
       ref={groupRef}
       rotation={rotation}
       scale={scale}
-      onPointerEnter={handlePointerEnter}
-      onPointerLeave={handlePointerLeave}
       onClick={handleClick}
     >
-      {/* PDF Thumbnail and Viewer */}
+      {/* Invisible 3D mesh for raycasting detection - ENLARGED for better clicking */}
+      <mesh
+        ref={meshRef}
+        position={[0, 0, 0]}
+      >
+        <planeGeometry args={[(isMobile ? 3.4 : 3.2) * 3.0, (isMobile ? 2.6 : 2.4) * 3.0]} />
+        <meshBasicMaterial transparent opacity={0} />
+      </mesh>
+
+      {/* Modern Beautiful PDF Card */}
       <Html
         transform={false}
-        distanceFactor={8}
-        position={[0, 0, 0.06]}
+        distanceFactor={5}
+        position={[0, 0, 0.1]}
         style={{
-          width: '180px',
-          height: '250px',
+          width: isMobile ? '340px' : '320px',
+          height: isMobile ? '260px' : '240px',
           pointerEvents: 'none',
+          transform: hovered ? 'scale(1.05)' : 'scale(1)',
+          transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       >
         <div
+          className="pdf-card"
           style={{
             width: '100%',
             height: '100%',
-            backgroundColor: '#ffffff',
-            borderRadius: '8px',
+            background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #3730a3 100%)',
+            borderRadius: '16px',
             overflow: 'hidden',
-            boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            alignItems: 'center',
+            position: 'relative',
+            fontFamily: '"Inter", "Helvetica Neue", Arial, sans-serif',
+            cursor: 'pointer',
+            border: '1px solid rgba(255,255,255,0.2)',
+            backdropFilter: 'blur(10px)',
+            pointerEvents: 'none',
           }}
         >
-          {pdfLoadError || !canEmbedPdf(resolvedPdfUrl) ? (
-            // Error state or non-embeddable PDF
+          {/* Background Pattern */}
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M20 20c0-5.5-4.5-10-10-10s-10 4.5-10 10 4.5 10 10 10 10-4.5 10-10zm10 0c0-5.5-4.5-10-10-10s-10 4.5-10 10 4.5 10 10 10 10-4.5 10-10z'/%3E%3C/g%3E%3C/svg%3E")`,
+              opacity: 0.8,
+              pointerEvents: 'none',
+            }}
+          />
+
+          {/* Content Container */}
+          <div
+            style={{
+              position: 'relative',
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              padding: '20px',
+              color: '#ffffff',
+              pointerEvents: 'none',
+            }}
+          >
+            {/* Header with PDF Icon and Info */}
             <div
               style={{
-                padding: '20px',
-                textAlign: 'center',
-                color: '#888',
-                fontSize: '12px',
-                fontFamily: 'Arial, sans-serif',
+                display: 'flex',
+                alignItems: 'center',
+                marginBottom: '16px',
+                gap: '12px',
+                pointerEvents: 'none',
               }}
             >
-              <div style={{ marginBottom: '10px' }}>
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M20 2H8C6.9 2 6 2.9 6 4V16C6 17.1 6.9 18 8 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" fill="#FF5722"/>
-                  <path d="M4 6H2V20C2 21.1 2.9 22 4 22H18V20H4V6Z" fill="#FF5722"/>
-                  <path d="M12 11H16V12H12V11Z" fill="white"/>
-                  <path d="M12 7H16V8H12V7Z" fill="white"/>
-                  <path d="M12 9H16V10H12V9Z" fill="white"/>
-                </svg>
+              <div
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '10px',
+                  backgroundColor: 'rgba(255,255,255,0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  pointerEvents: 'none',
+                }}
+              >
+                {loadState === 'loading' ? (
+                  <div
+                    className="pdf-spinner"
+                    style={{
+                      width: '20px',
+                      height: '20px',
+                      border: '2px solid rgba(255,255,255,0.3)',
+                      borderTop: '2px solid #ffffff',
+                      borderRadius: '50%',
+                    }}
+                  />
+                ) : loadState === 'error' ? (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                    <polyline points="14,2 14,8 20,8"/>
+                    <line x1="9" y1="15" x2="15" y2="15"/>
+                    <line x1="12" y1="12" x2="12" y2="18"/>
+                  </svg>
+                ) : (
+                  <div className={hovered ? 'pdf-pages-flip' : ''}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                      <polyline points="14,2 14,8 20,8"/>
+                      <line x1="16" y1="13" x2="8" y2="13"/>
+                      <line x1="16" y1="17" x2="8" y2="17"/>
+                      <polyline points="10,9 9,9 8,9"/>
+                    </svg>
+                  </div>
+                )}
               </div>
-              PDF Document
-              <div style={{ fontSize: '10px', marginTop: '5px', fontWeight: 'bold' }}>Click to open in new tab</div>
-              {resolvedPdfUrl && (
-                <div style={{ fontSize: '9px', marginTop: '8px', color: '#aaa', wordBreak: 'break-all' }}>
-                  {resolvedPdfUrl.length > 50 ? `${resolvedPdfUrl.substring(0, 50)}...` : resolvedPdfUrl}
+              
+              <div style={{ flex: 1, minWidth: 0, pointerEvents: 'none' }}>
+                <div
+                  style={{
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    color: 'rgba(255,255,255,0.8)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    marginBottom: '2px',
+                    pointerEvents: 'none',
+                  }}
+                >
+                  PDF Document
+                </div>
+                <div
+                  style={{
+                    fontSize: '10px',
+                    color: 'rgba(255,255,255,0.6)',
+                    fontFamily: 'monospace',
+                    pointerEvents: 'none',
+                  }}
+                >
+                  {loadState === 'loading' 
+                    ? `Loading... ${loadProgress}%`
+                    : loadState === 'error' 
+                    ? 'Failed to load'
+                    : `${pdfInfo.numPages || 0} pages • ${pdfInfo.fileSize || ''}`
+                  }
+                </div>
+              </div>
+            </div>
+
+            {/* PDF Preview Area */}
+            <div
+              style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '16px',
+              }}
+            >
+              {loadState === 'loading' ? (
+                <div style={{ textAlign: 'center' }}>
+                  <div
+                    style={{
+                      width: '80px',
+                      height: '100px',
+                      background: 'rgba(255,255,255,0.1)',
+                      borderRadius: '8px',
+                      marginBottom: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: '2px dashed rgba(255,255,255,0.3)',
+                    }}
+                  >
+                    <div
+                      className="pdf-progress"
+                      style={{
+                        width: '40px',
+                        height: '4px',
+                        backgroundColor: 'rgba(255,255,255,0.3)',
+                        borderRadius: '2px',
+                        transformOrigin: 'left',
+                      }}
+                    />
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>
+                    Generating preview...
+                  </div>
+                </div>
+              ) : loadState === 'error' ? (
+                <div style={{ textAlign: 'center' }}>
+                  <div
+                    style={{
+                      width: '80px',
+                      height: '100px',
+                      background: 'rgba(255,255,255,0.1)',
+                      borderRadius: '8px',
+                      marginBottom: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: '2px solid rgba(255,255,255,0.2)',
+                    }}
+                  >
+                    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                      <polyline points="14,2 14,8 20,8"/>
+                      <path d="M12 15V12"/>
+                      <path d="M12 18h.01"/>
+                    </svg>
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)' }}>
+                    Preview unavailable
+                  </div>
+                </div>
+              ) : pdfInfo.thumbnail ? (
+                <div
+                  style={{
+                    width: '110px',
+                    height: '130px',
+                    borderRadius: '8px',
+                    overflow: 'hidden',
+                    boxShadow: '0 8px 16px rgba(0,0,0,0.3)',
+                    border: '2px solid rgba(255,255,255,0.2)',
+                    transform: hovered ? 'rotateY(-5deg) rotateX(5deg)' : 'rotateY(0deg) rotateX(0deg)',
+                    transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  }}
+                >
+                  <img
+                    src={pdfInfo.thumbnail}
+                    alt="PDF Preview"
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      display: 'block',
+                    }}
+                  />
+                </div>
+              ) : (
+                <div
+                  style={{
+                    width: '80px',
+                    height: '100px',
+                    background: 'rgba(255,255,255,0.1)',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '2px solid rgba(255,255,255,0.2)',
+                  }}
+                >
+                  <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                    <polyline points="14,2 14,8 20,8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                  </svg>
                 </div>
               )}
             </div>
-          ) : resolvedPdfUrl ? (
-            // Try to embed PDF
-            <iframe
-              src={`${resolvedPdfUrl}#toolbar=0&navpanes=0&view=FitH`}
-              style={{
-                width: '100%',
-                height: '100%',
-                border: 'none',
-                pointerEvents: 'none',
-                backgroundColor: '#f5f5f5',
-              }}
-              title={title}
-              onError={handleIframeError}
-              onLoad={() => console.log(`PDFCard: Successfully loaded PDF iframe for ${title}`)}
-            />
-          ) : (
-            // Loading state
+
+            {/* Title and Description */}
+            <div style={{ marginBottom: '28px', paddingBottom: '8px' }}>
+              <h3
+                style={{
+                  fontSize: '14px',
+                  fontWeight: '700',
+                  margin: '0',
+                  lineHeight: '1.3',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {pdfInfo.title || title}
+              </h3>
+            </div>
+
+            {/* Footer with Call to Action */}
             <div
               style={{
-                padding: '20px',
-                textAlign: 'center',
-                color: '#888',
-                fontSize: '12px',
-                fontFamily: 'Arial, sans-serif',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingTop: '12px',
+                borderTop: '1px solid rgba(255,255,255,0.1)',
               }}
             >
-              <div style={{ marginBottom: '10px' }}>
-                <div style={{
-                  width: '20px',
-                  height: '20px',
-                  border: '2px solid #eee',
-                  borderTop: '2px solid #666',
-                  borderRadius: '50%',
-                  animation: 'spin 1s linear infinite',
-                  margin: '0 auto'
-                }} />
+              <div
+                style={{
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  color: 'rgba(255,255,255,0.9)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <span>Click to open</span>
+                <svg 
+                  width="14" 
+                  height="14" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  strokeWidth="2"
+                  style={{
+                    transform: hovered ? 'translateX(2px)' : 'translateX(0)',
+                    transition: 'transform 0.3s ease',
+                  }}
+                >
+                  <path d="M7 17L17 7"/>
+                  <path d="M7 7h10v10"/>
+                </svg>
               </div>
-              Loading PDF...
+              
+              <div
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  backgroundColor: loadState === 'loaded' ? '#10B981' : loadState === 'loading' ? '#F59E0B' : '#EF4444',
+                  boxShadow: `0 0 8px ${loadState === 'loaded' ? '#10B981' : loadState === 'loading' ? '#F59E0B' : '#EF4444'}`,
+                }}
+              />
             </div>
+          </div>
+
+          {/* Hover Overlay */}
+          {hovered && (
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
+                borderRadius: '16px',
+                pointerEvents: 'none',
+              }}
+            />
           )}
         </div>
       </Html>
-      
-      {/* Title Overlay */}
-      <Html
-        transform={false}
-        distanceFactor={8}
-        position={[0, -1.5, 0.05]}
-        style={{
-          width: '180px',
-          maxWidth: '90%',
-          textAlign: 'center',
-          pointerEvents: 'none',
-        }}
-      >
-        <div
-          style={{
-            backgroundColor: 'rgba(0,0,0,0.7)',
-            color: '#ffffff',
-            padding: '4px 8px',
-            borderRadius: '4px',
-            fontSize: '12px',
-            fontFamily: 'Arial, sans-serif',
-            fontWeight: 'bold',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
-            opacity: hovered ? 1 : 0.8,
-            transform: `scale(${hovered ? 1.1 : 1})`,
-            transition: 'all 0.2s ease'
-          }}
-        >
-          {title}
-        </div>
-      </Html>
-      
-      {/* Description Popup on Hover */}
-      {description && (
-        <Html
-          transform={false}
-          distanceFactor={8}
-          position={[0, 1.5, 0.06]}
-          style={{
-            width: '180px',
-            maxWidth: '90%',
-            pointerEvents: 'none',
-            opacity: hovered ? 1 : 0,
-            transition: 'opacity 0.3s ease',
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: 'rgba(0,0,0,0.7)',
-              color: '#ffffff',
-              padding: '8px 12px',
-              borderRadius: '8px',
-              fontSize: '12px',
-              fontFamily: 'Arial, sans-serif',
-              boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
-            }}
-          >
-            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{title}</div>
-            <div style={{ fontSize: '11px', lineHeight: 1.4 }}>{description}</div>
-          </div>
-        </Html>
-      )}
     </group>
   );
 };

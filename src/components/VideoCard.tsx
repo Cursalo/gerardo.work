@@ -2,6 +2,7 @@ import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { Mesh, Group, Vector3 } from 'three';
+import { useInteraction } from '../context/InteractionContext';
 
 interface VideoCardProps {
   id: number;
@@ -26,7 +27,6 @@ export const VideoCard: React.FC<VideoCardProps> = ({
   position,
   rotation = [0, 0, 0]
 }) => {
-  const [hovered, setHovered] = useState(false);
   const [isPlaying, setIsPlaying] = useState(true);
   const [videoError, setVideoError] = useState(false);
   const [videoLoaded, setVideoLoaded] = useState(false);
@@ -34,9 +34,15 @@ export const VideoCard: React.FC<VideoCardProps> = ({
   const groupRef = useRef<Group>(null);
   const meshRef = useRef<Mesh>(null);
   const videoRef = useRef<HTMLIFrameElement>(null);
+  const { hoveredObject } = useInteraction();
   
   // Get camera from three.js context
   const { camera } = useThree();
+  
+  // Add mobile detection
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                   ('ontouchstart' in window) || 
+                   (navigator.maxTouchPoints > 0);
   
   // Set initial position
   useEffect(() => {
@@ -115,6 +121,43 @@ export const VideoCard: React.FC<VideoCardProps> = ({
     return url;
   }, [resolvedVideoUrl]);
 
+  // Check if this card is currently hovered via the raycasting system
+  const hovered = hoveredObject?.userData?.url === resolvedVideoUrl && hoveredObject?.userData?.type === 'video';
+
+  // Set up 3D interaction data after resolvedVideoUrl is available
+  useEffect(() => {
+    if (groupRef.current) {
+      // Set up 3D interaction data for the crosshair system (EXACTLY like WorldObject.tsx)
+      const interactionData = {
+        interactive: true,
+        action: 'view_media',
+        objectType: 'video',
+        title: title,
+        url: resolvedVideoUrl,
+        type: 'video'
+      };
+      
+      // CRITICAL FIX: Set userData on BOTH group and mesh for raycasting detection
+      groupRef.current.userData = interactionData;
+      
+      // Also set on mesh when it's available
+      if (meshRef.current) {
+        meshRef.current.userData = interactionData;
+      }
+    }
+  }, [title, resolvedVideoUrl]);
+
+  // Handle click function (EXACTLY like WorldObject.tsx)
+  const handleClick = useCallback((e?: any) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    console.log('Video Card clicked!', resolvedVideoUrl);
+    if (resolvedVideoUrl) {
+      window.open(resolvedVideoUrl, '_blank');
+    }
+  }, [resolvedVideoUrl]);
+
   // Check if URL is a direct video file
   const isDirectVideo = useMemo(() => {
     const url = resolvedVideoUrl;
@@ -135,23 +178,14 @@ export const VideoCard: React.FC<VideoCardProps> = ({
     setVideoError(false);
   }, []);
 
-  // Handle hover events
+  // Handle hover events (no longer needed as hover is detected via raycasting)
   const handlePointerEnter = useCallback(() => {
-    setHovered(true);
-    document.body.style.cursor = 'pointer';
+    // Hover state is now managed by the raycasting system
   }, []);
 
   const handlePointerLeave = useCallback(() => {
-    setHovered(false);
-    document.body.style.cursor = 'default';
+    // Hover state is now managed by the raycasting system
   }, []);
-
-  // Handle click for video playback
-  const handleClick = useCallback(() => {
-    if (resolvedVideoUrl) {
-      window.open(resolvedVideoUrl, '_blank');
-    }
-  }, [resolvedVideoUrl]);
 
   // Optimized floating animation
   useFrame((state) => {
@@ -216,19 +250,25 @@ export const VideoCard: React.FC<VideoCardProps> = ({
     <group 
       ref={groupRef}
       rotation={rotation}
-
-      onPointerEnter={handlePointerEnter}
-      onPointerLeave={handlePointerLeave}
       onClick={handleClick}
     >
+      {/* Invisible 3D mesh for raycasting detection - ENLARGED for better clicking */}
+      <mesh
+        ref={meshRef}
+        position={[0, 0, 0]}
+      >
+        <planeGeometry args={[videoDimensions.width * 3.0, videoDimensions.height * 3.0]} />
+        <meshBasicMaterial transparent opacity={0} />
+      </mesh>
+
       {/* Video content */}
       <Html
         transform={false}
-        distanceFactor={8}
-        position={[0, 0, 0.03]}
+        distanceFactor={5}
+        position={[0, 0, 0.1]}
         style={{
-          width: `${videoDimensions.width * 100}px`,
-          height: `${videoDimensions.height * 100}px`,
+          width: `${videoDimensions.width * (isMobile ? 110 : 100)}px`,
+          height: `${videoDimensions.height * (isMobile ? 110 : 100)}px`,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -248,8 +288,9 @@ export const VideoCard: React.FC<VideoCardProps> = ({
             position: 'relative',
             borderRadius: '12px',
             overflow: 'hidden',
-            pointerEvents: 'none',
             backgroundColor: '#000',
+            cursor: 'pointer',
+            pointerEvents: 'none',
           }}
         >
           {/* Clean floating title */}
@@ -325,7 +366,6 @@ export const VideoCard: React.FC<VideoCardProps> = ({
                 height: '100%',
                 boxShadow: hovered ? '0 0 20px rgba(255,255,255,0.3)' : '0 5px 15px rgba(0,0,0,0.1)',
                 transition: 'all 0.3s ease',
-                pointerEvents: 'none',
                 objectFit: 'cover',
                 backgroundColor: '#000'
               }}
@@ -343,7 +383,6 @@ export const VideoCard: React.FC<VideoCardProps> = ({
                 height: '100%',
                 boxShadow: hovered ? '0 0 20px rgba(255,255,255,0.3)' : '0 5px 15px rgba(0,0,0,0.1)',
                 transition: 'all 0.3s ease',
-                pointerEvents: 'none',
                 overflow: 'hidden'
               }}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -368,7 +407,6 @@ export const VideoCard: React.FC<VideoCardProps> = ({
               opacity: hovered ? 1 : 0,
               transform: `translateY(${hovered ? '0' : '20px'})`,
               transition: 'opacity 0.3s ease, transform 0.3s ease',
-              pointerEvents: 'none',
               borderBottomLeftRadius: '12px',
               borderBottomRightRadius: '12px',
             }}

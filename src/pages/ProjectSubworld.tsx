@@ -1,6 +1,6 @@
 import React, { useEffect, useState, Suspense, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useThree } from '@react-three/fiber';
 import { Environment, Text } from '@react-three/drei';
 import { projectDataService, ProjectData } from '../services/projectDataService';
 import * as THREE from 'three';
@@ -12,6 +12,23 @@ import useMobileDetection from '../hooks/useMobileDetection';
 import useFirstPersonInteractions from '../hooks/useFirstPersonInteractions';
 import BackButton from '../components/BackButton';
 import Crosshair from '../components/Crosshair';
+
+// Add pulse animation for the pointer lock indicator
+const pulseKeyframes = `
+@keyframes pulse {
+  0% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.02); }
+  100% { opacity: 1; transform: scale(1); }
+}
+`;
+
+// Inject the CSS animation
+if (typeof document !== 'undefined' && !document.querySelector('[data-pulse-animation]')) {
+  const style = document.createElement('style');
+  style.setAttribute('data-pulse-animation', 'true');
+  style.textContent = pulseKeyframes;
+  document.head.appendChild(style);
+}
 
 // Import the specialized card components
 import { VideoCard } from '../components/VideoCard';
@@ -139,6 +156,7 @@ const MediaCardRouter: React.FC<{ mediaObject: any; index: number }> = React.mem
           description={mediaObject.description}
           position={position as [number, number, number]}
           rotation={rotation as [number, number, number]}
+          onClick={handleClick}
         />
       );
   }
@@ -152,6 +170,35 @@ const SceneContent: React.FC<{ allMediaObjects: any[], projectData: ProjectData 
 
   // Enable first person interactions for walking and interaction (same as main world)
   useFirstPersonInteractions();
+
+  // DEBUG: Log scene structure to understand raycasting issues
+  const { scene } = useThree();
+  useEffect(() => {
+    const logSceneInteractives = () => {
+      console.log('🎯 DEBUG: Scanning scene for interactive objects...');
+      const interactiveObjects: any[] = [];
+      
+      scene.traverse((child) => {
+        if (child.userData?.interactive === true) {
+          interactiveObjects.push({
+            name: child.name || 'unnamed',
+            type: child.userData.type || child.userData.objectType,
+            position: child.position,
+            userData: child.userData
+          });
+        }
+      });
+      
+      console.log(`🎯 DEBUG: Found ${interactiveObjects.length} interactive objects:`, interactiveObjects);
+      console.log('🎯 DEBUG: Pointer lock status:', document.pointerLockElement ? 'LOCKED' : 'NOT LOCKED');
+      console.log('🎯 DEBUG: Crosshair system ready - first click will align cursor and enable interactions');
+      console.log('🎯 DEBUG: Crosshair should be visible at center. If not, check z-index conflicts.');
+    };
+    
+    // Log after scene is likely populated
+    const timer = setTimeout(logSceneInteractives, 2000);
+    return () => clearTimeout(timer);
+  }, [scene, allMediaObjects.length]);
 
   return (
     <>
@@ -255,9 +302,47 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
   const [projectData, setProjectData] = useState<ProjectData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isPointerLocked, setIsPointerLocked] = useState(false);
   
   // Get mobile detection
   const { isTouchDevice } = useMobileDetection();
+
+  // Track pointer lock state for unified cursor system
+  useEffect(() => {
+    const handlePointerLockChange = () => {
+      const isLocked = !!document.pointerLockElement;
+      setIsPointerLocked(isLocked);
+      console.log('🎯 Pointer lock changed:', isLocked ? 'LOCKED' : 'UNLOCKED');
+    };
+
+    document.addEventListener('pointerlockchange', handlePointerLockChange);
+    
+    // Check initial state
+    handlePointerLockChange();
+    
+    return () => {
+      document.removeEventListener('pointerlockchange', handlePointerLockChange);
+    };
+  }, []);
+
+  // Auto-request pointer lock when subworld loads (after a short delay)
+  useEffect(() => {
+    if (!isTouchDevice && projectData && !isLoading) {
+      const timer = setTimeout(() => {
+        if (!document.pointerLockElement) {
+          console.log('🎯 Auto-requesting pointer lock for subworld...');
+          const canvas = document.querySelector('canvas');
+          if (canvas) {
+            canvas.requestPointerLock().catch(err => {
+              console.log('🎯 Auto pointer lock request failed (user interaction needed):', err);
+            });
+          }
+        }
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isTouchDevice, projectData, isLoading]);
 
   useEffect(() => {
     const loadProject = async () => {
@@ -461,6 +546,46 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
               state.scene.background = new THREE.Color('#ffffff');
               state.gl.toneMapping = THREE.NoToneMapping;
               state.gl.toneMappingExposure = 1.0;
+              
+              // Ensure canvas can receive events for crosshair interaction
+              state.gl.domElement.style.cursor = 'none';
+              state.gl.domElement.tabIndex = 0; // Make canvas focusable for keyboard events
+              
+              // CRITICAL FIX: Force pointer lock request on first click to align cursor with crosshair
+              const handleInitialClick = () => {
+                if (!document.pointerLockElement && !isTouchDevice) {
+                  state.gl.domElement.requestPointerLock();
+                }
+              };
+              
+              // CRITICAL FIX: Handle pointer lock state for proper cursor display (same as main world)
+              const handlePointerLockChange = () => {
+                const isLocked = document.pointerLockElement === state.gl.domElement;
+                if (isLocked) {
+                  // When locked, hide cursor completely
+                  document.body.style.cursor = 'none';
+                  state.gl.domElement.style.cursor = 'none';
+                  console.log('🎯 Canvas pointer lock active - cursor hidden');
+                } else {
+                  // When not locked, show green cursor to indicate where to click  
+                  document.body.style.cursor = 'url(/cursors/cursor-green.png), auto';
+                  state.gl.domElement.style.cursor = 'url(/cursors/cursor-green.png), auto';
+                  console.log('🎯 Canvas pointer lock inactive - green cursor shown');
+                }
+              };
+              
+              state.gl.domElement.addEventListener('click', handleInitialClick);
+              document.addEventListener('pointerlockchange', handlePointerLockChange);
+              
+              // Set initial cursor state
+              handlePointerLockChange();
+              
+              // Cleanup
+              const canvas = state.gl.domElement;
+              return () => {
+                canvas.removeEventListener('click', handleInitialClick);
+                document.removeEventListener('pointerlockchange', handlePointerLockChange);
+              };
             }}
           >
             <Suspense fallback={null}>
@@ -472,7 +597,29 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
           {isTouchDevice && <MobileControls />}
           <BackButton />
           
-          {/* Crosshair for consistent interaction */}
+          {/* Pointer Lock Status Indicator - only show on desktop when not locked */}
+          {!isTouchDevice && !isPointerLocked && (
+            <div style={{
+              position: 'fixed',
+              top: '20px',
+              right: '20px',
+              backgroundColor: 'rgba(255, 255, 255, 0.9)',
+              color: '#333',
+              padding: '12px 16px',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: 'bold',
+              zIndex: 9999,
+              border: '2px solid rgba(77, 255, 170, 0.5)',
+              animation: 'pulse 2s infinite',
+            }}>
+              🎯 Click anywhere to enable crosshair mode
+            </div>
+          )}
+          
+
+          
+          {/* Crosshair for consistent interaction - ALWAYS VISIBLE and PERFECTLY CENTERED */}
           <div style={{
             position: 'fixed',
             top: 0,
@@ -483,8 +630,47 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
             zIndex: 10000,
             display: 'block'
           }}>
-            <Crosshair />
+            <Crosshair isPointerLocked={isPointerLocked} />
           </div>
+          
+          {/* DEBUG: Visual center marker to verify crosshair alignment */}
+          <div style={{
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            width: '4px',
+            height: '4px',
+            backgroundColor: 'red',
+            borderRadius: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 99999,
+            pointerEvents: 'none',
+            opacity: 0.3,
+          }} />
+          
+          {/* DEBUG: Crosshair alignment indicators */}
+          <div style={{
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            width: '40px',
+            height: '1px',
+            backgroundColor: 'rgba(255, 0, 0, 0.3)',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 99998,
+            pointerEvents: 'none',
+          }} />
+          <div style={{
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            width: '1px',
+            height: '40px',
+            backgroundColor: 'rgba(255, 0, 0, 0.3)',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 99998,
+            pointerEvents: 'none',
+          }} />
         </div>
       </MobileControlsProvider>
     </InteractionProvider>

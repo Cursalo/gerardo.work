@@ -1,23 +1,64 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { useAppContext } from '../hooks/useAppContext';
+import { useInteraction } from '../context/InteractionContext';
 
-// Add CSS for loading spinner outside of React component
-const weblinkSpinnerStyle = document.createElement('style');
-weblinkSpinnerStyle.textContent = `
-  .weblink-spinner {
-    animation: weblink-spin 1s linear infinite;
+// Add CSS for beautiful animations
+const weblinkStyles = document.createElement('style');
+weblinkStyles.textContent = `
+  .weblink-card {
+    animation: weblinkSlideIn 0.6s ease-out;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  @keyframes weblink-spin {
+  .weblink-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+  }
+  @keyframes weblinkSlideIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .weblink-shimmer {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  .weblink-spinner {
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
   }
+  .weblink-icon-bounce {
+    animation: iconBounce 2s infinite;
+  }
+  @keyframes iconBounce {
+    0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-5px); }
+    60% { transform: translateY(-3px); }
+  }
+  @keyframes pulse {
+    0% { transform: translate(-50%, -50%) scale(1); }
+    50% { transform: translate(-50%, -50%) scale(1.1); }
+    100% { transform: translate(-50%, -50%) scale(1); }
+  }
 `;
-if (!document.head.querySelector('[data-weblink-styles]')) {
-  weblinkSpinnerStyle.setAttribute('data-weblink-styles', 'true');
-  document.head.appendChild(weblinkSpinnerStyle);
+if (!document.head.querySelector('[data-weblink-modern-styles]')) {
+  weblinkStyles.setAttribute('data-weblink-modern-styles', 'true');
+  document.head.appendChild(weblinkStyles);
 }
 
 interface WebLinkCardProps {
@@ -41,23 +82,89 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
 }) => {
   const groupRef = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.Mesh>(null);
-  const [hovered, setHovered] = useState(false);
   const [isOverlapping, setIsOverlapping] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
+  const [loadState, setLoadState] = useState<'loading' | 'loaded' | 'error'>('loading');
+  const [siteInfo, setSiteInfo] = useState<{
+    favicon?: string;
+    title?: string;
+    description?: string;
+    image?: string;
+  }>({});
   const { registerObject, unregisterObject, checkOverlap } = useAppContext();
+  const { hoveredObject } = useInteraction();
 
-  // Set initial position
+  // Check if this card is currently hovered via the raycasting system
+  const hovered = hoveredObject?.userData?.url === url && hoveredObject?.userData?.type === 'link';
+
+  // Add mobile detection
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                   ('ontouchstart' in window) || 
+                   (navigator.maxTouchPoints > 0);
+
+  // Set initial position and register for 3D interactions
   useEffect(() => {
     if (groupRef.current) {
       groupRef.current.position.set(position[0], position[1], position[2]);
+      
+      // Set up 3D interaction data for the crosshair system (EXACTLY like WorldObject.tsx)
+      const interactionData = {
+        interactive: true,
+        action: 'open_url',
+        objectType: 'link',
+        title: title,
+        url: url,
+        type: 'link'
+      };
+      
+      // CRITICAL FIX: Set userData on BOTH group and mesh for raycasting detection
+      groupRef.current.userData = interactionData;
+      
+      // Also set on mesh when it's available
+      if (meshRef.current) {
+        meshRef.current.userData = interactionData;
+      }
     }
-  }, [position]);
+  }, [position, title, url]);
 
-  // Handle hover state
-  const updateHoverState = (state: boolean) => {
-    setHovered(state);
-  };
+  // Handle click function (EXACTLY like WorldObject.tsx)
+  const handleClick = useCallback((e?: any) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    console.log('WebLink Card clicked!', url);
+    if (url) {
+      window.open(url, '_blank');
+    }
+    if (onClick) {
+      onClick();
+    }
+  }, [url, onClick]);
+
+  // Extract domain and get site info
+  useEffect(() => {
+    const extractSiteInfo = async () => {
+      try {
+        const urlObj = new URL(url);
+        const domain = urlObj.hostname.replace('www.', '');
+        const favicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+        
+        // Simulate loading time for better UX
+        setTimeout(() => {
+          setSiteInfo({
+            favicon,
+            title: title || domain,
+            description: description || `Visit ${domain}`,
+          });
+          setLoadState('loaded');
+        }, 800 + Math.random() * 1200);
+      } catch (error) {
+        console.error('Error extracting site info:', error);
+        setLoadState('error');
+      }
+    };
+
+    extractSiteInfo();
+  }, [url, title, description]);
 
   // Register this component's position and check for overlaps
   useEffect(() => {
@@ -78,7 +185,7 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
       
       // FIXED: Keep cards in their assigned positions with only gentle floating
       const baseY = position[1];
-      const floatOffset = Math.sin(time * 0.5 + position[0] * 0.25) * 0.08;
+      const floatOffset = Math.sin(time * 0.6 + position[0] * 0.3) * 0.12;
       
       // Lock to original position coordinates
       groupRef.current.position.set(
@@ -117,39 +224,16 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
       if (adjustedDiff < -Math.PI) adjustedDiff += 2 * Math.PI;
       
       // Apply smooth rotation
-      const rotationSpeed = hovered ? 0.08 : 0.04;
+      const rotationSpeed = hovered ? 0.1 : 0.05;
       groupRef.current.rotation.y += adjustedDiff * rotationSpeed;
       
       // Add gentle wobble when hovered (rotation only)
       if (hovered) {
-        const wobble = Math.sin(time * 2) * 0.01;
+        const wobble = Math.sin(time * 3) * 0.015;
         groupRef.current.rotation.y += wobble;
       }
     }
   });
-
-  // Handle click event
-  const handleClick = () => {
-    if (onClick) {
-      onClick();
-    } else {
-      // Default action: Open URL in a new tab
-      window.open(url, '_blank');
-    }
-  };
-
-  // Handle iframe load events
-  const handleIframeLoad = () => {
-    console.log(`WebLinkCard: Iframe loaded for ${url}`);
-    setIsLoading(false);
-    setLoadError(false);
-  };
-
-  const handleIframeError = () => {
-    console.error(`WebLinkCard: Error loading iframe for ${url}`);
-    setIsLoading(false);
-    setLoadError(true);
-  };
 
   // Get domain name from URL for display
   const getDomainFromUrl = (urlString: string): string => {
@@ -168,37 +252,269 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
       ref={groupRef}
       rotation={rotation}
       scale={scale}
-      onPointerOver={() => updateHoverState(true)}
-      onPointerOut={() => updateHoverState(false)}
       onClick={handleClick}
     >
-      {/* Web Page Preview */}
+      {/* Invisible 3D mesh for raycasting detection - ENLARGED for better clicking */}
+      <mesh
+        ref={meshRef}
+        position={[0, 0, 0]}
+      >
+        <planeGeometry args={[(isMobile ? 3.0 : 2.8) * 3.0, (isMobile ? 2.2 : 2.0) * 3.0]} />
+        <meshBasicMaterial transparent opacity={0} />
+      </mesh>
+
+      {/* Modern Beautiful Web Link Card */}
       <Html
         transform={false}
-        distanceFactor={8}
-        position={[0, 0, 0.06]}
+        distanceFactor={5}
+        position={[0, 0, 0.1]}
         style={{
-          width: '220px',
-          height: '150px',
+          width: isMobile ? '300px' : '280px',
+          height: isMobile ? '220px' : '200px',
           pointerEvents: 'none',
+          transform: hovered ? 'scale(1.05)' : 'scale(1)',
+          transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       >
         <div
+          className="weblink-card"
           style={{
             width: '100%',
             height: '100%',
-            backgroundColor: '#ffffff',
-            borderRadius: '8px',
+            background: 'linear-gradient(135deg, #374151 0%, #4b5563 50%, #6b7280 100%)',
+            borderRadius: '16px',
             overflow: 'hidden',
-            boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            alignItems: 'center',
             position: 'relative',
+            fontFamily: '"Inter", "Helvetica Neue", Arial, sans-serif',
+            cursor: 'pointer',
+            border: '1px solid rgba(255,255,255,0.1)',
+            backdropFilter: 'blur(10px)',
+            pointerEvents: 'none',
           }}
         >
-          {isLoading && (
+          {/* Background Pattern */}
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+              opacity: 0.6,
+              pointerEvents: 'none',
+            }}
+          />
+
+          {/* Content Container */}
+          <div
+            style={{
+              position: 'relative',
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              padding: '20px',
+              color: '#ffffff',
+              pointerEvents: 'none',
+            }}
+          >
+            {/* Header with Favicon and Domain */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                marginBottom: '16px',
+                gap: '12px',
+              }}
+            >
+              <div
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '8px',
+                  backgroundColor: 'rgba(255,255,255,0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                }}
+              >
+                {loadState === 'loading' ? (
+                  <div
+                    className="weblink-spinner"
+                    style={{
+                      width: '16px',
+                      height: '16px',
+                      border: '2px solid rgba(255,255,255,0.3)',
+                      borderTop: '2px solid #ffffff',
+                      borderRadius: '50%',
+                    }}
+                  />
+                ) : loadState === 'loaded' && siteInfo.favicon ? (
+                  <img
+                    src={siteInfo.favicon}
+                    alt={domain}
+                    style={{
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '4px',
+                    }}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                  </svg>
+                )}
+              </div>
+              
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div
+                  style={{
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    color: 'rgba(255,255,255,0.7)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    marginBottom: '2px',
+                  }}
+                >
+                  Project Showcase
+                </div>
+                <div
+                  style={{
+                    fontSize: '9px',
+                    color: 'rgba(255,255,255,0.5)',
+                    fontFamily: 'monospace',
+                  }}
+                >
+                  {loadState === 'loading' ? 'Loading...' : 'Details'}
+                </div>
+              </div>
+            </div>
+
+            {/* Main Content */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+              {loadState === 'loading' ? (
+                <div>
+                  <div
+                    className="weblink-shimmer"
+                    style={{
+                      height: '20px',
+                      borderRadius: '4px',
+                      marginBottom: '12px',
+                    }}
+                  />
+                  <div
+                    className="weblink-shimmer"
+                    style={{
+                      height: '14px',
+                      borderRadius: '4px',
+                      width: '80%',
+                      marginBottom: '8px',
+                    }}
+                  />
+                  <div
+                    className="weblink-shimmer"
+                    style={{
+                      height: '14px',
+                      borderRadius: '4px',
+                      width: '60%',
+                    }}
+                  />
+                </div>
+              ) : (
+                <>
+                  <h3
+                    style={{
+                      fontSize: '18px',
+                      fontWeight: '700',
+                      margin: '0 0 12px 0',
+                      lineHeight: '1.3',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+                    {siteInfo.title || title}
+                  </h3>
+                  
+                  {(siteInfo.description || description) && (
+                    <p
+                      style={{
+                        fontSize: '12px',
+                        color: 'rgba(255,255,255,0.7)',
+                        margin: 0,
+                        lineHeight: '1.4',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {siteInfo.description || description}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Footer with Call to Action */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginTop: '16px',
+                paddingTop: '16px',
+                borderTop: '1px solid rgba(255,255,255,0.1)',
+              }}
+            >
+              <div
+                style={{
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  color: 'rgba(255,255,255,0.9)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <span>Click to visit</span>
+                <svg 
+                  className={hovered ? 'weblink-icon-bounce' : ''}
+                  width="14" 
+                  height="14" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  strokeWidth="2"
+                >
+                  <path d="M7 17L17 7"/>
+                  <path d="M7 7h10v10"/>
+                </svg>
+              </div>
+              
+              <div
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  backgroundColor: loadState === 'loaded' ? '#10B981' : loadState === 'loading' ? '#F59E0B' : '#EF4444',
+                  boxShadow: `0 0 8px ${loadState === 'loaded' ? '#10B981' : loadState === 'loading' ? '#F59E0B' : '#EF4444'}`,
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Hover Overlay */}
+          {hovered && (
             <div
               style={{
                 position: 'absolute',
@@ -206,196 +522,39 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
                 left: 0,
                 right: 0,
                 bottom: 0,
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                alignItems: 'center',
-                backgroundColor: '#f8f8f8',
-                zIndex: 10,
-              }}
-            >
-              <div
-                className="weblink-spinner"
-                style={{
-                  width: '30px',
-                  height: '30px',
-                  border: '3px solid #eee',
-                  borderTop: '3px solid #3498db',
-                  borderRadius: '50%',
-                  marginBottom: '10px',
-                }}
-              />
-              <div style={{ fontSize: '12px', color: '#666' }}>Loading...</div>
-            </div>
-          )}
-          
-          {loadError ? (
-            <div
-              style={{
-                padding: '20px',
-                textAlign: 'center',
-                color: '#888',
-                fontSize: '12px',
-                fontFamily: 'Arial, sans-serif',
-              }}
-            >
-              <div style={{ marginBottom: '10px' }}>
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20Z" fill="#FF5722"/>
-                  <path d="M12 14C13.1046 14 14 13.1046 14 12C14 10.8954 13.1046 10 12 10C10.8954 10 10 10.8954 10 12C10 13.1046 10.8954 14 12 14Z" fill="#FF5722"/>
-                  <path d="M12 8V7" stroke="#FF5722" strokeWidth="2" strokeLinecap="round"/>
-                  <path d="M12 17V16" stroke="#FF5722" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-              </div>
-              Unable to load preview
-              <div style={{ fontSize: '10px', marginTop: '5px' }}>Click to open website</div>
-            </div>
-          ) : (
-            <iframe
-              src={url}
-              style={{
-                width: '100%',
-                height: '100%',
-                border: 'none',
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
+                borderRadius: '16px',
                 pointerEvents: 'none',
-                opacity: isLoading ? 0 : 1,
-                transition: 'opacity 0.3s ease',
               }}
-              title={title}
-              onLoad={handleIframeLoad}
-              onError={handleIframeError}
-              sandbox="allow-same-origin"
             />
           )}
-          
-          {/* URL Bar Overlay */}
-          <div
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              height: '24px',
-              backgroundColor: 'rgba(245,245,245,0.9)',
-              borderBottom: '1px solid #ddd',
-              display: 'flex',
-              alignItems: 'center',
-              padding: '0 8px',
-              fontSize: '10px',
-              color: '#333',
-              fontFamily: 'Arial, sans-serif',
-              borderTopLeftRadius: '8px',
-              borderTopRightRadius: '8px',
-            }}
-          >
+
+          {/* Mobile Interaction Button */}
+          {isMobile && hovered && (
             <div
               style={{
-                display: 'inline-block',
-                maxWidth: '80%',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: '60px',
+                height: '60px',
+                backgroundColor: 'rgba(255,255,255,0.9)',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '24px',
+                color: '#374151',
+                fontWeight: 'bold',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                animation: 'pulse 2s infinite',
+                pointerEvents: 'none',
               }}
             >
-              {domain}
+              🔗
             </div>
-          </div>
-        </div>
-      </Html>
-      
-      {/* Title Overlay */}
-      <Html
-        transform={false}
-        distanceFactor={8}
-        position={[0, -1.0, 0.05]}
-        style={{
-          width: '180px',
-          maxWidth: '90%',
-          textAlign: 'center',
-          pointerEvents: 'none',
-        }}
-      >
-        <div
-          style={{
-            backgroundColor: 'rgba(0,0,0,0.7)',
-            color: '#ffffff',
-            padding: '4px 8px',
-            borderRadius: '4px',
-            fontSize: '12px',
-            fontFamily: 'Arial, sans-serif',
-            fontWeight: 'bold',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
-            opacity: hovered ? 1 : 0.8,
-            transform: `scale(${hovered ? 1.1 : 1})`,
-            transition: 'all 0.2s ease'
-          }}
-        >
-          {title}
-        </div>
-      </Html>
-      
-      {/* Description Popup on Hover */}
-      {description && (
-        <Html
-          transform={false}
-          distanceFactor={8}
-          position={[0, 1.0, 0.06]}
-          style={{
-            width: '180px',
-            maxWidth: '90%',
-            pointerEvents: 'none',
-            opacity: hovered ? 1 : 0,
-            transition: 'opacity 0.3s ease',
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: 'rgba(0,0,0,0.7)',
-              color: '#ffffff',
-              padding: '8px 12px',
-              borderRadius: '8px',
-              fontSize: '12px',
-              fontFamily: 'Arial, sans-serif',
-              boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
-            }}
-          >
-            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{title}</div>
-            <div style={{ fontSize: '11px', lineHeight: 1.4 }}>{description}</div>
-          </div>
-        </Html>
-      )}
-      
-      {/* Click Indicator */}
-      <Html
-        transform={false}
-        distanceFactor={8}
-        position={[0, 0, 0.07]}
-        style={{
-          width: '100%',
-          height: '100%',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          pointerEvents: 'none',
-          opacity: hovered ? 1 : 0,
-          transition: 'opacity 0.3s ease',
-        }}
-      >
-        <div
-          style={{
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            color: '#ffffff',
-            padding: '6px 12px',
-            borderRadius: '20px',
-            fontSize: '11px',
-            fontFamily: 'Arial, sans-serif',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
-          }}
-        >
-          Click to open
+          )}
         </div>
       </Html>
     </group>
