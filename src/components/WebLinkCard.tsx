@@ -148,20 +148,13 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
     >
       {/* Web Page Preview */}
       <Html
-        transform
+        transform={false}
         distanceFactor={8}
         position={[0, 0, 0.06]}
-        occlude={false}
         style={{
           width: '220px',
           height: '150px',
           pointerEvents: 'none',
-          // Mobile WebGL fixes
-          backfaceVisibility: 'hidden',
-          WebkitBackfaceVisibility: 'hidden',
-          WebkitTransform: 'translate3d(0, 0, 0)',
-          WebkitPerspective: '1000px',
-          WebkitTransformStyle: 'preserve-3d',
         }}
       >
         <div
@@ -286,7 +279,7 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
       
       {/* Title Overlay */}
       <Html
-        transform
+        transform={false}
         distanceFactor={8}
         position={[0, -1.0, 0.05]}
         style={{
@@ -309,7 +302,6 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
-            backdropFilter: 'blur(2px)',
             opacity: hovered ? 1 : 0.8,
             transform: `scale(${hovered ? 1.1 : 1})`,
             transition: 'all 0.2s ease'
@@ -322,7 +314,7 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
       {/* Description Popup on Hover */}
       {description && (
         <Html
-          transform
+          transform={false}
           distanceFactor={8}
           position={[0, 1.0, 0.06]}
           style={{
@@ -342,7 +334,6 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
               fontSize: '12px',
               fontFamily: 'Arial, sans-serif',
               boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
-              backdropFilter: 'blur(4px)',
             }}
           >
             <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{title}</div>
@@ -353,7 +344,7 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
       
       {/* Click Indicator */}
       <Html
-        transform
+        transform={false}
         distanceFactor={8}
         position={[0, 0, 0.07]}
         style={{
@@ -376,7 +367,6 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
             fontSize: '11px',
             fontFamily: 'Arial, sans-serif',
             boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
-            backdropFilter: 'blur(2px)',
           }}
         >
           Click to open

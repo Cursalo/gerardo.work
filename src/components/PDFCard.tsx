@@ -127,10 +127,6 @@ export const PDFCard: React.FC<PDFCardProps> = ({
       const floatOffset = Math.sin(time * 0.4 + position[0] * 0.2) * 0.1;
       groupRef.current.position.y = baseY + floatOffset;
       
-      // Keep other positions stable
-      groupRef.current.position.x = position[0];
-      groupRef.current.position.z = position[2];
-      
       // Face the camera smoothly
       const camera = state.camera;
       const cardPosition = new THREE.Vector3(position[0], position[1], position[2]);
@@ -195,20 +191,13 @@ export const PDFCard: React.FC<PDFCardProps> = ({
     >
       {/* PDF Thumbnail and Viewer */}
       <Html
-        transform
+        transform={false}
         distanceFactor={8}
         position={[0, 0, 0.06]}
-        occlude={false}
         style={{
           width: '180px',
           height: '250px',
           pointerEvents: 'none',
-          // Mobile WebGL fixes
-          backfaceVisibility: 'hidden',
-          WebkitBackfaceVisibility: 'hidden',
-          WebkitTransform: 'translate3d(0, 0, 0)',
-          WebkitPerspective: '1000px',
-          WebkitTransformStyle: 'preserve-3d',
         }}
       >
         <div
@@ -298,7 +287,7 @@ export const PDFCard: React.FC<PDFCardProps> = ({
       
       {/* Title Overlay */}
       <Html
-        transform
+        transform={false}
         distanceFactor={8}
         position={[0, -1.5, 0.05]}
         style={{
@@ -321,7 +310,6 @@ export const PDFCard: React.FC<PDFCardProps> = ({
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
-            backdropFilter: 'blur(2px)',
             opacity: hovered ? 1 : 0.8,
             transform: `scale(${hovered ? 1.1 : 1})`,
             transition: 'all 0.2s ease'
@@ -334,7 +322,7 @@ export const PDFCard: React.FC<PDFCardProps> = ({
       {/* Description Popup on Hover */}
       {description && (
         <Html
-          transform
+          transform={false}
           distanceFactor={8}
           position={[0, 1.5, 0.06]}
           style={{
@@ -354,7 +342,6 @@ export const PDFCard: React.FC<PDFCardProps> = ({
               fontSize: '12px',
               fontFamily: 'Arial, sans-serif',
               boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
-              backdropFilter: 'blur(4px)',
             }}
           >
             <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{title}</div>

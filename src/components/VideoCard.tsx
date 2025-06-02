@@ -156,10 +156,6 @@ export const VideoCard: React.FC<VideoCardProps> = ({
       const floatOffset = Math.sin(time * 0.5 + position[0] * 0.2) * 0.1;
       groupRef.current.position.y = baseY + floatOffset;
       
-      // Keep fixed position in world space
-      groupRef.current.position.x = position[0];
-      groupRef.current.position.z = position[2];
-      
       // Face the camera smoothly
       if (camera) {
         const cardPosition = new Vector3(position[0], position[1], position[2]);
@@ -206,10 +202,9 @@ export const VideoCard: React.FC<VideoCardProps> = ({
     >
       {/* Video content */}
       <Html
-        transform
+        transform={false}
         distanceFactor={8}
         position={[0, 0, 0.03]}
-        occlude={false}
         style={{
           width: `${videoDimensions.width * 100}px`,
           height: `${videoDimensions.height * 100}px`,
@@ -221,12 +216,6 @@ export const VideoCard: React.FC<VideoCardProps> = ({
           transition: 'all 0.3s ease',
           pointerEvents: 'none',
           borderRadius: '12px',
-          // Mobile WebGL fixes
-          backfaceVisibility: 'hidden',
-          WebkitBackfaceVisibility: 'hidden',
-          WebkitTransform: 'translate3d(0, 0, 0)',
-          WebkitPerspective: '1000px',
-          WebkitTransformStyle: 'preserve-3d',
         }}
       >
         {/* Video container with rounded corners */}
@@ -260,7 +249,6 @@ export const VideoCard: React.FC<VideoCardProps> = ({
               letterSpacing: '0.3px',
               backgroundColor: 'rgba(255,255,255,0.9)',
               borderRadius: '8px',
-              backdropFilter: 'blur(4px)',
               transform: hovered ? 'scale(1.05)' : 'scale(1)',
               transition: 'all 0.3s ease',
               maxWidth: '90%',
@@ -356,7 +344,6 @@ export const VideoCard: React.FC<VideoCardProps> = ({
               textAlign: 'center',
               padding: '12px 16px',
               background: 'linear-gradient(transparent, rgba(0,0,0,0.8))',
-              backdropFilter: 'blur(4px)',
               opacity: hovered ? 1 : 0,
               transform: `translateY(${hovered ? '0' : '20px'})`,
               transition: 'opacity 0.3s ease, transform 0.3s ease',
@@ -387,7 +374,6 @@ export const VideoCard: React.FC<VideoCardProps> = ({
                 transition: 'all 0.3s ease',
                 fontSize: '20px',
                 color: '#333',
-                backdropFilter: 'blur(4px)',
               }}
             >
               ▶

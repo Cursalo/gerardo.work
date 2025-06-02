@@ -137,10 +137,6 @@ export const ImageCard: React.FC<ImageCardProps> = ({
       const floatOffset = Math.sin(time * 0.6 + position[0] * 0.3) * 0.15;
       groupRef.current.position.y = baseY + floatOffset;
       
-      // Keep other positions stable
-      groupRef.current.position.x = position[0];
-      groupRef.current.position.z = position[2];
-      
       // Face the camera when user is in front
       const camera = state.camera;
       const cardPosition = new THREE.Vector3(position[0], position[1], position[2]);
@@ -193,10 +189,9 @@ export const ImageCard: React.FC<ImageCardProps> = ({
     >
       {/* Image content */}
       <Html
-        transform
+        transform={false}
         distanceFactor={6}
         position={[0, 0, 0.01]}
-        occlude={false}
         style={{
           width: `${cardDimensions.width * 90}px`,
           height: `${cardDimensions.height * 90}px`,
@@ -205,12 +200,6 @@ export const ImageCard: React.FC<ImageCardProps> = ({
           pointerEvents: 'none',
           transform: hovered ? 'scale(1.05)' : 'scale(1)',
           transition: 'transform 0.3s ease',
-          // Mobile WebGL fixes
-          backfaceVisibility: 'hidden',
-          WebkitBackfaceVisibility: 'hidden',
-          WebkitTransform: 'translate3d(0, 0, 0)',
-          WebkitPerspective: '1000px',
-          WebkitTransformStyle: 'preserve-3d',
         }}
       >
         <div style={{ 
@@ -238,7 +227,6 @@ export const ImageCard: React.FC<ImageCardProps> = ({
             padding: '4px 8px',
             backgroundColor: 'rgba(255,255,255,0.9)',
             borderRadius: '6px',
-            backdropFilter: 'blur(4px)',
             maxWidth: '90%',
             margin: '0 auto',
             overflow: 'hidden',
@@ -340,7 +328,7 @@ export const ImageCard: React.FC<ImageCardProps> = ({
       {/* Click indicator */}
       {hovered && (
         <Html
-          transform
+          transform={false}
           distanceFactor={6}
           position={[0, cardDimensions.height/2 + 0.3, 0.02]}
           style={{
