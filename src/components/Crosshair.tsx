@@ -15,7 +15,7 @@ interface CrosshairProps {
  * Crosshair Component
  * 
  * A single, unified crosshair that remains perfectly centered on the viewport.
- * Enhanced for better visibility and interaction feedback.
+ * Enhanced for better visibility and interaction feedback with precise alignment.
  */
 const Crosshair: React.FC<CrosshairProps> = ({ isPointerLocked = false, showCrossLines = false }) => {
   const { isMobile } = useMobileDetection();
@@ -53,21 +53,19 @@ const Crosshair: React.FC<CrosshairProps> = ({ isPointerLocked = false, showCros
     };
   }, []);
 
-  // Base styles - dynamic sizing based on device type
+  // Base styles - dynamic sizing based on device type with precise positioning
   const baseSize = isMobile ? 20 : 12; 
-  const lineLength = isMobile ? 30 : 20;
-  const lineThickness = isMobile ? 2 : 1;
   
-  // Base crosshair styles - ALWAYS VISIBLE, NEVER DISAPPEARS
+  // PRECISE CENTERING: Use viewport units and calc() for perfect alignment
   const baseStyles: React.CSSProperties = {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
+    position: 'fixed', // Use fixed instead of absolute for viewport alignment
+    top: '50vh', // Use viewport height for precise centering
+    left: '50vw', // Use viewport width for precise centering
     width: `${baseSize}px`,
     height: `${baseSize}px`,
     backgroundColor: 'rgba(77, 255, 170, 1.0)', // FULL OPACITY - NEVER FADE
     borderRadius: '50%',
-    transform: 'translate(-50%, -50%)',
+    transform: 'translate(-50%, -50%)', // Center the element on the exact point
     pointerEvents: 'none',
     zIndex: 99999, // MAXIMUM Z-INDEX to ensure visibility over everything
     transition: 'all 0.15s ease-out',
@@ -76,6 +74,11 @@ const Crosshair: React.FC<CrosshairProps> = ({ isPointerLocked = false, showCros
     opacity: 1, // FORCE OPACITY
     visibility: 'visible', // FORCE VISIBILITY
     mixBlendMode: 'normal' as const,
+    // Additional precision fixes
+    margin: 0,
+    padding: 0,
+    border: 'none',
+    outline: 'none',
   };
 
   // Additional styles when hovering over interactive elements
@@ -103,57 +106,14 @@ const Crosshair: React.FC<CrosshairProps> = ({ isPointerLocked = false, showCros
     ...(state.isClicking ? clickStyles : {}),
   };
 
-  // Add small cross lines for better visibility
+  // Main crosshair dot - always visible and perfectly centered
   return (
-    <>
-      {/* Main centered dot */}
-      <div 
-        id="unified-crosshair"
-        style={styles}
-        aria-hidden="true"
-        data-testid="central-crosshair"
-      />
-      
-      {/* Cross lines for better precision and visibility - ALWAYS VISIBLE */}
-      {showCrossLines && (
-        <>
-          <div style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            width: `${lineLength}px`,
-            height: `${lineThickness}px`,
-            backgroundColor: state.isHovering 
-              ? 'rgba(255, 255, 255, 1.0)' 
-              : 'rgba(77, 255, 170, 1.0)',
-            transform: 'translate(-50%, -50%)',
-            pointerEvents: 'none',
-            zIndex: 99998, // Maximum z-index below the dot
-            display: 'block',
-            opacity: 1, // ALWAYS FULLY VISIBLE
-            visibility: 'visible',
-            transition: 'all 0.15s ease-out',
-          }} />
-          <div style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            width: `${lineThickness}px`,
-            height: `${lineLength}px`,
-            backgroundColor: state.isHovering 
-              ? 'rgba(255, 255, 255, 1.0)' 
-              : 'rgba(77, 255, 170, 1.0)',
-            transform: 'translate(-50%, -50%)',
-            pointerEvents: 'none',
-            zIndex: 99998, // Maximum z-index below the dot
-            display: 'block',
-            opacity: 1, // ALWAYS FULLY VISIBLE
-            visibility: 'visible',
-            transition: 'all 0.15s ease-out',
-          }} />
-        </>
-      )}
-    </>
+    <div 
+      id="unified-crosshair"
+      style={styles}
+      aria-hidden="true"
+      data-testid="central-crosshair"
+    />
   );
 };
 

@@ -737,44 +737,7 @@ const ProjectSubworld: React.FC<ProjectSubworldProps> = () => {
             <Crosshair isPointerLocked={isPointerLocked} />
           </div>
           
-          {/* DEBUG: Visual center marker to verify crosshair alignment */}
-          <div style={{
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            width: '4px',
-            height: '4px',
-            backgroundColor: 'red',
-            borderRadius: '50%',
-            transform: 'translate(-50%, -50%)',
-            zIndex: 99999,
-            pointerEvents: 'none',
-            opacity: 0.3,
-          }} />
-          
-          {/* DEBUG: Crosshair alignment indicators */}
-          <div style={{
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            width: '40px',
-            height: '1px',
-            backgroundColor: 'rgba(255, 0, 0, 0.3)',
-            transform: 'translate(-50%, -50%)',
-            zIndex: 99998,
-            pointerEvents: 'none',
-          }} />
-          <div style={{
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            width: '1px',
-            height: '40px',
-            backgroundColor: 'rgba(255, 0, 0, 0.3)',
-            transform: 'translate(-50%, -50%)',
-            zIndex: 99998,
-            pointerEvents: 'none',
-          }} />
+
         </div>
       </MobileControlsProvider>
     </InteractionProvider>

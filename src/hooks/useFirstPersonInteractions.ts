@@ -563,7 +563,10 @@ function useFirstPersonInteractions() {
       lastInteractionTime.current = currentTime;
     }
     
-    raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+    // PRECISION FIX: Ensure raycasting is from exact center (0,0) in normalized device coordinates
+    // This should align perfectly with the crosshair at 50vh, 50vw
+    const centerPoint = new THREE.Vector2(0, 0);
+    raycaster.setFromCamera(centerPoint, camera);
     
     if (rayHelper.current) {
       rayHelper.current.setDirection(raycaster.ray.direction);
