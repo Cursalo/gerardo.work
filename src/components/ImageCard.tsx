@@ -3,7 +3,6 @@ import { Html } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useInteraction } from '../context/InteractionContext';
-import { openFileWithViewer } from '../utils/fileUtils';
 
 // Add CSS for loading spinner outside of React component
 const spinnerStyle = document.createElement('style');
@@ -102,7 +101,7 @@ export const ImageCard: React.FC<ImageCardProps> = ({
     }
   }, [position, title, resolvedImageUrl]);
 
-  // Handle click function - work exactly like PDFCard (which is working fine)
+  // Handle click function - use direct window.open like VideoCard does (which works fine)
   const handleClick = useCallback((e?: any) => {
     if (e) {
       e.stopPropagation();
@@ -115,12 +114,12 @@ export const ImageCard: React.FC<ImageCardProps> = ({
       return;
     }
     
-    // FIXED: Work exactly like PDFCard - use openFileWithViewer
+    // FIXED: Use direct window.open like VideoCard does - no openFileWithViewer
     if (resolvedImageUrl) {
-      console.log('Image Card: Using openFileWithViewer like PDFCard does');
-      openFileWithViewer(resolvedImageUrl, title);
+      console.log('Image Card: Opening image directly like VideoCard does');
+      window.open(resolvedImageUrl, '_blank', 'noopener,noreferrer');
     }
-  }, [resolvedImageUrl, onClick, title]);
+  }, [resolvedImageUrl, onClick]);
 
   // Update userData with onClick function after handleClick is defined
   useEffect(() => {
