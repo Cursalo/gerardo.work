@@ -269,7 +269,7 @@ export const WebLinkCard: React.FC<WebLinkCardProps> = ({
         ref={meshRef}
         position={[0, 0, 0]}
       >
-        <planeGeometry args={[(isMobile ? 3.0 : 2.8) * 1.5, (isMobile ? 2.2 : 2.0) * 1.5]} />
+        <planeGeometry args={[(isMobile ? 3.0 : 2.8) * 1.2, (isMobile ? 2.2 : 2.0) * 1.2]} />
         <meshBasicMaterial transparent opacity={0} />
       </mesh>
 

@@ -355,7 +355,7 @@ export const PDFCard: React.FC<PDFCardProps> = ({
         ref={meshRef}
         position={[0, 0, 0]}
       >
-        <planeGeometry args={[(isMobile ? 3.4 : 3.2) * 1.5, (isMobile ? 2.6 : 2.4) * 1.5]} />
+        <planeGeometry args={[(isMobile ? 3.4 : 3.2) * 1.2, (isMobile ? 2.6 : 2.4) * 1.2]} />
         <meshBasicMaterial transparent opacity={0} />
       </mesh>
 

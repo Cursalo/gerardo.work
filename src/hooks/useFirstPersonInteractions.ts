@@ -11,9 +11,9 @@ const HOVER_START_EVENT = new Event('crosshair:hover:start');
 const HOVER_END_EVENT = new Event('crosshair:hover:end');
 const CLICK_EVENT = new Event('crosshair:click');
 
-// Reasonable interaction distances for better user experience
-const MOBILE_INTERACTION_DISTANCE = 50; // Reasonable range for mobile touch interaction
-const DESKTOP_INTERACTION_DISTANCE = 100; // Reasonable range for desktop clicks
+// More precise interaction distances for better user experience
+const MOBILE_INTERACTION_DISTANCE = 25; // More precise range for mobile touch interaction
+const DESKTOP_INTERACTION_DISTANCE = 40; // More precise range for desktop clicks
 
 // --- DEBUG --- Add a counter for setHoveredObject calls
 let setHoveredObjectCallCount = 0;
@@ -46,8 +46,7 @@ function useFirstPersonInteractions() {
     isTouching: false,
     lastTouchedObject: null as HoveredObject | null,
     touchStartTime: 0,
-    processedTouch: false,  // Track if we've already processed this touch
-    objectsScanned: false   // Track if we've performed an initial scene scan
+    processedTouch: false  // Track if we've already processed this touch
   });
   
   // Auto-reset mechanism for stuck states
@@ -62,35 +61,7 @@ function useFirstPersonInteractions() {
   }, [originalSetHoveredObject]);
   // --- END DEBUG ---
   
-  // Initial scene scan to detect objects for mobile
-  useEffect(() => {
-    if (isTouchDevice && !touchState.current.objectsScanned) {
-      // Perform an initial scan to make objects visible even without interaction
-      const performInitialScan = () => {
-        raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-        const maxDistance = isTouchDevice ? MOBILE_INTERACTION_DISTANCE : DESKTOP_INTERACTION_DISTANCE;
-        const intersects = raycaster.intersectObjects(scene.children, true)
-          .filter(intersect => 
-            intersect.object.userData && 
-            intersect.object.userData.interactive === true &&
-            intersect.distance < maxDistance
-          );
-          
-        if (intersects.length > 0) {
-          const interactiveObject = intersects[0].object as HoveredObject;
-          setHoveredObject(interactiveObject);
-          document.dispatchEvent(HOVER_START_EVENT);
-          touchState.current.lastTouchedObject = interactiveObject;
-        }
-        
-        touchState.current.objectsScanned = true;
-      };
-      
-      // Delay scan to ensure scene is ready
-      const timer = setTimeout(performInitialScan, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [camera, isTouchDevice, raycaster, scene.children, setHoveredObject]);
+  // Remove initial scan to prevent lingering hover states on mobile
   
   // Initialize debug ray helper if enabled
   useEffect(() => {
@@ -438,17 +409,15 @@ function useFirstPersonInteractions() {
           touchState.current.processedTouch = true; 
         }
       } else {
-        // Not touching: rely on continuous raycasting for hover updates
+        // Not touching: immediate hover update based on what's at crosshair center
         if (interactiveObject) {
           if (hoveredObject !== interactiveObject) {
             if (hoveredObject) document.dispatchEvent(HOVER_END_EVENT);
             document.dispatchEvent(HOVER_START_EVENT);
             setHoveredObject(interactiveObject);
-            touchState.current.lastTouchedObject = interactiveObject; // Keep track even if not actively touching
           }
-        } else if (hoveredObject && !touchState.current.lastTouchedObject) {
-          // Only clear hover if we're not pointing at anything AND we don't have a recently touched object
-          // This helps maintain visibility of objects on mobile when moving around
+        } else if (hoveredObject) {
+          // Immediately clear hover when nothing is at center - makes button disappear instantly
           document.dispatchEvent(HOVER_END_EVENT);
           setHoveredObject(null);
         }

@@ -267,7 +267,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({
         ref={meshRef}
         position={[0, 0, 0]}
       >
-        <planeGeometry args={[videoDimensions.width * 1.5, videoDimensions.height * 1.5]} />
+        <planeGeometry args={[videoDimensions.width * 1.2, videoDimensions.height * 1.2]} />
         <meshBasicMaterial transparent opacity={0} />
       </mesh>
 

@@ -257,7 +257,7 @@ export const ImageCard: React.FC<ImageCardProps> = ({
         ref={meshRef}
         position={[0, 0, 0]}
       >
-        <planeGeometry args={[cardDimensions.width * 1.5, cardDimensions.height * 1.5]} />
+        <planeGeometry args={[cardDimensions.width * 1.2, cardDimensions.height * 1.2]} />
         <meshBasicMaterial transparent opacity={0} />
       </mesh>
 

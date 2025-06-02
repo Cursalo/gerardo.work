@@ -20,7 +20,7 @@ const buttonStyle: React.CSSProperties = {
   backdropFilter: 'blur(5px)',
   WebkitBackdropFilter: 'blur(5px)',
   boxShadow: '0 4px 8px rgba(0,0,0,0.5)',
-  transition: 'opacity 0.1s ease-out, transform 0.1s ease-out', // Faster and smoother transition
+  transition: 'opacity 0.05s ease-out, transform 0.05s ease-out', // Ultra-fast transition for immediate response
   whiteSpace: 'nowrap',
   opacity: 0, // Hidden by default, fade in
   pointerEvents: 'none', // Non-interactive by default
