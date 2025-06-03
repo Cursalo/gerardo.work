@@ -1,0 +1,24 @@
+{
+  "id": 34,
+  "name": "Alacarte",
+  "description": "Complete Alacarte project description.",
+  "link": "/projects/Alacarte/index.html",
+  "thumbnail": "/projects/Alacarte/thumbnail/thumbnail.webp",
+  "status": "completed",
+  "type": "standard",
+  "videoUrl": "/projects/Alacarte/assets/main_video.mp4",
+  "customLink": "alacarte",
+  "worldSettings": {
+    "backgroundColor": "hsl(188, 92%, 60%)",
+    "floorColor": "#ffffff",
+    "skyColor": "hsl(248, 92%, 80%)",
+    "floorTexture": "",
+    "skyTexture": "",
+    "ambientLightColor": "#ffffff",
+    "ambientLightIntensity": 0.7,
+    "directionalLightColor": "hsl(158, 100%, 80%)",
+    "directionalLightIntensity": 1
+  },
+  "mediaObjects": [],
+  "assetGallery": []
+} 

@@ -3,7 +3,7 @@
   "name": "Burgertify",
   "description": "Complete Burgertify restaurant project with gaming theme and retro arcade atmosphere.",
   "link": "/projects/Burgertify/index.html",
-  "thumbnail": "/projects/Burgertify/thumbnail/thumbnail.png",
+  "thumbnail": "/projects/Burgertify/thumbnail/thumbnail.webp",
   "status": "completed",
   "type": "standard",
   "videoUrl": "/projects/Burgertify/assets/videos/Burgertify .MP4",
@@ -26,7 +26,7 @@
       "title": "Burgertify Main Video",
       "description": "Main promotional video showcasing the Burgertify restaurant experience.",
       "url": "/projects/Burgertify/assets/videos/Burgertify .MP4",
-      "thumbnail": "/projects/Burgertify/assets/images/Burgertify Logo.webp",
+      "thumbnail": "/projects/Burgertify/thumbnail/thumbnail.webp",
       "position": [0, 3, -12],
       "rotation": [0, 0, 0],
       "scale": [6, 3.5, 0.2]

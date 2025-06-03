@@ -1,0 +1,23 @@
+{
+  "name": "Xmash",
+  "description": "Project description for Xmash",
+  "link": "/projects/Xmash/index.html",
+  "thumbnail": "/projects/Xmash/thumbnail/thumbnail.webp",
+  "status": "completed",
+  "type": "standard",
+  "videoUrl": "",
+  "customLink": "xmash",
+  "worldSettings": {
+    "backgroundColor": "hsl(188, 92%, 60%)",
+    "floorColor": "#ffffff",
+    "skyColor": "hsl(248, 92%, 80%)",
+    "floorTexture": "",
+    "skyTexture": "",
+    "ambientLightColor": "#ffffff",
+    "ambientLightIntensity": 0.7,
+    "directionalLightColor": "hsl(158, 100%, 80%)",
+    "directionalLightIntensity": 1
+  },
+  "mediaObjects": [],
+  "assetGallery": []
+} 

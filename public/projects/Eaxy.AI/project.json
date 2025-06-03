@@ -1,13 +1,13 @@
 {
   "id": 12,
-  "name": "EaxiAI",
-  "description": "Project details for EaxiAI.",
-  "link": "/projects/EaxiAI/index.html",
-  "thumbnail": "/projects/EaxiAI/thumbnail/thumbnail.png",
+  "name": "Eaxy.AI",
+  "description": "Project details for Eaxy.AI.",
+  "link": "/projects/Eaxy.AI/index.html",
+  "thumbnail": "/projects/Eaxy.AI/thumbnail/thumbnail.webp",
   "status": "completed",
   "type": "standard",
-  "videoUrl": "/projects/EaxiAI/assets/videos/demo.mp4",
-  "customLink": "eaxiai",
+  "videoUrl": "/projects/Eaxy.AI/assets/videos/demo.mp4",
+  "customLink": "eaxy-ai",
   "worldSettings": {
     "backgroundColor": "hsl(188, 92%, 60%)",
     "floorColor": "#ffffff",
@@ -23,10 +23,10 @@
     {
       "id": "video-player-12",
       "type": "video",
-      "title": "EaxiAI Main Video",
-      "description": "Main video content for EaxiAI.",
-      "url": "/projects/EaxiAI/assets/videos/demo.mp4",
-      "thumbnail": "/projects/EaxiAI/thumbnail/thumbnail.png",
+      "title": "Eaxy.AI Main Video",
+      "description": "Main video content for Eaxy.AI.",
+      "url": "/projects/Eaxy.AI/assets/videos/demo.mp4",
+      "thumbnail": "/projects/Eaxy.AI/thumbnail/thumbnail.webp",
       "position": [
         0,
         2.5,
@@ -46,9 +46,9 @@
     {
       "id": "info-panel-12",
       "type": "image",
-      "title": "About EaxiAI",
-      "description": "Information and assets for the EaxiAI project.",
-      "thumbnail": "/projects/EaxiAI/thumbnail/thumbnail.png",
+      "title": "About Eaxy.AI",
+      "description": "Information and assets for the Eaxy.AI project.",
+      "thumbnail": "/projects/Eaxy.AI/thumbnail/thumbnail.webp",
       "position": [
         -4,
         2,

@@ -1,0 +1,24 @@
+{
+  "id": 36,
+  "name": "Wings of Freedom",
+  "description": "Complete Wings of Freedom project description.",
+  "link": "/projects/Wings of Freedom/index.html",
+  "thumbnail": "/projects/Wings of Freedom/thumbnail/thumbnail.webp",
+  "status": "completed",
+  "type": "standard",
+  "videoUrl": "/projects/Wings of Freedom/assets/main_video.mp4",
+  "customLink": "wingsoffreedom",
+  "worldSettings": {
+    "backgroundColor": "hsl(188, 92%, 60%)",
+    "floorColor": "#ffffff",
+    "skyColor": "hsl(248, 92%, 80%)",
+    "floorTexture": "",
+    "skyTexture": "",
+    "ambientLightColor": "#ffffff",
+    "ambientLightIntensity": 0.7,
+    "directionalLightColor": "hsl(158, 100%, 80%)",
+    "directionalLightIntensity": 1
+  },
+  "mediaObjects": [],
+  "assetGallery": []
+} 
