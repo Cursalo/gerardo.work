@@ -284,7 +284,7 @@ export const ImageCard: React.FC<ImageCardProps> = ({
             position: 'relative',
             borderRadius: '12px',
             overflow: 'hidden',
-            backgroundColor: '#f0f0f0',
+            backgroundColor: 'transparent',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -354,7 +354,7 @@ export const ImageCard: React.FC<ImageCardProps> = ({
                 height: '100%',
                 objectFit: 'cover',
                 borderRadius: '12px',
-                backgroundColor: '#f0f0f0',
+                backgroundColor: 'transparent',
                 opacity: imageLoaded ? 1 : 0.8,
                 transition: 'opacity 0.3s ease',
               }}
