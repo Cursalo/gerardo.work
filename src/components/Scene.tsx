@@ -25,7 +25,7 @@ const MAX_RENDER_DISTANCE = 50;
 
 // Performance configuration based on device capabilities
 const getPerformanceConfig = (isMobile: boolean) => ({
-  maxObjects: isMobile ? 20 : 66,
+  maxObjects: isMobile ? 66 : 66,
   shadowQuality: isMobile ? 'low' : 'medium',
   antialiasing: !isMobile,
   pixelRatio: isMobile ? Math.min(window.devicePixelRatio, 2) : Math.min(window.devicePixelRatio, 2),
