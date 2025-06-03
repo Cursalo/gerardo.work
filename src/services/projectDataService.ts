@@ -161,8 +161,8 @@ class ProjectDataService {
       'BonsaiPrep', 'Burgavision', 'Burgertify', 'Cursalo', 'Develop Argentina',
       'Eat Easier', 'Eaxily', 'Eaxy.AI', 'Foodelopers', 'Foodiez Apparel',
       'Foodketing', 'Hybridge', 'Jaguar', 'Jerry\'s', 'LinkDialer', 'LinkMas',
-      'Matrix Agencia', 'Menu Crafters', 'Monchee', 'PitchDeckGenie',
-      'PlatePlatform', 'PostRaptor', 'Power Up Pizza', 'RAM', 'Talevista',
+      'Menu Crafters', 'Monchee', 'PitchDeckGenie',
+      'PlatePlatform', 'PostRaptor', 'Power Up Pizza', 'RAM',
       'TaskArranger.com', 'Tokitaka', 'Wobistro'
     ];
     
@@ -389,8 +389,11 @@ class ProjectDataService {
       // Force ProjectService to reload from the updated localStorage
       try {
         const { projectService } = await import('./projectService');
-        await projectService.forceReloadProjects();
-        console.log('ProjectDataService: ProjectService reloaded successfully');
+        // The following line was a call to: await projectService.forceReloadProjects();
+        // It has been commented out to investigate and prevent potential double loading cycles.
+        // If ProjectService needs to be updated, it should happen more centrally or based on specific events.
+        console.log('ProjectDataService: Call to projectService.forceReloadProjects() SKIPPED from within synchronizeWithProjectService.');
+        // console.log('ProjectDataService: ProjectService reloaded successfully'); // This log is now misleading
       } catch (error) {
         console.error('ProjectDataService: Error reloading ProjectService:', error);
       }

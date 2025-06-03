@@ -25,8 +25,8 @@ const testProjectLoading = async () => {
     'BonsaiPrep', 'Burgavision', 'Burgertify', 'Cursalo', 'Develop Argentina',
     'Eat Easier', 'Eaxily', 'Eaxy.AI', 'Foodelopers', 'Foodiez Apparel',
     'Foodketing', 'Hybridge', 'Jaguar', 'Jerry\'s', 'LinkDialer', 'LinkMas',
-    'Matrix Agencia', 'Menu Crafters', 'Monchee', 'PitchDeckGenie',
-    'PlatePlatform', 'PostRaptor', 'Power Up Pizza', 'RAM', 'Talevista',
+    'Menu Crafters', 'Monchee', 'PitchDeckGenie',
+    'PlatePlatform', 'PostRaptor', 'Power Up Pizza', 'RAM',
     'TaskArranger.com', 'Tokitaka', 'Wobistro'
   ];
   
