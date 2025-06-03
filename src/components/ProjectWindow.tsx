@@ -286,6 +286,7 @@ const ProjectWindow = React.memo(({ project, position }: ProjectWindowProps) => 
                 transition: 'all 0.3s ease',
                 pointerEvents: 'auto'
               }}
+              onClick={handleClick}
             >
               <div style={{ 
                 fontSize: '16px', 
@@ -314,6 +315,7 @@ const ProjectWindow = React.memo(({ project, position }: ProjectWindowProps) => 
                 justifyContent: 'center',
                 overflow: 'hidden'
               }}
+              onClick={handleClick}
             >
               {!imageError ? (
                 <img 
@@ -370,8 +372,10 @@ const ProjectWindow = React.memo(({ project, position }: ProjectWindowProps) => 
               textShadow: '0 1px 3px rgba(0,0,0,0.8)',
               width: '100%',
               borderBottomLeftRadius: '16px',
-              borderBottomRightRadius: '16px'
+              borderBottomRightRadius: '16px',
+              pointerEvents: 'auto'
             }}
+            onClick={handleClick}
           >
             {project.description}
           </div>
