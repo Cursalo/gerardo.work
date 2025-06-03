@@ -105,6 +105,9 @@ export const WorldProvider = ({
   const worldServiceRef = useRef(getWorldServiceInstance());
   const worldService = worldServiceRef.current;
 
+  // Ref to track if force reload has happened this session to prevent double regeneration
+  const hasForcedReloadThisSessionRef = useRef(false);
+
   // Function to force refresh worlds
   const refreshWorlds = () => {
     console.log('WorldProvider: Manually refreshing worlds');
@@ -113,81 +116,53 @@ export const WorldProvider = ({
 
   // Function to verify file storage
   const verifyFileStorage = async (): Promise<boolean> => {
-    console.log('WorldProvider: Verifying file storage');
+    console.log('WorldProvider: Verifying content of \'portfolio_files\' in localStorage.');
     
     try {
-      // Check if portfolio_files exists in localStorage
       const storedFilesStr = localStorage.getItem('portfolio_files');
       if (!storedFilesStr) {
-        console.log('WorldProvider: No portfolio_files found in localStorage');
+        console.info('WorldProvider: \'portfolio_files\' not found in localStorage. This may be normal if no local files have been uploaded (e.g., via an admin interface).');
         return false;
       }
       
-      // Parse the stored files
-      const storedFiles = JSON.parse(storedFilesStr);
+      let storedFiles;
+      try {
+        storedFiles = JSON.parse(storedFilesStr);
+      } catch (parseError) {
+        console.error('WorldProvider: Error parsing \'portfolio_files\' from localStorage. Content is not valid JSON:', parseError);
+        return false;
+      }
       
-      // Check if it's an object
       if (typeof storedFiles !== 'object' || storedFiles === null) {
-        console.error('WorldProvider: Invalid portfolio_files format');
+        console.error('WorldProvider: Invalid \'portfolio_files\' format in localStorage. Expected an object, but found:', typeof storedFiles);
         return false;
       }
       
-      // Verify some files exist
       const fileKeys = Object.keys(storedFiles);
-      console.log(`WorldProvider: Found ${fileKeys.length} files in portfolio_files`);
+      if (fileKeys.length === 0) {
+        console.info('WorldProvider: \'portfolio_files\' found in localStorage, but it contains no file entries.');
+        return false;
+      }
+      console.log(`WorldProvider: Found ${fileKeys.length} file entries in \'portfolio_files\'.`);
       
-      // Check if each file has a dataUrl
-      let validFiles = 0;
+      let validFilesWithDataUrl = 0;
       for (const key of fileKeys) {
-        if (storedFiles[key] && storedFiles[key].dataUrl) {
-          validFiles++;
+        if (storedFiles[key] && typeof storedFiles[key].dataUrl === 'string' && storedFiles[key].dataUrl.startsWith('data:')) {
+          validFilesWithDataUrl++;
+        } else {
+          console.warn(`WorldProvider: Entry \'${key}\' in \'portfolio_files\' is missing a valid dataUrl property.`);
         }
       }
       
-      console.log(`WorldProvider: ${validFiles} of ${fileKeys.length} files have valid dataUrl properties`);
-      
-      // Check if any projects use file:// URLs
-      const projects = await projectService.getProjects();
-      let projectsWithFileUrls = 0;
-      
-      for (const project of projects) {
-        if (project.thumbnail && project.thumbnail.startsWith('file://')) {
-          projectsWithFileUrls++;
-          
-          // Verify the file exists in storage
-          const filename = project.thumbnail.replace('file://', '');
-          let fileFound = false;
-          
-          // Direct match
-          if (storedFiles[filename] && storedFiles[filename].dataUrl) {
-            fileFound = true;
-          } else {
-            // Try partial matching (looking for the filename in any key)
-            const possibleMatch = fileKeys.find(key => 
-              key.endsWith(filename) || filename.endsWith(key)
-            );
-            
-            if (possibleMatch && storedFiles[possibleMatch].dataUrl) {
-              fileFound = true;
-              
-              // Update the project to use the correct key
-              console.log(`WorldProvider: Updating project ${project.id} to use correct file key: ${possibleMatch}`);
-              project.thumbnail = `file://${possibleMatch}`;
-              await projectService.saveProject(project);
-            }
-          }
-          
-          if (!fileFound) {
-            console.error(`WorldProvider: File ${filename} not found for project ${project.id}`);
-          }
-        }
+      if (validFilesWithDataUrl === 0) {
+        console.warn(`WorldProvider: \'portfolio_files\' has ${fileKeys.length} entries, but none contain a valid dataUrl. Verification fails.`);
+        return false;
       }
       
-      console.log(`WorldProvider: ${projectsWithFileUrls} projects use file:// URLs for thumbnails`);
-      
-      return validFiles > 0;
+      console.log(`WorldProvider: \'portfolio_files\' contains ${validFilesWithDataUrl} valid entries with dataUrls. Verification successful.`);
+      return true;
     } catch (error) {
-      console.error('WorldProvider: Error verifying file storage:', error);
+      console.error('WorldProvider: An unexpected error occurred during file storage verification:', error);
       return false;
     }
   };
@@ -207,23 +182,29 @@ export const WorldProvider = ({
       try {
         console.log('WorldProvider: Starting setupWorlds...');
         
-        // PERFORMANCE FIX: Only force reload if data is actually stale
+        // PERFORMANCE FIX: Only force reload if data is actually stale or first load of the session
         const lastSetupTime = localStorage.getItem('last_world_setup_time');
         const currentTime = Date.now();
         const timeSinceLastSetup = lastSetupTime ? currentTime - parseInt(lastSetupTime) : Infinity;
         
-        // Only force reload if more than 30 seconds have passed or if it's the first load
-        const shouldForceReload = !lastSetupTime || timeSinceLastSetup > 30000;
-        
-        if (shouldForceReload) {
-          console.log('WorldProvider: Force reloading data (stale or first load)');
-          await projectDataService.forceReload();
-          localStorage.setItem('last_world_setup_time', currentTime.toString());
-        } else {
-          console.log('WorldProvider: Skipping force reload (data is fresh)');
+        // Determine if a force reload is needed
+        let performForceReload = false;
+        if (!hasForcedReloadThisSessionRef.current) {
+          if (!lastSetupTime || timeSinceLastSetup > 30000) {
+            performForceReload = true;
+          }
         }
         
-        // Load projects from project.json files instead of localStorage
+        if (performForceReload) {
+          console.log('WorldProvider: Force reloading data (stale or first load this session)');
+          await projectDataService.forceReload();
+          localStorage.setItem('last_world_setup_time', currentTime.toString());
+          hasForcedReloadThisSessionRef.current = true; // Mark that force reload has happened this session
+        } else {
+          console.log('WorldProvider: Skipping force reload (data is fresh or already reloaded this session)');
+        }
+        
+        // Load projects from project.json files (will use cache if not force reloaded and initialized)
         await projectDataService.initialize();
         
         // CRITICAL FIX: Synchronize ProjectService with ProjectDataService
@@ -232,8 +213,8 @@ export const WorldProvider = ({
         await projectDataService.synchronizeWithProjectService();
         console.log('WorldProvider: Synchronization completed');
 
-        // PERFORMANCE FIX: Only regenerate project worlds if data was actually reloaded
-        if (shouldForceReload) {
+        // PERFORMANCE FIX: Only regenerate project worlds if data was actually reloaded (performForceReload was true)
+        if (performForceReload) {
           console.log('WorldProvider: Regenerating project worlds with fresh data...');
           try {
             // Get all projects from ProjectDataService (which has the full data)
@@ -286,7 +267,7 @@ export const WorldProvider = ({
             console.error('WorldProvider: Error regenerating project worlds:', error);
           }
         } else {
-          console.log('WorldProvider: Skipping project world regeneration (using cached data)');
+          console.log('WorldProvider: Skipping project world regeneration (using cached data or already done this session)');
         }
         
         const loadedProjects = await projectDataService.getAllProjects();
@@ -405,55 +386,46 @@ export const WorldProvider = ({
   }, [currentWorldId, refreshTrigger, worldService, isTouchDevice]);
 
   // Utility function to ensure a project world exists
-  const ensureProjectWorldExists = useCallback(async (projectId: number, worldId: string) => {
-    // Check if the world already exists
-    const worldExists = worldService.getWorld(worldId);
-    
-    if (worldExists) {
-      return;
-    }
-    
-    // Get the project data
-    try {
-      // Use projectDataService to get full ProjectData with assetGallery
-      const projectData = await projectDataService.getProjectById(projectId);
-      
+  const ensureProjectWorldExists = useCallback(async (projectIdNum: number): Promise<World | null> => {
+    const projectWorldId = `project-world-${projectIdNum}`;
+    let projectWorld = worldService.getWorld(projectWorldId);
+
+    if (!projectWorld) {
+      console.log(`WorldProvider: Project world ${projectWorldId} not in cache. Attempting to create.`);
+      const projectData = await projectDataService.getProjectById(projectIdNum);
       if (projectData) {
-        // Convert ProjectData to Project format with assetGallery preserved
-        const project: Project = {
+        // CRITICAL FIX: Map ProjectData to Project before calling createProjectWorld
+        const projectToCreateWorldWith: Project = {
           id: projectData.id,
           name: projectData.name,
           description: projectData.description,
           link: projectData.link,
           thumbnail: projectData.thumbnail,
-          status: projectData.status as 'completed' | 'in-progress',
-          type: projectData.type as 'standard' | 'video',
+          status: projectData.status as 'completed' | 'in-progress', // Explicit cast
+          type: projectData.type as 'standard' | 'video', // Explicit cast
           videoUrl: projectData.videoUrl,
           customLink: projectData.customLink,
           mediaObjects: projectData.mediaObjects?.map(mediaObj => ({
             ...mediaObj,
-            type: mediaObj.type as 'video' | 'image' | 'pdf' | 'project' | 'link' | 'button'
+            type: mediaObj.type as 'video' | 'image' | 'pdf' | 'project' | 'link' | 'button' // Explicit cast
           })),
           worldSettings: projectData.worldSettings,
           // Preserve assetGallery for project world creation
           ...(projectData.assetGallery && { assetGallery: projectData.assetGallery })
         };
-        
-        // Create the project world
-        const projectWorld = createProjectWorld(project, isTouchDevice);
-        
-        // Save the world
-        worldService.updateWorld(projectWorld);
-        
-        // Force a refresh to make sure the world is loaded properly
-        refreshWorlds();
+
+        projectWorld = createProjectWorld(projectToCreateWorldWith, isTouchDevice);
+        worldService.updateWorld(projectWorld); 
+        setWorlds(worldService.getAllWorlds()); 
+        console.log(`WorldProvider: Dynamically created and cached ${projectWorldId} in ensureProjectWorldExists.`);
+        return projectWorld;
       } else {
-        console.warn(`Could not find project with ID: ${projectId}`);
+        console.error(`WorldProvider: Failed to get project data for ID ${projectIdNum} in ensureProjectWorldExists.`);
+        return null;
       }
-    } catch (error) {
-      console.error(`Error creating project world:`, error);
     }
-  }, [worldService, isTouchDevice, refreshWorlds]);
+    return projectWorld;
+  }, [worldService, isTouchDevice]);
 
   const getCameraTarget = useCallback((): [number, number, number] => {
     if (currentWorld?.cameraTarget) {
@@ -463,17 +435,74 @@ export const WorldProvider = ({
     return [0, 0, 0];
   }, [currentWorld?.cameraTarget]);
 
-  const setCurrentWorldId = useCallback((id: string) => {
-    // Check if this is a project world
-    if (id.startsWith('project-world-')) {
-      const projectId = parseInt(id.replace('project-world-', ''), 10);
-      
-      // Ensure the project world exists
-      ensureProjectWorldExists(projectId, id);
+  const setCurrentWorldId = useCallback(async (id: string) => {
+    console.log(`WorldProvider: setCurrentWorldId called with ID: ${id}`);
+    if (currentWorldId === id && currentWorld && currentWorld.id === id) {
+        console.log(`WorldProvider: Target world ${id} is already current. Skipping.`);
+        return;
     }
+    setIsLoading(true); 
     
-    setCurrentWorldIdState(id);
-  }, [ensureProjectWorldExists]);
+    let targetWorld: World | null = null;
+
+    if (id.startsWith('project-world-')) {
+      const projectIdStr = id.replace('project-world-', '');
+      const projectIdNum = parseInt(projectIdStr, 10);
+      if (!isNaN(projectIdNum)) {
+        targetWorld = await ensureProjectWorldExists(projectIdNum);
+        if (!targetWorld) {
+          console.error(`WorldProvider: Could not ensure project world ${id} exists. Falling back to mainWorld.`);
+          // Do not call setCurrentWorldIdState('mainWorld') here to avoid loop with setupWorlds effect.
+          // Instead, let setupWorlds handle fallback if currentWorldId state is already 'mainWorld'
+          // or set currentWorld directly.
+          const main = worldService.getWorld('mainWorld');
+          if (main) setCurrentWorld(main);
+          if (currentWorldId !== 'mainWorld') setCurrentWorldIdState('mainWorld'); // Only change if not already mainWorld
+          setIsLoading(false);
+          return;
+        }
+      } else {
+        console.error(`WorldProvider: Invalid project ID in setCurrentWorldId: ${id}. Falling back.`);
+        const main = worldService.getWorld('mainWorld');
+        if (main) setCurrentWorld(main);
+        if (currentWorldId !== 'mainWorld') setCurrentWorldIdState('mainWorld');
+        setIsLoading(false);
+        return;
+      }
+    } else if (id === 'mainWorld') {
+      targetWorld = worldService.getWorld('mainWorld');
+      if (!targetWorld) {
+          console.error("WorldProvider: mainWorld not found in worldService. This might happen if setupWorlds hasn't completed its first run.");
+          // Potentially, setupWorlds will run due to currentWorldId change and create it.
+          // If currentWorldId is already 'mainWorld', this indicates a deeper issue.
+      }
+    } else {
+        console.warn(`WorldProvider: Unknown world ID format in setCurrentWorldId: ${id}. Falling back to mainWorld if possible.`);
+        const main = worldService.getWorld('mainWorld');
+        if (main) setCurrentWorld(main);
+        if (currentWorldId !== 'mainWorld') setCurrentWorldIdState('mainWorld');
+        setIsLoading(false);
+        return;
+    }
+
+    if (targetWorld) {
+      setCurrentWorld(targetWorld);
+      setCurrentWorldIdState(id); 
+      console.log(`WorldProvider: Switched currentWorld to ${targetWorld.name} (ID: ${id})`);
+    } else if (id === 'mainWorld') {
+        // This implies mainWorld was not found even though id is 'mainWorld'
+        // setupWorlds should handle creating it. If it consistently fails, there's an issue in setupWorlds.
+        console.warn("WorldProvider: mainWorld requested but not found by worldService. Relying on setupWorlds to create it.");
+        setCurrentWorldIdState('mainWorld'); // Ensure ID state is mainWorld for setupWorlds logic
+    } else {
+        // Fallback for other unhandled cases where targetWorld is null
+        console.warn(`WorldProvider: Target world for ${id} was null after processing. Falling back to mainWorld if available.`);
+        const main = worldService.getWorld('mainWorld');
+        if (main) setCurrentWorld(main);
+        if (currentWorldId !== 'mainWorld') setCurrentWorldIdState('mainWorld');
+    }
+    setIsLoading(false);
+  }, [worldService, ensureProjectWorldExists, isTouchDevice, currentWorldId, currentWorld]); // Added currentWorldId and currentWorld as deps
 
   const value = {
     worlds,

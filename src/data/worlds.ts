@@ -304,53 +304,34 @@ export const createProjectWorld = (project: Project, isTouchDevice: boolean): Wo
     console.log(`Adding ${assetGallery.length} assetGallery items to project world for ${project.name}`);
     
     const galleryObjects = assetGallery.map((asset: any, index: number) => {
-      // Create beautiful randomized positioning for a frutiger space aesthetic
       const totalAssets = assetGallery.length;
-      
-      // Generate deterministic but varied positions based on asset index
       const seededRandom = (seed: number, min: number, max: number): number => {
         const x = Math.sin(seed * 12.9898 + seed * 78.233) * 43758.5453;
         return min + (max - min) * (x - Math.floor(x));
       };
-      
-      // Create BEAUTIFUL floating gallery with proper spacing
-      const clusterCount = Math.max(4, Math.ceil(totalAssets / 6)); // Create clusters of ~6 items each for better spacing
+      const clusterCount = Math.max(4, Math.ceil(totalAssets / 6));
       const currentCluster = index % clusterCount;
-      
-      // Base cluster positions in a MUCH LARGER circle for proper gallery feel
       const clusterAngle = (currentCluster / clusterCount) * Math.PI * 2;
-      const clusterRadius = 40 + (clusterCount * 8); // DRAMATICALLY increased radius for proper spacing
+      const clusterRadius = 40 + (clusterCount * 8);
       const clusterX = Math.cos(clusterAngle) * clusterRadius;
       const clusterZ = Math.sin(clusterAngle) * clusterRadius;
-      
-      // Add GENEROUS organic randomization within each cluster
       const inClusterIndex = Math.floor(index / clusterCount);
-      const randomX = seededRandom(index * 7 + 123, -20, 20); // MUCH larger random spread for breathing room
+      const randomX = seededRandom(index * 7 + 123, -20, 20);
       const randomZ = seededRandom(index * 11 + 456, -20, 20);
-      const randomY = seededRandom(index * 13 + 789, 2, 8); // Higher floating heights for dramatic effect
-      
-      // Create EXPANDED spiral-like distribution within clusters
-      const spiralRadius = 8 + (inClusterIndex * 3); // MUCH larger spiral for proper spacing
-      const spiralAngle = inClusterIndex * 2.3; // Golden ratio-ish angle for natural distribution
+      const randomY = seededRandom(index * 13 + 789, 2, 8);
+      const spiralRadius = 8 + (inClusterIndex * 3);
+      const spiralAngle = inClusterIndex * 2.3;
       const spiralX = Math.cos(spiralAngle) * spiralRadius;
       const spiralZ = Math.sin(spiralAngle) * spiralRadius;
-      
       const position: [number, number, number] = [
-        clusterX + spiralX + randomX * 0.5, // Combine cluster, spiral, and random
+        clusterX + spiralX + randomX * 0.5,
         randomY,
         clusterZ + spiralZ + randomZ * 0.5
       ];
-      
-      // Randomize rotation for more organic look (KEEP MINIMAL - NO TILTING)
-      const randomRotationY = seededRandom(index * 17 + 234, -0.3, 0.3); // Reduced rotation range
-      
-      // Varied scales for visual interest
+      const randomRotationY = seededRandom(index * 17 + 234, -0.3, 0.3);
       const scaleVariation = seededRandom(index * 23 + 890, 0.8, 1.3);
-      
-      // Extract filename for title
       const getAssetTitle = (url: string): string => {
         if (!url) return 'Untitled Asset';
-        
         try {
           const urlParts = url.split('/');
           const filename = urlParts[urlParts.length - 1];
@@ -362,129 +343,123 @@ export const createProjectWorld = (project: Project, isTouchDevice: boolean): Wo
           return asset.name || 'Untitled Asset';
         }
       };
-      
       return {
         id: `asset-${index}`,
         type: asset.type,
         title: getAssetTitle(asset.url),
         description: getAssetTitle(asset.url),
         url: asset.url,
-        thumbnail: asset.url,
+        thumbnail: asset.thumbnail || asset.url,
         position,
-        rotation: [0, randomRotationY, 0] as [number, number, number], // Only Y rotation, no tilting
+        rotation: [0, randomRotationY, 0] as [number, number, number],
         scale: [5.0 * scaleVariation, 3.5 * scaleVariation, 0.1] as [number, number, number]
       };
     });
-    
     worldObjects.push(...galleryObjects);
   }
 
   // If no media objects at all, generate mock data
   if (worldObjects.length === 0) {
-    // CRITICAL FIX: Ensure consistently generated mock data
-    // This is important because if mediaObjects isn't present, we need to generate
-    // IDENTICAL mock data for both mobile and desktop views
-    console.warn(`Project ${project.id} has no mediaObjects or assetGallery, generating deterministic mock data`);
-    
-    // Use project ID as a seed for consistent positioning across all devices
-    const seed = project.id || 1;
-    
-    // Generate consistent positions based on project ID
-    const mediaCount = 3; // Keep consistent for all platforms
+    console.warn(`Project ${project.id} ("${project.name}") has no mediaObjects or assetGallery, generating deterministic mock data.`);
+    const seed = project.id || 1; // Ensure seed is always a number
+    const mediaCount = 3;
     const positions: [number, number, number][] = [];
-    
-    // Generate positions in a circle around the center
     const radius = 8;
     for (let i = 0; i < mediaCount; i++) {
-      const angle = ((i * 2 * Math.PI) / mediaCount) + (seed * 0.1); // Use seed to offset start angle
+      const angle = ((i * 2 * Math.PI) / mediaCount) + (seed * 0.1);
       const x = Math.cos(angle) * radius;
       const z = Math.sin(angle) * radius;
       positions.push([x, 2, z]);
     }
-    
-    // Choose mock content based on the project ID to ensure consistency
-    const mockImageIndex = seed % 5; // 5 mock images available
-    const mockPdfIndex = seed % 2;   // 2 mock PDFs available
-    const mockVideoIndex = seed % 3; // 3 mock videos available
-    
+    const mockImageIndex = seed % 5;
+    const mockPdfIndex = seed % 2;
+    const mockVideoIndex = seed % 3;
+
+    // Ensure these arrays are defined here or imported if they were elsewhere
     const mockImages = [
-      'https://picsum.photos/seed/img1/800/600',
-      'https://picsum.photos/seed/img2/800/600',
-      'https://picsum.photos/seed/img3/800/600',
-      'https://picsum.photos/seed/img4/800/600',
+      'https://picsum.photos/seed/img1/800/600', 'https://picsum.photos/seed/img2/800/600',
+      'https://picsum.photos/seed/img3/800/600', 'https://picsum.photos/seed/img4/800/600',
       'https://picsum.photos/seed/img5/800/600'
     ];
-    
     const mockPDFs = [
       'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
       'https://www.africau.edu/images/default/sample.pdf'
     ];
-    
     const mockVideos = [
-      'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-      'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
+      'https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
       'https://www.youtube.com/watch?v=ZSt9tm3RoUU'
     ];
-    
-    // Add mock media objects with deterministic IDs and positions
-    worldObjects.push(
-      { 
-        id: `image-${project.id}-0`, 
-        type: 'image', 
-        title: `${project.name} - Image`, 
-        url: mockImages[mockImageIndex], 
-        position: positions[0],
-        description: "Sample image for project visualization" 
+
+    const generatedMockObjects: WorldObject[] = [
+      {
+        id: `image-${project.id}-0`, type: 'image', title: `${project.name} - Image`,
+        url: mockImages[mockImageIndex], position: positions[0], description: "Sample image for project visualization"
       },
-      { 
-        id: `pdf-${project.id}-0`, 
-        type: 'pdf', 
-        title: `${project.name} - Documentation`, 
-        url: mockPDFs[mockPdfIndex], 
-        position: positions[1],
-        description: "Sample documentation PDF" 
+      {
+        id: `pdf-${project.id}-0`, type: 'pdf', title: `${project.name} - Documentation`,
+        url: mockPDFs[mockPdfIndex], position: positions[1], description: "Sample documentation PDF"
       },
-      { 
-        id: `video-${project.id}-0`, 
-        type: 'video', 
-        title: `${project.name} - Demo Video`, 
-        url: mockVideos[mockVideoIndex], 
-        position: positions[2],
-        description: "Sample video demonstration" 
+      {
+        id: `video-${project.id}-0`, type: 'video', title: `${project.name} - Demo Video`,
+        url: mockVideos[mockVideoIndex], position: positions[2], description: "Sample video demonstration"
       }
-    );
-    
-    // CRITICAL: Create & persist the media objects to the project
-    // so future loads on any device will use the same objects
-    if (!project.mediaObjects) {
-      project.mediaObjects = [...worldObjects];
-      // Try to persist this change
-      try {
-        const { projectService } = require('../services/projectService');
-        projectService.saveProject(project).catch(console.error);
-        console.log('Saved generated mediaObjects to project for future consistency');
-      } catch (error) {
-        console.error('Failed to save mediaObjects to project:', error);
+    ];
+    worldObjects.push(...generatedMockObjects);
+
+    // CRITICAL FIX (User Request): Comment out the asynchronous mock data saving to prevent cascading updates.
+    // This implements Option A: Do NOT save generated mock data back to ProjectService / localStorage.
+    /*
+    // Attempt to persist the generated mock media objects to the project asynchronously
+    // Ensure project and project.id are valid, and there's mock data
+    if (project && typeof project.id === 'number' && generatedMockObjects.length > 0) {
+      const currentProjectMediaStr = project.mediaObjects ? JSON.stringify(project.mediaObjects) : '[]';
+      const newMockMediaStr = JSON.stringify(generatedMockObjects);
+
+      // Only attempt to save if the new mock data is different from existing or if no mediaObjects exist
+      if (currentProjectMediaStr !== newMockMediaStr) {
+        console.log(`Project ${project.id} ("${project.name}"): Attempting to asynchronously save/update with generated mock mediaObjects.`);
+        
+        const projectToSaveWithMocks = {
+          ...project, 
+          mediaObjects: [...generatedMockObjects] 
+        };
+
+        import('../services/projectService')
+          .then(({ projectService }) => {
+            if (projectService && typeof projectService.saveProject === 'function') {
+              projectService.saveProject(projectToSaveWithMocks)
+                .then(() => {
+                  console.log(`Project ${project.id} ("${project.name}"): Successfully saved/updated with generated mock mediaObjects.`);
+                })
+                .catch(err => {
+                  console.error(`Project ${project.id} ("${project.name}"): Error saving project with mock mediaObjects:`, err);
+                });
+            } else {
+              console.error(`Project ${project.id} ("${project.name}"): projectService or saveProject method not available for mock data persistence.`);
+            }
+          })
+          .catch(err => {
+            console.error(`Project ${project.id} ("${project.name}"): Failed to import projectService for mock data persistence:`, err);
+          });
+      } else {
+        console.log(`Project ${project.id} ("${project.name}"): Mock data already matches existing mediaObjects or no new mock data to save; skipping save operation.`);
       }
+    } else {
+        console.warn(`Project ${project.id} ("${project.name}"): Conditions not met for saving mock media objects (project invalid, ID not a number, or no mock objects generated).`);
     }
+    */
   }
 
-  // Add a back button to the main world, ONLY if not on a touch device (desktop)
-  // On touch devices, the global BackButton.tsx component is used.
   if (!isTouchDevice) {
     worldObjects.push({
       id: `back-to-main-${project.id}`,
       type: 'button',
-      title: 'Back to Main World (Invisible Desktop Button)', // Text won't be visible, but good for debugging
+      title: 'Back to Main World (Invisible Desktop Button)', 
       description: 'Return to the main portfolio overview',
       action: 'navigate',
       destination: 'mainWorld',
-      // This object won't be rendered as a visible button if it's not interactive or has no model.
-      // The actual navigation for desktop will be handled by the 'B' key.
-      // We add it here mostly as a placeholder or if some debug/admin tools might use it.
-      // For the user, the "Press B" legend will be the cue.
-      position: [0, -100, 0], // Position it far away or make scale tiny to hide
-      scale: [0.001, 0.001, 0.001] // Make it effectively invisible
+      position: [0, -100, 0], 
+      scale: [0.001, 0.001, 0.001] 
     });
   }
 
@@ -499,7 +474,7 @@ export const createProjectWorld = (project: Project, isTouchDevice: boolean): Wo
     ambientLightIntensity: project.worldSettings?.ambientLightIntensity || 0.7,
     directionalLightColor: project.worldSettings?.directionalLightColor || '#ffffff',
     directionalLightIntensity: project.worldSettings?.directionalLightIntensity || 1.0,
-    cameraPosition: { x: 0, y: 3, z: 15 }, // Default camera for project worlds
+    cameraPosition: { x: 0, y: 3, z: 15 }, 
     objects: worldObjects,
   };
 
@@ -507,7 +482,7 @@ export const createProjectWorld = (project: Project, isTouchDevice: boolean): Wo
   console.log('Project world objects summary:', projectWorld.objects.map(obj => ({
     id: obj.id,
     type: obj.type,
-    title: obj.title
+    title: obj.title?.substring(0, 50) 
   })));
   
   return projectWorld;
